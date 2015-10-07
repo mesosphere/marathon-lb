@@ -1,0 +1,17 @@
+#!/bin/sh
+exec 2>&1
+PIDFILE="/tmp/haproxy.pid"
+
+reload() {
+  echo "Reloading haproxy"
+  if ! haproxy -c -f /mesos-lb/haproxy.cfg; then
+    echo "Invalid config"
+    return 1
+  fi
+  haproxy -p $PIDFILE -f /mesos-lb/haproxy.cfg -sf $(cat $PIDFILE)
+}
+
+haproxy -p $PIDFILE -f /mesos-lb/haproxy.cfg
+
+trap reload SIGHUP
+while true; do sleep 1; done
