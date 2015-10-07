@@ -218,6 +218,7 @@ import os.path
 import stat
 import re
 import requests
+import shlex
 import subprocess
 import sys
 import socket
@@ -846,17 +847,21 @@ def config(apps, groups):
 
 
 def reloadConfig():
-    logger.debug("trying to find out how to reload the configuration")
-    if os.path.isfile('/etc/init/haproxy.conf'):
-        logger.debug("we seem to be running on an Upstart based system")
-        reloadCommand = ['reload', 'haproxy']
-    elif (os.path.isfile('/usr/lib/systemd/system/haproxy.service') or
-            os.path.isfile('/etc/systemd/system/haproxy.service')):
-        logger.debug("we seem to be running on systemd based system")
-        reloadCommand = ['systemctl', 'reload', 'haproxy']
+    reloadCommand = []
+    if args.command:
+      reloadCommand = shlex.split(args.command)
     else:
-        logger.debug("we seem to be running on a sysvinit based system")
-        reloadCommand = ['/etc/init.d/haproxy', 'reload']
+      logger.debug("No reload command provided, trying to find out how to reload the configuration")
+      if os.path.isfile('/etc/init/haproxy.conf'):
+          logger.debug("we seem to be running on an Upstart based system")
+          reloadCommand = ['reload', 'haproxy']
+      elif (os.path.isfile('/usr/lib/systemd/system/haproxy.service') or
+              os.path.isfile('/etc/systemd/system/haproxy.service')):
+          logger.debug("we seem to be running on systemd based system")
+          reloadCommand = ['systemctl', 'reload', 'haproxy']
+      else:
+          logger.debug("we seem to be running on a sysvinit based system")
+          reloadCommand = ['/etc/init.d/haproxy', 'reload']
 
     logger.info("reloading using %s", " ".join(reloadCommand))
     try:
@@ -1056,6 +1061,9 @@ def get_arg_parser():
                         "Use '*' to match all groups",
                         action="append",
                         default=list())
+    parser.add_argument("--command", "-c",
+                        help="If set, run this command to reload haproxy.",
+                        default=None)
 
     return parser
 
