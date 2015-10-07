@@ -1034,10 +1034,13 @@ def get_arg_parser():
                              "http://marathon1:8080 -m http://marathon2:8080"
                         )
     parser.add_argument("--listening", "-l",
+                        help="The address this script listens on for marathon" +
+                             "events"
+                        )
+    parser.add_argument("--callback-url", "-u",
                         help="The HTTP address that Marathon can call this " +
                              "script back at (http://lb1:8080)"
                         )
-
     default_log_socket = "/dev/log"
     if sys.platform == "darwin":
         default_log_socket = "/var/run/syslog"
@@ -1068,7 +1071,7 @@ def get_arg_parser():
     return parser
 
 
-def run_server(marathon, callback_url, config_file, groups):
+def run_server(marathon, listen_addr, callback_url, config_file, groups):
     subscriber = MarathonEventSubscriber(marathon,
                                          callback_url,
                                          config_file,
@@ -1086,12 +1089,7 @@ def run_server(marathon, callback_url, config_file, groups):
 
         return "Got it\n"
 
-    try:
-        port = int(callback_url.split(':')[-1])
-    except ValueError:
-        port = 8000  # no port or invalid port specified
-    logger.info("Serving on port {0}...".format(port))
-    httpd = make_server('', port, wsgi_app)
+    httpd = make_server(listen_addr.split(':'), wsgi_app)
     httpd.serve_forever()
 
 
@@ -1138,11 +1136,12 @@ if __name__ == '__main__':
     # If in listening mode, spawn a webserver waiting for events. Otherwise
     # just write the config.
     if args.listening:
+        callback_url = args.callback_url or args.listening
         try:
-            run_server(marathon, args.listening, args.haproxy_config,
+            run_server(marathon, args.listening, callback_url, args.haproxy_config,
                        args.group)
         finally:
-            clear_callbacks(marathon, args.listening)
+            clear_callbacks(marathon, callback_url)
     else:
         # Generate base config
         regenerate_config(get_apps(marathon), args.haproxy_config, args.group)
