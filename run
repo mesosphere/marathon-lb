@@ -1,5 +1,5 @@
 #!/bin/sh
-SERVICE="/mesos-lb/service/haproxy"
+SERVICE="/marathon-lb/service/haproxy"
 set -e
 /sbin/runsv "$SERVICE" &
 RUNSV=$!
@@ -17,22 +17,22 @@ case "$MODE" in
   event)
     URL=$1; shift
     if [ -z "$URL" ] || echo "$URL" | grep -q '^-'; then
-      echo "$0 event callback-url [mesos-update-haproxy.py args]" >&2
+      echo "$0 event callback-url [marathon-update-haproxy.py args]" >&2
       exit 1
     fi
     echo "Using $URL as event callback-url"
     ARGS="-l :8080 -u '$URL'"
     ;;
   *)
-    echo "Unknown mode $MODE. Synopsis: $0 poll|sse|event [mesos-update-haproxy.py args]" >&2
+    echo "Unknown mode $MODE. Synopsis: $0 poll|sse|event [marathon-update-haproxy.py args]" >&2
     exit 1
     ;;
 esac
 
 while true; do
-  python /mesos-lb/mesos-update-haproxy.py \
+  python /marathon-lb/marathon-update-haproxy.py \
     --syslog-socket /dev/null \
-    --haproxy-config /mesos-lb/haproxy.cfg \
+    --haproxy-config /marathon-lb/haproxy.cfg \
     -c "sv reload $SERVICE" \
     $ARGS $@ || exit $?
   if [ "$MODE" != "poll" ]; then

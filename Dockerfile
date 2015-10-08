@@ -1,6 +1,6 @@
 FROM alpine
 
-ENTRYPOINT [ "/mesos-lb/run" ]
+ENTRYPOINT [ "/marathon-lb/run" ]
 CMD        [ "sse", "-m", "http://leader.mesos" ]
 EXPOSE     80 443 8080 
 
@@ -9,5 +9,5 @@ RUN apk add --update python py-pip haproxy \
     runit \
     && pip install requests sseclient
 
-COPY  . /mesos-lb
-WORKDIR /mesos-lb
+COPY  . /marathon-lb
+WORKDIR /marathon-lb

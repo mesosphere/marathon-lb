@@ -4,14 +4,14 @@ PIDFILE="/tmp/haproxy.pid"
 
 reload() {
   echo "Reloading haproxy"
-  if ! haproxy -c -f /mesos-lb/haproxy.cfg; then
+  if ! haproxy -c -f /marathon-lb/haproxy.cfg; then
     echo "Invalid config"
     return 1
   fi
-  haproxy -p $PIDFILE -f /mesos-lb/haproxy.cfg -sf $(cat $PIDFILE)
+  haproxy -p $PIDFILE -f /marathon-lb/haproxy.cfg -sf $(cat $PIDFILE)
 }
 
-haproxy -p $PIDFILE -f /mesos-lb/haproxy.cfg
+haproxy -p $PIDFILE -f /marathon-lb/haproxy.cfg
 
 trap reload SIGHUP
 while true; do sleep 1; done
