@@ -34,10 +34,11 @@ while true; do
     --syslog-socket /dev/null \
     --haproxy-config /marathon-lb/haproxy.cfg \
     -c "sv reload $SERVICE" \
-    $ARGS $@ || exit $?
+    $ARGS $@ &
+  wait $! || exit $? # Needed for the traps to work
   if [ "$MODE" != "poll" ]; then
     exit 0
   fi
-  sleep "$POLL_INTERVAL" & # Needed for the traps to work
+  sleep "$POLL_INTERVAL" &
   wait $!
 done
