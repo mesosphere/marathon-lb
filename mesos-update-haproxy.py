@@ -6,8 +6,7 @@
   haproxy configuration details.
 
   To gather the task information, the servicerouter needs to know where
-  to find Marathon. The service configuration details are stored in Marathon
-  environment variables.
+  to find Marathon. The service configuration details are stored in labels.
 
   Every service port in Marathon can be configured independently.
 
@@ -20,7 +19,7 @@ Features:
 
 
 Configuration:
-  Service configuration lives in Marathon via environment variables.
+  Service configuration lives in Marathon via labels.
   The servicerouter just needs to know where to find marathon.
   To run in listening mode you must also specify the address + port at
   which the servicerouter can be reached by marathon.
@@ -34,7 +33,7 @@ Usage:
   haproxy.
 
 
-Environment Variables:
+Labels:
   HAPROXY_GROUP
     The group of servicerouter instances that point to the service.
     Service routers with the group '*' will collect all groups.
@@ -100,7 +99,7 @@ Templates:
 
   HAPROXY_BACKEND_REDIRECT_HTTP_TO_HTTPS
     This template is used with backends where the
-    HAPROXY_{n}_REDIRECT_TO_HTTPS environment variable is defined.
+    HAPROXY_{n}_REDIRECT_TO_HTTPS label is defined.
 
   HAPROXY_BACKEND_HTTP_OPTIONS
     Sets HTTP headers, for example X-Forwarded-For and X-Forwarded-Proto.
@@ -225,7 +224,6 @@ import subprocess
 import sys
 import socket
 import time
-
 
 class ConfigTemplater(object):
     HAPROXY_HEAD = dedent('''\
@@ -480,7 +478,7 @@ def set_mode(x, y):
     x.mode = y
 
 
-env_keys = {
+label_keys = {
     'HAPROXY_{0}_VHOST': set_hostname,
     'HAPROXY_{0}_STICKY': set_sticky,
     'HAPROXY_{0}_REDIRECT_TO_HTTPS': set_redirect_http_to_https,
@@ -936,14 +934,14 @@ def get_apps(marathon):
     logger.debug("got apps %s", map(lambda app: app["id"], apps))
 
     marathon_apps = []
-
     for app in apps:
         appId = app['id']
 
         marathon_app = MarathonApp(marathon, appId, app)
-        if 'HAPROXY_GROUP' in marathon_app.app['env']:
+
+        if 'HAPROXY_GROUP' in marathon_app.app['labels']:
                     marathon_app.groups = \
-                            marathon_app.app['env']['HAPROXY_GROUP'].split(',')
+                            marathon_app.app['labels']['HAPROXY_GROUP'].split(',')
         marathon_apps.append(marathon_app)
 
         service_ports = app['ports']
@@ -952,14 +950,11 @@ def get_apps(marathon):
             service = MarathonService(
                         appId, servicePort, get_health_check(app, i))
 
-            # Load environment variable configuration
-            # TODO(cmaloney): Move to labels once those are supported
-            # throughout the stack
-            for key_unformatted in env_keys:
+            for key_unformatted in label_keys:
                 key = key_unformatted.format(i)
-                if key in marathon_app.app[u'env']:
-                    func = env_keys[key_unformatted]
-                    func(service, marathon_app.app[u'env'][key])
+                if key in marathon_app.app[u'labels']:
+                    func = label_keys[key_unformatted]
+                    func(service, marathon_app.app[u'labels'][key])
 
             marathon_app.services[servicePort] = service
 
