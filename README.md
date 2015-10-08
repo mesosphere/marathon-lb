@@ -8,6 +8,10 @@ See [comments in script](mesos-update-haproxy.py) for more details.
 # Docker
 Synopsis: `docker run mesosphere/mesos-lb event|poll ...`
 
+## sse mode
+In SSE mode, the script connects to the marathon events endpoint to get
+notified about state changes.
+
 ## event mode
 In event mode, the script registers a http callback in marathon to get
 notified when state changes.

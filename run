@@ -11,6 +11,9 @@ case "$MODE" in
   poll)
     [ -z "$POLL_INTERVAL" ] && POLL_INTERVAL=60
     ;;
+  sse)
+    ARGS="--sse"
+    ;;
   event)
     URL=$1; shift
     if [ -z "$URL" ] || echo "$URL" | grep -q '^-'; then
@@ -21,7 +24,7 @@ case "$MODE" in
     ARGS="-l :8080 -u '$URL'"
     ;;
   *)
-    echo "Unknown mode $MODE. Synopsis: $0 poll|event [mesos-update-haproxy.py args]" >&2
+    echo "Unknown mode $MODE. Synopsis: $0 poll|sse|event [mesos-update-haproxy.py args]" >&2
     exit 1
     ;;
 esac
@@ -32,7 +35,7 @@ while true; do
     --haproxy-config /mesos-lb/haproxy.cfg \
     -c "sv reload $SERVICE" \
     $ARGS $@ || exit $?
-  if [ "$MODE" == "event" ]; then
+  if [ "$MODE" != "poll" ]; then
     exit 0
   fi
   sleep "$POLL_INTERVAL" & # Needed for the traps to work
