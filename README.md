@@ -3,7 +3,7 @@ Script to update haproxy based on mesos and marathon state.
 
 You can run the script directly or using the Docker image.
 
-See [comments in script](mesos-update-haproxy.py) for more details.
+See [comments in script](marathon-update-haproxy.py) for more details.
 
 # Docker
 Synopsis: `docker run mesosphere/marathon-lb event|poll ...`
