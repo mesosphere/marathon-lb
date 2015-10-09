@@ -229,8 +229,8 @@ class ConfigTemplater(object):
     HAPROXY_HEAD = dedent('''\
     global
       daemon
-      log 127.0.0.1 local0
-      log 127.0.0.1 local1 notice
+      log /dev/log local0
+      log /dev/log local1 notice
       maxconn 4096
       tune.ssl.default-dh-param 2048
 
