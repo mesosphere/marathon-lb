@@ -8,6 +8,9 @@ See [comments in script](mesos-update-haproxy.py) for more details.
 # Docker
 Synopsis: `docker run mesosphere/marathon-lb event|poll ...`
 
+You can pass in your own certificates for the SSL frontend by setting
+the HAPROXY_SSL_CERT environment variable.
+
 ## sse mode
 In SSE mode, the script connects to the marathon events endpoint to get
 notified about state changes.
