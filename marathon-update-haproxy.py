@@ -201,6 +201,8 @@ Operational Notes:
     node in marathon.
   - If run in listening mode, DNS isn't re-resolved. Restart the process
     periodically to force re-resolution if desired.
+  - To avoid configuring itself as a backend when run via Marathon,
+    services with appID matching FRAMEWORK_NAME env var will be skipped.
 """
 
 from logging.handlers import SysLogHandler
@@ -936,6 +938,8 @@ def get_apps(marathon):
     marathon_apps = []
     for app in apps:
         appId = app['id']
+        if appId[1:] == os.environ.get("FRAMEWORK_NAME"):
+          continue
 
         marathon_app = MarathonApp(marathon, appId, app)
 
@@ -1069,7 +1073,6 @@ def get_arg_parser():
     parser.add_argument("--command", "-c",
                         help="If set, run this command to reload haproxy.",
                         default=None)
-
     parser.add_argument("--sse", "-s",
                         help="Use Server Sent Events instead of HTTP "
                         "Callbacks",
