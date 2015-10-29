@@ -212,6 +212,7 @@ from tempfile import mkstemp
 from textwrap import dedent
 from wsgiref.simple_server import make_server
 from sseclient import SSEClient
+from urlparse import urlparse
 
 import argparse
 import json
@@ -1082,10 +1083,9 @@ def get_arg_parser():
 
 
 def run_server(marathon, listen_addr, callback_url, config_file, groups):
-    subscriber = MarathonEventSubscriber(marathon,
-                                         callback_url,
-                                         config_file,
-                                         groups)
+    processor = MarathonEventProcessor(marathon,
+                                       config_file,
+                                       groups)
     marathon.add_subscriber(callback_url)
 
     # TODO(cmaloney): Switch to a sane http server
@@ -1100,7 +1100,8 @@ def run_server(marathon, listen_addr, callback_url, config_file, groups):
 
         return "Got it\n"
 
-    httpd = make_server(listen_addr.split(':'), wsgi_app)
+    listen_uri = urlparse(listen_addr)
+    httpd = make_server(listen_uri.hostname, listen_uri.port, wsgi_app)
     httpd.serve_forever()
 
 
