@@ -657,9 +657,8 @@ def resolve_ip(host):
             return None
 
 
-def config(apps, groups):
+def config(apps, groups, templater):
     logger.info("generating config")
-    templater = ConfigTemplater()
     config = templater.haproxy_head
     groups = frozenset(groups)
 
@@ -992,8 +991,8 @@ def get_apps(marathon):
     return apps_list
 
 
-def regenerate_config(apps, config_file, groups):
-    compareWriteAndReloadConfig(config(apps, groups),
+def regenerate_config(apps, config_file, groups, templater):
+    compareWriteAndReloadConfig(config(apps, groups, templater),
                                 config_file)
 
 
@@ -1005,6 +1004,7 @@ class MarathonEventProcessor(object):
         self.__apps = dict()
         self.__config_file = config_file
         self.__groups = groups
+        self.__templater = ConfigTemplater()
 
         # Fetch the base data
         self.reset_from_tasks()
@@ -1015,7 +1015,8 @@ class MarathonEventProcessor(object):
         self.__apps = get_apps(self.__marathon)
         regenerate_config(self.__apps,
                           self.__config_file,
-                          self.__groups)
+                          self.__groups,
+                          self.__templater)
 
         logger.debug("updating tasks finished, took %s seconds",
                      time.time() - start_time)
@@ -1185,4 +1186,4 @@ if __name__ == '__main__':
         process_sse_events(marathon, args.haproxy_config, args.group)
     else:
         # Generate base config
-        regenerate_config(get_apps(marathon), args.haproxy_config, args.group)
+        regenerate_config(get_apps(marathon), args.haproxy_config, args.group, ConfigTemplater())
