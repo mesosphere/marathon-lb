@@ -11,6 +11,9 @@ sends incoming requests to the application instances.
 To create a virtual host the HAPROXY_0_VHOST label needs to be set on the
 given application.
 
+See [comments in script](marathon-update-haproxy.py) for all available options.
+
+
 ## Deployment
 To deploy the marathon-lb on the public slaves in your DCOS cluster,
 simply run:
