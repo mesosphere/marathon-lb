@@ -1,6 +1,7 @@
 #!/bin/sh
 exec 2>&1
 PIDFILE="/tmp/haproxy.pid"
+exec 200<$0
 
 reload() {
   echo "Reloading haproxy"
@@ -8,7 +9,12 @@ reload() {
     echo "Invalid config"
     return 1
   fi
+  if ! flock -n 200; then
+    echo "Can't aquire lock, reload already in progress?"
+    return
+  fi
   haproxy -p $PIDFILE -f /marathon-lb/haproxy.cfg -sf $(cat $PIDFILE)
+  flock -u 200
 }
 
 haproxy -p $PIDFILE -f /marathon-lb/haproxy.cfg
