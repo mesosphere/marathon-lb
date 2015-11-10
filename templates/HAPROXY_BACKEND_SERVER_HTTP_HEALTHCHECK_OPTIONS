@@ -1,0 +1,1 @@
+check inter {healthCheckIntervalSeconds}s fall {healthCheckFalls}

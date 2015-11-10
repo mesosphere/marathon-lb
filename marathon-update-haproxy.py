@@ -557,9 +557,10 @@ class MarathonApp(object):
 
 class Marathon(object):
 
-    def __init__(self, hosts):
+    def __init__(self, hosts, health_check):
         # TODO(cmaloney): Support getting master list from zookeeper
         self.__hosts = hosts
+        self.__health_check = health_check
 
     def api_req_raw(self, method, path, body=None, **kwargs):
         for host in self.__hosts:
@@ -602,6 +603,9 @@ class Marathon(object):
         logger.info('fetching apps')
         return self.api_req('GET', ['apps'],
                             params={'embed': 'apps.tasks'})["apps"]
+
+    def health_check(self):
+        return self.__health_check
 
     def tasks(self):
         logger.info('fetching tasks')
@@ -969,6 +973,16 @@ def get_apps(marathon):
                                task['id'])
                 continue
 
+            if marathon.health_check and 'healthChecks' in app and len(app['healthChecks']) > 0:
+              if 'healthCheckResults' not in task:
+                continue
+              alive = True
+              for result in task['healthCheckResults']:
+                if not result['alive']:
+                  alive = False
+              if not alive:
+                continue
+
             task_ports = task['ports']
 
             # if different versions of app have different number of ports,
@@ -1023,7 +1037,7 @@ class MarathonEventProcessor(object):
                      time.time() - start_time)
 
     def handle_event(self, event):
-        if event['eventType'] == 'status_update_event':
+        if event['eventType'] == 'status_update_event' or event['eventType'] == 'health_status_changed_event':
             # TODO (cmaloney): Handle events more intelligently so we don't
             # unnecessarily hammer the Marathon API.
             self.reset_from_tasks()
@@ -1078,6 +1092,11 @@ def get_arg_parser():
     parser.add_argument("--sse", "-s",
                         help="Use Server Sent Events instead of HTTP "
                         "Callbacks",
+                        action="store_true")
+    parser.add_argument("--health-check", "-H",
+                        help="If set, respect Marathon's health check "
+                        "statuses before adding the app instance into "
+                        "the backend pool.",
                         action="store_true")
 
     return parser
@@ -1172,7 +1191,7 @@ if __name__ == '__main__':
     setup_logging(args.syslog_socket, args.log_format)
 
     # Marathon API connector
-    marathon = Marathon(args.marathon)
+    marathon = Marathon(args.marathon, args.health_check)
 
     # If in listening mode, spawn a webserver waiting for events. Otherwise
     # just write the config.
@@ -1180,7 +1199,7 @@ if __name__ == '__main__':
         callback_url = args.callback_url or args.listening
         try:
             run_server(marathon, args.listening, callback_url, args.haproxy_config,
-                       args.group)
+                       args.group, args.health_check)
         finally:
             clear_callbacks(marathon, callback_url)
     elif args.sse:
