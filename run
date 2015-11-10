@@ -10,6 +10,10 @@ else
   rm /tmp/server-*.pem
 fi
 
+# This is a hack due to musl libc's DNS handling
+cat /etc/resolv.conf | head -n 3 > dns
+cat dns > /etc/resolv.conf
+
 /sbin/runsv "$SERVICE" &
 RUNSV=$!
 
