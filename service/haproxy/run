@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 exec 2>&1
 PIDFILE="/tmp/haproxy.pid"
 exec 200<$0

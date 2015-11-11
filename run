@@ -1,6 +1,8 @@
-#!/bin/sh
+#!/bin/bash
+set -euo pipefail
+
 SERVICE="/marathon-lb/service/haproxy"
-if [ -n "$HAPROXY_SSL_CERT" ]; then
+if [ -n "${HAPROXY_SSL_CERT-}" ]; then
   echo "$HAPROXY_SSL_CERT" > /etc/ssl/mesosphere.com.pem
 else
   openssl genrsa -out /tmp/server-key.pem 2048
@@ -10,7 +12,7 @@ else
   rm /tmp/server-*.pem
 fi
 
-/sbin/runsv "$SERVICE" &
+/usr/bin/runsv "$SERVICE" &
 RUNSV=$!
 
 trap "kill $RUNSV; wait $RUNSV; exit 0" TERM INT
