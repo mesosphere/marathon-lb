@@ -12,6 +12,10 @@ else
   rm /tmp/server-*.pem
 fi
 
+if [ -n "${MESOS_SANDBOX-}" ] && [ -d "$MESOS_SANDBOX/templates" ]; then
+  cp -v "$MESOS_SANDBOX/templates/"* templates/
+fi
+
 /usr/bin/runsv "$SERVICE" &
 RUNSV=$!
 

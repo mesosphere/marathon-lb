@@ -25,6 +25,10 @@ To configure a custom ssl-certificate, set the dcos cli option `ssl-cert`
 to your concatenated cert and private key in .pem format. For more details
 see the [haproxy documentation](https://cbonte.github.io/haproxy-dconv/configuration-1.7.html#crt (Bind options)).
 
+For further customization, templates can be added by pointing the dcos cli
+option `template-url` to a tarball containing a directory `templates/`.
+See [comments in script](marathon-update-haproxy.py) on how to name those.
+
 ## Caveats and Limitations
 Since marathon-lb needs to bind to the service ports dynamically and allocating
 them is not possible with a simple marathon scheduled application, this
