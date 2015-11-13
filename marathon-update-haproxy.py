@@ -236,7 +236,6 @@ class ConfigTemplater(object):
       log /dev/log local1 notice
       maxconn 4096
       tune.ssl.default-dh-param 2048
-
     defaults
       log               global
       retries           3
@@ -244,19 +243,18 @@ class ConfigTemplater(object):
       timeout connect   5s
       timeout client    50s
       timeout server    50s
-
     listen stats
-      bind 127.0.0.1:9090
+      bind 0.0.0.0:9090
       balance
       mode http
       stats enable
-      stats auth admin:admin
     ''')
 
     HAPROXY_HTTP_FRONTEND_HEAD = dedent('''
     frontend marathon_http_in
       bind *:80
       mode http
+      monitor-uri /_haproxy_health_check
     ''')
 
     HAPROXY_HTTP_FRONTEND_APPID_HEAD = dedent('''
@@ -309,7 +307,11 @@ class ConfigTemplater(object):
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
 '''
 
-    HAPROXY_BACKEND_HTTP_HEALTHCHECK_OPTIONS = ''
+    HAPROXY_BACKEND_HTTP_HEALTHCHECK_OPTIONS = '''\
+  option  httpchk GET {healthCheckPath}
+  timeout check {healthCheckTimeoutSeconds}s
+'''
+
     HAPROXY_BACKEND_TCP_HEALTHCHECK_OPTIONS = ''
 
     HAPROXY_BACKEND_STICKY_OPTIONS = '''\
@@ -320,7 +322,9 @@ class ConfigTemplater(object):
   server {serverName} {host_ipv4}:{port}{cookieOptions}{healthCheckOptions}
 '''
 
-    HAPROXY_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS = ''
+    HAPROXY_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS = '''\
+  check inter {healthCheckIntervalSeconds}s fall {healthCheckFalls}
+'''
     HAPROXY_BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS = ''
 
     HAPROXY_FRONTEND_BACKEND_GLUE = '''\
@@ -973,7 +977,7 @@ def get_apps(marathon):
                                task['id'])
                 continue
 
-            if marathon.health_check and 'healthChecks' in app and len(app['healthChecks']) > 0:
+            if marathon.health_check() and 'healthChecks' in app and len(app['healthChecks']) > 0:
               if 'healthCheckResults' not in task:
                 continue
               alive = True

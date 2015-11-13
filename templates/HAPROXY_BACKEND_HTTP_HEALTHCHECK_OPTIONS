@@ -1,2 +1,0 @@
-  option  httpchk GET {healthCheckPath}
-  timeout check {healthCheckTimeoutSeconds}s

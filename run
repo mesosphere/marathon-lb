@@ -13,6 +13,7 @@ else
 fi
 
 if [ -n "${MESOS_SANDBOX-}" ] && [ -d "$MESOS_SANDBOX/templates" ]; then
+  mkdir -p templates
   cp -v "$MESOS_SANDBOX/templates/"* templates/
 fi
 
