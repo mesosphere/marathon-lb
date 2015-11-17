@@ -49,6 +49,7 @@ while true; do
   python /marathon-lb/marathon-update-haproxy.py \
     --syslog-socket /dev/null \
     --haproxy-config /marathon-lb/haproxy.cfg \
+    --disable-service-port \
     -c "sv reload $SERVICE" \
     $ARGS $@ &
   wait $! || exit $? # Needed for the traps to work
