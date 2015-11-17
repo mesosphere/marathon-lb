@@ -927,10 +927,13 @@ def compareWriteAndReloadConfig(config, config_file):
 
     if runningConfig != config:
         logger.info(
-            "running config is different from generated config - reloading")
+            "running config is different from generated config...")
         writeConfig(config, config_file)
-        reloadConfig()
-
+        if not args.skip_reload:
+            logger.info("...reloading Haproxy.")
+            reloadConfig()
+        else:
+            logger.info("...not reloading Haproxy, --skip-reload was passed.")
 
 def get_health_check(app, portIndex):
     for check in app['healthChecks']:
@@ -1102,6 +1105,10 @@ def get_arg_parser():
                         "statuses before adding the app instance into "
                         "the backend pool.",
                         action="store_true")
+    parser.add_argument("--skip-reload",
+                        help="Do not reload Haproxy to apply changes",
+                        action="store_true",
+                        default=False)
 
     return parser
 
