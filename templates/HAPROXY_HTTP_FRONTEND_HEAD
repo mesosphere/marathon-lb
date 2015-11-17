@@ -1,4 +1,0 @@
-frontend marathon_http_in
-  bind *:80
-  mode http
-  monitor-uri /_haproxy_health_check
