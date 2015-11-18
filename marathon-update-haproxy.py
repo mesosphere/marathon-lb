@@ -1044,7 +1044,10 @@ class MarathonEventProcessor(object):
         if event['eventType'] == 'status_update_event' or event['eventType'] == 'health_status_changed_event':
             # TODO (cmaloney): Handle events more intelligently so we don't
             # unnecessarily hammer the Marathon API.
-            self.reset_from_tasks()
+            try:
+                self.reset_from_tasks()
+            except requests.exceptions.ConnectionError as e:
+                logger.error("Connection error({0}): {1}".format(e.errno, e.strerror))
 
 
 def get_arg_parser():
