@@ -39,7 +39,10 @@ this service in your public slaves.
 Synopsis: `docker run mesosphere/marathon-lb event|poll ...`
 
 You can pass in your own certificates for the SSL frontend by setting
-the HAPROXY_SSL_CERT environment variable.
+the HAPROXY_SSL_CERTS environment variable. You can split the certificate paths
+with comma (,)
+
+Example: /etc/ssl/mesosphere.com.pem,/etc/ssl/mesosphere2.com.pem
 
 #### sse mode
 In SSE mode, the script connects to the marathon events endpoint to get
