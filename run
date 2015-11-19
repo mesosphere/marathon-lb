@@ -19,13 +19,14 @@ fi
 
 /usr/bin/runsv "$SERVICE" &
 RUNSV=$!
+ARGS=""
 
 trap "kill $RUNSV; wait $RUNSV; exit 0" TERM INT
 
 MODE=$1; shift
 case "$MODE" in
   poll)
-    [ -z "$POLL_INTERVAL" ] && POLL_INTERVAL=60
+    POLL_INTERVAL="${POLL_INTERVAL:-60}"
     ;;
   sse)
     ARGS="--sse"
@@ -46,7 +47,7 @@ case "$MODE" in
 esac
 
 while true; do
-  python /marathon-lb/marathon-update-haproxy.py \
+  /marathon-lb/marathon-update-haproxy.py \
     --syslog-socket /dev/null \
     --haproxy-config /marathon-lb/haproxy.cfg \
     -c "sv reload $SERVICE" \

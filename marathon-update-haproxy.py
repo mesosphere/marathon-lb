@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 """Overview:
   The marathon-lb is a replacement for the haproxy-marathon-bridge.
@@ -49,7 +49,7 @@ from tempfile import mkstemp
 from textwrap import dedent
 from wsgiref.simple_server import make_server
 from sseclient import SSEClient
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 import argparse
 import json
@@ -64,6 +64,7 @@ import subprocess
 import sys
 import socket
 import time
+
 
 class ConfigTemplater(object):
     HAPROXY_HEAD = dedent('''\
@@ -703,19 +704,20 @@ def config(apps, groups, templater):
 def reloadConfig():
     reloadCommand = []
     if args.command:
-      reloadCommand = shlex.split(args.command)
+        reloadCommand = shlex.split(args.command)
     else:
-      logger.debug("No reload command provided, trying to find out how to reload the configuration")
-      if os.path.isfile('/etc/init/haproxy.conf'):
-          logger.debug("we seem to be running on an Upstart based system")
-          reloadCommand = ['reload', 'haproxy']
-      elif (os.path.isfile('/usr/lib/systemd/system/haproxy.service') or
+        logger.debug("No reload command provided, trying to find out how to" +
+                     " reload the configuration")
+        if os.path.isfile('/etc/init/haproxy.conf'):
+            logger.debug("we seem to be running on an Upstart based system")
+            reloadCommand = ['reload', 'haproxy']
+        elif (os.path.isfile('/usr/lib/systemd/system/haproxy.service') or
               os.path.isfile('/etc/systemd/system/haproxy.service')):
-          logger.debug("we seem to be running on systemd based system")
-          reloadCommand = ['systemctl', 'reload', 'haproxy']
-      else:
-          logger.debug("we seem to be running on a sysvinit based system")
-          reloadCommand = ['/etc/init.d/haproxy', 'reload']
+            logger.debug("we seem to be running on systemd based system")
+            reloadCommand = ['systemctl', 'reload', 'haproxy']
+        else:
+            logger.debug("we seem to be running on a sysvinit based system")
+            reloadCommand = ['/etc/init.d/haproxy', 'reload']
 
     logger.info("reloading using %s", " ".join(reloadCommand))
     try:
@@ -779,32 +781,32 @@ def get_health_check(app, portIndex):
 
 def get_apps(marathon):
     apps = marathon.list()
-    logger.debug("got apps %s", map(lambda app: app["id"], apps))
+    logger.debug("got apps %s", [app["id"] for app in apps])
 
     marathon_apps = []
     for app in apps:
         appId = app['id']
         if appId[1:] == os.environ.get("FRAMEWORK_NAME"):
-          continue
+            continue
 
         marathon_app = MarathonApp(marathon, appId, app)
 
         if 'HAPROXY_GROUP' in marathon_app.app['labels']:
-                    marathon_app.groups = \
-                            marathon_app.app['labels']['HAPROXY_GROUP'].split(',')
+            marathon_app.groups = \
+                marathon_app.app['labels']['HAPROXY_GROUP'].split(',')
         marathon_apps.append(marathon_app)
 
         service_ports = app['ports']
-        for i in xrange(len(service_ports)):
+        for i in range(len(service_ports)):
             servicePort = service_ports[i]
             service = MarathonService(
                         appId, servicePort, get_health_check(app, i))
 
             for key_unformatted in label_keys:
                 key = key_unformatted.format(i)
-                if key in marathon_app.app[u'labels']:
+                if key in marathon_app.app['labels']:
                     func = label_keys[key_unformatted]
-                    func(service, marathon_app.app[u'labels'][key])
+                    func(service, marathon_app.app['labels'][key])
 
             marathon_app.services[servicePort] = service
 
@@ -815,15 +817,16 @@ def get_apps(marathon):
                                task['id'])
                 continue
 
-            if marathon.health_check() and 'healthChecks' in app and len(app['healthChecks']) > 0:
-              if 'healthCheckResults' not in task:
-                continue
-              alive = True
-              for result in task['healthCheckResults']:
-                if not result['alive']:
-                  alive = False
-              if not alive:
-                continue
+            if marathon.health_check() and 'healthChecks' in app and \
+               len(app['healthChecks']) > 0:
+                if 'healthCheckResults' not in task:
+                    continue
+                alive = True
+                for result in task['healthCheckResults']:
+                    if not result['alive']:
+                        alive = False
+                if not alive:
+                    continue
 
             task_ports = task['ports']
 
@@ -831,7 +834,7 @@ def get_apps(marathon):
             # try to match as many ports as possible
             number_of_defined_ports = min(len(task_ports), len(service_ports))
 
-            for i in xrange(number_of_defined_ports):
+            for i in range(number_of_defined_ports):
                 task_port = task_ports[i]
                 service_port = service_ports[i]
                 service = marathon_app.services.get(service_port, None)
@@ -842,7 +845,7 @@ def get_apps(marathon):
     # Convert into a list for easier consumption
     apps_list = list()
     for marathon_app in marathon_apps:
-        for service in marathon_app.services.values():
+        for service in list(marathon_app.services.values()):
             if service.backends:
                 apps_list.append(service)
     return apps_list
@@ -879,13 +882,15 @@ class MarathonEventProcessor(object):
                      time.time() - start_time)
 
     def handle_event(self, event):
-        if event['eventType'] == 'status_update_event' or event['eventType'] == 'health_status_changed_event':
+        if event['eventType'] == 'status_update_event' or \
+                event['eventType'] == 'health_status_changed_event':
             # TODO (cmaloney): Handle events more intelligently so we don't
             # unnecessarily hammer the Marathon API.
             try:
                 self.reset_from_tasks()
             except requests.exceptions.ConnectionError as e:
-                logger.error("Connection error({0}): {1}".format(e.errno, e.strerror))
+                logger.error("Connection error({0}): {1}".format(
+                    e.errno, e.strerror))
 
 
 def get_arg_parser():
@@ -901,8 +906,8 @@ def get_arg_parser():
                              "http://marathon1:8080 -m http://marathon2:8080"
                         )
     parser.add_argument("--listening", "-l",
-                        help="The address this script listens on for marathon" +
-                             "events"
+                        help="The address this script listens on for " +
+                        "marathon events"
                         )
     parser.add_argument("--callback-url", "-u",
                         help="The HTTP address that Marathon can call this " +
@@ -995,8 +1000,8 @@ def process_sse_events(marathon, config_file, groups):
             else:
                 logger.info("skipping empty message")
         except:
-            print event.data
-            print "Unexpected error:", sys.exc_info()[0]
+            print(event.data)
+            print("Unexpected error:", sys.exc_info()[0])
             raise
 
 
@@ -1022,7 +1027,7 @@ if __name__ == '__main__':
 
     # Print the long help text if flag is set
     if args.longhelp:
-        print __doc__
+        print(__doc__)
         sys.exit()
     # otherwise make sure that a Marathon URL was specified
     else:
@@ -1046,12 +1051,13 @@ if __name__ == '__main__':
     if args.listening:
         callback_url = args.callback_url or args.listening
         try:
-            run_server(marathon, args.listening, callback_url, args.haproxy_config,
-                       args.group, args.health_check)
+            run_server(marathon, args.listening, callback_url,
+                       args.haproxy_config, args.group, args.health_check)
         finally:
             clear_callbacks(marathon, callback_url)
     elif args.sse:
         process_sse_events(marathon, args.haproxy_config, args.group)
     else:
         # Generate base config
-        regenerate_config(get_apps(marathon), args.haproxy_config, args.group, ConfigTemplater())
+        regenerate_config(get_apps(marathon), args.haproxy_config, args.group,
+                          ConfigTemplater())
