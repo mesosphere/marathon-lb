@@ -75,8 +75,7 @@ This will refresh haproxy.cfg, and if there were any changes, then it will
 automatically reload HAProxy. Only apps with the label `HAPROXY_GROUP=external`
 will be exposed on this LB.
 
-`marathon-update-haproxy.py` has a lot of additional functionality like sticky sessions, HTTP to HTTPS redirection, SSL offloading,
-VHost support and templating capabilities.
+`marathon-update-haproxy.py` has a lot of additional functionality like sticky sessions, HTTP to HTTPS redirection, SSL offloading, virtual host support and templating capabilities.
 
 To get the full documentation run:
 ``` console
@@ -86,16 +85,20 @@ $ ./marathon-update-haproxy.py --help
 ## HAProxy configuration
 
 ### App Labels
-App labels are specified in the Marathon app definition. These can be used to override HAProxy behaviour. For example, to specify the `external` group for an app:
+App labels are specified in the Marathon app definition. These can be used to override HAProxy behaviour. For example, to specify the `external` group for an app with a virtual host named `service.mesosphere.com`:
 
 ```json
 {
   "id": "http-service",
   "labels": {
-    "HAPROXY_GROUP":"external"
+    "HAPROXY_GROUP":"external",
+    "HAPROXY_0_VHOST":"service.mesosphere.com"
   }
 }
 ```
+
+Some labels are specified _per service port_. These are denoted with the `{n}` parameter in the label key, where `{n}` corresponds to the service port index, beginning at `0`.
+
 The full list of labels which can be specified are:
 ```
   HAPROXY_GROUP
