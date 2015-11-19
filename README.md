@@ -1,17 +1,24 @@
 # marathon-lb
-Script to update haproxy based on marathon state.
+Script to update HAProxy based on marathon state.
 
-You can run the script directly or using the Docker image.
+You can run the script directly, or using the Docker image.
 
 ## Architecture
-The marathon-lb script `marathon-update-haproxy.py` connect to the marathon API
-to retrieve all apps running, generates a haproxy config and reloads haproxy.
+The marathon-lb script `marathon-update-haproxy.py` connects to the marathon API
+to retrieve all running apps, generates a HAProxy config and reloads HAProxy.
 By default, marathon-lb binds to the service port of every application and
 sends incoming requests to the application instances.
-To create a virtual host the HAPROXY_0_VHOST label needs to be set on the
-given application.
 
 See [comments in script](marathon-update-haproxy.py) for all available options.
+
+Services are exposed on their service port (see
+[Service Discovery & Load Balancing](https://mesosphere.github.io/marathon/docs/service-discovery-load-balancing)
+for reference) as defined in their Marathon definiton. Furthermore, apps are
+only exposed on LBs which have the same LB tag (or group) as defined in the Marathon
+app's labels (using `HAPROXY_GROUP`). HAProxy parameters can be tuned by specify labels in your app.
+
+To create a virtual host the `HAPROXY_0_VHOST` label needs to be set on the
+given application.
 
 ## Deployment
 To deploy the marathon-lb on the public slaves in your DCOS cluster,
@@ -23,23 +30,17 @@ dcos package install marathon-lb
 
 To configure a custom ssl-certificate, set the dcos cli option `ssl-cert`
 to your concatenated cert and private key in .pem format. For more details
-see the [haproxy documentation](https://cbonte.github.io/haproxy-dconv/configuration-1.7.html#crt (Bind options)).
+see the [HAProxy documentation](https://cbonte.github.io/haproxy-dconv/configuration-1.7.html#crt (Bind options)).
 
 For further customization, templates can be added by pointing the dcos cli
 option `template-url` to a tarball containing a directory `templates/`.
 See [comments in script](marathon-update-haproxy.py) on how to name those.
 
-## Caveats and Limitations
-Since marathon-lb needs to bind to the service ports dynamically and allocating
-them is not possible with a simple marathon scheduled application, this
-implementation it prone to port conflicts. To avoid those, ideally you only run
-this service in your public slaves.
-
 ### Docker
 Synopsis: `docker run mesosphere/marathon-lb event|poll ...`
 
 You can pass in your own certificates for the SSL frontend by setting
-the HAPROXY_SSL_CERT environment variable.
+the `HAPROXY_SSL_CERT` environment variable.
 
 #### sse mode
 In SSE mode, the script connects to the marathon events endpoint to get
@@ -59,7 +60,7 @@ the schedulers state periodically.
 
 Synatax: `docker run mesosphere/marathon-lb poll [other args]`
 
-To change the poll interval (defaults to 60s), you can set the POLL_INTERVALL
+To change the poll interval (defaults to 60s), you can set the `POLL_INTERVAL`
 environment variable.
 
 ### Direct invocation
@@ -67,10 +68,12 @@ You can also run the update script directly.
 To generate an HAProxy configuration from Marathon running at `localhost:8080` with the `marathon-update-haproxy.py` script, run:
 
 ``` console
-$ ./marathon-update-haproxy.py --marathon http://localhost:8080 --haproxy-config /etc/haproxy/haproxy.cfg
+$ ./marathon-update-haproxy.py --marathon http://localhost:8080 --haproxy-config /etc/haproxy/haproxy.cfg --group external
 ```
 
-This will refresh haproxy.cfg, and if there were any changes, then it will automatically reload HAproxy.
+This will refresh haproxy.cfg, and if there were any changes, then it will
+automatically reload HAProxy. Only apps with the label `HAPROXY_GROUP=external`
+will be exposed on this LB.
 
 `marathon-update-haproxy.py` has a lot of additional functionality like sticky sessions, HTTP to HTTPS redirection, SSL offloading,
 VHost support and templating capabilities.
@@ -78,4 +81,183 @@ VHost support and templating capabilities.
 To get the full documentation run:
 ``` console
 $ ./marathon-update-haproxy.py --help
+```
+
+## HAProxy configuration
+
+### App Labels
+App labels are specified in the Marathon app definition. These can be used to override HAProxy behaviour. For example, to specify the `external` group for an app:
+
+```json
+{
+  "id": "http-service",
+  "labels": {
+    "HAPROXY_GROUP":"external"
+  }
+}
+```
+The full list of labels which can be specified are:
+```
+  HAPROXY_GROUP
+    The group of marathon-lb instances that point to the service.
+    Load balancers with the group '*' will collect all groups.
+
+  HAPROXY_{n}_VHOST
+    The Marathon HTTP Virtual Host proxy hostname to gather.
+    Ex: HAPROXY_0_VHOST = 'marathon.mesosphere.com'
+
+  HAPROXY_{n}_STICKY
+    Enable sticky request routing for the service.
+    Ex: HAPROXY_0_STICKY = true
+
+  HAPROXY_{n}_REDIRECT_TO_HTTPS
+    Redirect HTTP traffic to HTTPS.
+    Ex: HAPROXY_0_REDIRECT_TO_HTTPS = true
+
+  HAPROXY_{n}_SSL_CERT
+    Enable the given SSL certificate for TLS/SSL traffic.
+    Ex: HAPROXY_0_SSL_CERT = '/etc/ssl/certs/marathon.mesosphere.com'
+
+  HAPROXY_{n}_BIND_ADDR
+    Bind to the specific address for the service.
+    Ex: HAPROXY_0_BIND_ADDR = '10.0.0.42'
+
+  HAPROXY_{n}_PORT
+    Bind to the specific port for the service.
+    This overrides the servicePort which has to be unique.
+    Ex: HAPROXY_0_PORT = 80
+
+  HAPROXY_{n}_MODE
+    Set the connection mode to either TCP or HTTP. The default is TCP.
+    Ex: HAPROXY_0_MODE = 'http'
+```
+
+### Templates
+
+The marathon-lb searches for configuration files in the `templates/`
+directory. The `templates/` directory contains marathon-lb configuration
+settings and example usage. The `templates/` directory is located in a relative
+path from where the script is run.
+
+```
+  HAPROXY_HEAD
+    The head of the HAProxy config. This contains global settings
+    and defaults.
+
+  HAPROXY_HTTP_FRONTEND_HEAD
+    An HTTP frontend that binds to port *:80 by default and gathers
+    all virtual hosts as defined by the HAPROXY_{n}_VHOST variable.
+
+  HAPROXY_HTTP_FRONTEND_APPID_HEAD
+    An HTTP frontend that binds to port *:81 by default and gathers
+    all apps in http mode.
+    To use this frontend to forward to your app, configure the app with
+    "HAPROXY_0_MODE=http" then you can access it via a call to the :81 with
+    the header "X-Marathon-App-Id" set to the Marathon AppId.
+    Note multiple http ports being exposed by the same marathon app are not
+    supported. Only the first http port is available via this frontend.
+
+  HAPROXY_HTTPS_FRONTEND_HEAD
+    An HTTPS frontend for encrypted connections that binds to port *:443 by
+    default and gathers all virtual hosts as defined by the
+    HAPROXY_{n}_VHOST variable. You must modify this file to
+    include your certificate.
+
+  HAPROXY_BACKEND_REDIRECT_HTTP_TO_HTTPS
+    This template is used with backends where the
+    HAPROXY_{n}_REDIRECT_TO_HTTPS label is defined.
+
+  HAPROXY_BACKEND_HTTP_OPTIONS
+    Sets HTTP headers, for example X-Forwarded-For and X-Forwarded-Proto.
+
+  HAPROXY_BACKEND_HTTP_HEALTHCHECK_OPTIONS
+    Sets HTTP health check options, for example timeout check and httpchk GET.
+    Parameters of the first health check for this service are exposed as:
+      * healthCheckPortIndex
+      * healthCheckProtocol
+      * healthCheckPath
+      * healthCheckTimeoutSeconds
+      * healthCheckIntervalSeconds
+      * healthCheckIgnoreHttp1xx
+      * healthCheckGracePeriodSeconds
+      * healthCheckMaxConsecutiveFailures
+      * healthCheckFalls is set to healthCheckMaxConsecutiveFailures + 1
+    Defaults to empty string.
+    Example:
+      option  httpchk GET {healthCheckPath}
+      timeout check {healthCheckTimeoutSeconds}s
+
+
+  HAPROXY_BACKEND_TCP_HEALTHCHECK_OPTIONS
+    Sets TCP health check options, for example timeout check.
+    Parameters of the first health check for this service are exposed as:
+      * healthCheckPortIndex
+      * healthCheckProtocol
+      * healthCheckTimeoutSeconds
+      * healthCheckIntervalSeconds
+      * healthCheckGracePeriodSeconds
+      * healthCheckMaxConsecutiveFailures
+      * healthCheckFalls is set to healthCheckMaxConsecutiveFailures + 1
+    Defaults to empty string.
+    Example:
+      timeout check {healthCheckTimeoutSeconds}s
+
+  HAPROXY_BACKEND_STICKY_OPTIONS
+    Sets a cookie for services where HAPROXY_{n}_STICKY is true.
+
+  HAPROXY_FRONTEND_HEAD
+    Defines the address and port to bind to.
+
+  HAPROXY_BACKEND_HEAD
+    Defines the type of load balancing, roundrobin by default,
+    and connection mode, TCP or HTTP.
+
+  HAPROXY_HTTP_FRONTEND_ACL
+    The ACL that glues a backend to the corresponding virtual host
+    of the HAPROXY_HTTP_FRONTEND_HEAD.
+
+  HAPROXY_HTTP_FRONTEND_APPID_ACL
+    The ACL that glues a backend to the corresponding app
+    of the HAPROXY_HTTP_FRONTEND_APPID_HEAD.
+
+  HAPROXY_HTTPS_FRONTEND_ACL
+    The ACL that performs the SNI based hostname matching
+    for the HAPROXY_HTTPS_FRONTEND_HEAD.
+
+  HAPROXY_BACKEND_SERVER_OPTIONS
+    The options for each physical server added to a backend.
+
+
+  HAPROXY_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS
+    Sets HTTP health check options for a single server, e.g. check inter.
+    Parameters of the first health check for this service are exposed as:
+      * healthCheckPortIndex
+      * healthCheckProtocol
+      * healthCheckPath
+      * healthCheckTimeoutSeconds
+      * healthCheckIntervalSeconds
+      * healthCheckIgnoreHttp1xx
+      * healthCheckGracePeriodSeconds
+      * healthCheckMaxConsecutiveFailures
+      * healthCheckFalls is set to healthCheckMaxConsecutiveFailures + 1
+    Defaults to empty string.
+    Example:
+      check inter {healthCheckIntervalSeconds}s fall {healthCheckFalls}
+
+  HAPROXY_BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS
+    Sets TCP health check options for a single server, e.g. check inter.
+    Parameters of the first health check for this service are exposed as:
+      * healthCheckPortIndex
+      * healthCheckProtocol
+      * healthCheckTimeoutSeconds
+      * healthCheckIntervalSeconds
+      * healthCheckGracePeriodSeconds
+      * healthCheckMaxConsecutiveFailures
+      * healthCheckFalls is set to healthCheckMaxConsecutiveFailures + 1
+    Defaults to empty string.
+    Example:
+      check inter {healthCheckIntervalSeconds}s fall {healthCheckFalls}
+
+  HAPROXY_FRONTEND_BACKEND_GLUE
+    This option glues the backend to the frontend.
 ```

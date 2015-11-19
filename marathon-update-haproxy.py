@@ -33,169 +33,6 @@ Usage:
   haproxy.
 
 
-Labels:
-  HAPROXY_GROUP
-    The group of marathon-lb instances that point to the service.
-    Load balancers with the group '*' will collect all groups.
-
-  HAPROXY_{n}_VHOST
-    The Marathon HTTP Virtual Host proxy hostname to gather.
-    Ex: HAPROXY_0_VHOST = 'marathon.mesosphere.com'
-
-  HAPROXY_{n}_STICKY
-    Enable sticky request routing for the service.
-    Ex: HAPROXY_0_STICKY = true
-
-  HAPROXY_{n}_REDIRECT_TO_HTTPS
-    Redirect HTTP traffic to HTTPS.
-    Ex: HAPROXY_0_REDIRECT_TO_HTTPS = true
-
-  HAPROXY_{n}_SSL_CERT
-    Enable the given SSL certificate for TLS/SSL traffic.
-    Ex: HAPROXY_0_SSL_CERT = '/etc/ssl/certs/marathon.mesosphere.com'
-
-  HAPROXY_{n}_BIND_ADDR
-    Bind to the specific address for the service.
-    Ex: HAPROXY_0_BIND_ADDR = '10.0.0.42'
-
-  HAPROXY_{n}_PORT
-    Bind to the specific port for the service.
-    This overrides the servicePort which has to be unique.
-    Ex: HAPROXY_0_PORT = 80
-
-  HAPROXY_{n}_MODE
-    Set the connection mode to either TCP or HTTP. The default is TCP.
-    Ex: HAPROXY_0_MODE = 'http'
-
-
-Templates:
-  The marathon-lb searches for configuration files in the templates/
-  directory. The templates/ directory contains marathon-lb configuration
-  settings and example usage. The templates/ directory is located in a relative
-  path from where the script is run.
-
-  HAPROXY_HEAD
-    The head of the haproxy config. This contains global settings
-    and defaults.
-
-  HAPROXY_HTTP_FRONTEND_HEAD
-    An HTTP frontend that binds to port *:80 by default and gathers
-    all virtual hosts as defined by the HAPROXY_{n}_VHOST variable.
-
-  HAPROXY_HTTP_FRONTEND_APPID_HEAD
-    An HTTP frontend that binds to port *:81 by default and gathers
-    all apps in http mode.
-    To use this frontend to forward to your app, configure the app with
-    "HAPROXY_0_MODE=http" then you can access it via a call to the :81 with
-    the header "X-Marathon-App-Id" set to the Marathon AppId.
-    Note multiple http ports being exposed by the same marathon app are not
-    supported. Only the first http port is available via this frontend.
-
-  HAPROXY_HTTPS_FRONTEND_HEAD
-    An HTTPS frontend for encrypted connections that binds to port *:443 by
-    default and gathers all virtual hosts as defined by the
-    HAPROXY_{n}_VHOST variable. You must modify this file to
-    include your certificate.
-
-  HAPROXY_BACKEND_REDIRECT_HTTP_TO_HTTPS
-    This template is used with backends where the
-    HAPROXY_{n}_REDIRECT_TO_HTTPS label is defined.
-
-  HAPROXY_BACKEND_HTTP_OPTIONS
-    Sets HTTP headers, for example X-Forwarded-For and X-Forwarded-Proto.
-
-  HAPROXY_BACKEND_HTTP_HEALTHCHECK_OPTIONS
-    Sets HTTP health check options, for example timeout check and httpchk GET.
-    Parameters of the first health check for this service are exposed as:
-      * healthCheckPortIndex
-      * healthCheckProtocol
-      * healthCheckPath
-      * healthCheckTimeoutSeconds
-      * healthCheckIntervalSeconds
-      * healthCheckIgnoreHttp1xx
-      * healthCheckGracePeriodSeconds
-      * healthCheckMaxConsecutiveFailures
-      * healthCheckFalls is set to healthCheckMaxConsecutiveFailures + 1
-    Defaults to empty string.
-    Example:
-      option  httpchk GET {healthCheckPath}
-      timeout check {healthCheckTimeoutSeconds}s
-
-
-  HAPROXY_BACKEND_TCP_HEALTHCHECK_OPTIONS
-    Sets TCP health check options, for example timeout check.
-    Parameters of the first health check for this service are exposed as:
-      * healthCheckPortIndex
-      * healthCheckProtocol
-      * healthCheckTimeoutSeconds
-      * healthCheckIntervalSeconds
-      * healthCheckGracePeriodSeconds
-      * healthCheckMaxConsecutiveFailures
-      * healthCheckFalls is set to healthCheckMaxConsecutiveFailures + 1
-    Defaults to empty string.
-    Example:
-      timeout check {healthCheckTimeoutSeconds}s
-
-  HAPROXY_BACKEND_STICKY_OPTIONS
-    Sets a cookie for services where HAPROXY_{n}_STICKY is true.
-
-  HAPROXY_FRONTEND_HEAD
-    Defines the address and port to bind to.
-
-  HAPROXY_BACKEND_HEAD
-    Defines the type of load balancing, roundrobin by default,
-    and connection mode, TCP or HTTP.
-
-  HAPROXY_HTTP_FRONTEND_ACL
-    The ACL that glues a backend to the corresponding virtual host
-    of the HAPROXY_HTTP_FRONTEND_HEAD.
-
-  HAPROXY_HTTP_FRONTEND_APPID_ACL
-    The ACL that glues a backend to the corresponding app
-    of the HAPROXY_HTTP_FRONTEND_APPID_HEAD.
-
-  HAPROXY_HTTPS_FRONTEND_ACL
-    The ACL that performs the SNI based hostname matching
-    for the HAPROXY_HTTPS_FRONTEND_HEAD.
-
-  HAPROXY_BACKEND_SERVER_OPTIONS
-    The options for each physical server added to a backend.
-
-
-  HAPROXY_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS
-    Sets HTTP health check options for a single server, e.g. check inter.
-    Parameters of the first health check for this service are exposed as:
-      * healthCheckPortIndex
-      * healthCheckProtocol
-      * healthCheckPath
-      * healthCheckTimeoutSeconds
-      * healthCheckIntervalSeconds
-      * healthCheckIgnoreHttp1xx
-      * healthCheckGracePeriodSeconds
-      * healthCheckMaxConsecutiveFailures
-      * healthCheckFalls is set to healthCheckMaxConsecutiveFailures + 1
-    Defaults to empty string.
-    Example:
-      check inter {healthCheckIntervalSeconds}s fall {healthCheckFalls}
-
-  HAPROXY_BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS
-    Sets TCP health check options for a single server, e.g. check inter.
-    Parameters of the first health check for this service are exposed as:
-      * healthCheckPortIndex
-      * healthCheckProtocol
-      * healthCheckTimeoutSeconds
-      * healthCheckIntervalSeconds
-      * healthCheckGracePeriodSeconds
-      * healthCheckMaxConsecutiveFailures
-      * healthCheckFalls is set to healthCheckMaxConsecutiveFailures + 1
-    Defaults to empty string.
-    Example:
-      check inter {healthCheckIntervalSeconds}s fall {healthCheckFalls}
-
-  HAPROXY_FRONTEND_BACKEND_GLUE
-    This option glues the backend to the frontend.
-
-
 Operational Notes:
   - When a node in listening mode fails, remove the callback url for that
     node in marathon.
@@ -642,7 +479,7 @@ def has_group(groups, app_groups):
 
     # empty group only
     if len(groups) == 0 and len(app_groups) == 0:
-        return True
+        raise Exception("No groups specified")
 
     # Contains matching groups
     if (len(frozenset(app_groups) & groups)):
@@ -1194,6 +1031,9 @@ if __name__ == '__main__':
         if args.sse and args.listening:
             arg_parser.error(
                 'cannot use --listening and --sse at the same time')
+        if len(args.group) == 0:
+            arg_parser.error('argument --group is required: please' +
+                             'specify at least one group name')
 
     # Setup logging
     setup_logging(args.syslog_socket, args.log_format)

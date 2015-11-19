@@ -1,7 +1,7 @@
 FROM debian
 
 ENTRYPOINT [ "/marathon-lb/run" ]
-CMD        [ "sse", "-m", "http://leader.mesos:8080", "--health-check" ]
+CMD        [ "sse", "-m", "http://leader.mesos:8080", "--health-check", "--group", "external" ]
 EXPOSE     80 443 8080
 
 RUN apt-get update && apt-get install -y python python-pip haproxy openssl runit \
