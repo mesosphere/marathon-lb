@@ -243,6 +243,7 @@ class ConfigTemplater(object):
       timeout connect   5s
       timeout client    50s
       timeout server    50s
+      option            redispatch
     listen stats
       bind 0.0.0.0:9090
       balance
