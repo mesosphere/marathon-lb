@@ -322,6 +322,8 @@ def set_port(x, y):
 def set_mode(x, y):
     x.mode = y
 
+def enable_service_port(x, y):
+    x.enable_service_port = True
 
 label_keys = {
     'HAPROXY_{0}_VHOST': set_hostname,
@@ -330,7 +332,8 @@ label_keys = {
     'HAPROXY_{0}_SSL_CERT': set_sslCert,
     'HAPROXY_{0}_BIND_ADDR': set_bindAddr,
     'HAPROXY_{0}_PORT': set_port,
-    'HAPROXY_{0}_MODE': set_mode
+    'HAPROXY_{0}_MODE': set_mode,
+    'HAPROXY_{0}_ENABLE_SERVICE_PORT': enable_service_port
 }
 
 logger = logging.getLogger('marathon-lb')
@@ -351,7 +354,8 @@ class MarathonBackend(object):
 
 class MarathonService(object):
 
-    def __init__(self, appId, servicePort, healthCheck):
+    def __init__(self, appId, servicePort, healthCheck, args):
+        print(args)
         self.appId = appId
         self.servicePort = servicePort
         self.backends = set()
@@ -363,6 +367,7 @@ class MarathonService(object):
         self.groups = frozenset()
         self.mode = 'tcp'
         self.healthCheck = healthCheck
+        self.enable_service_port = not args.disable_service_port
         if healthCheck:
             if healthCheck['protocol'] == 'HTTP':
                 self.mode = 'http'
@@ -399,12 +404,13 @@ class MarathonApp(object):
 
 class Marathon(object):
 
-    def __init__(self, hosts, health_check):
+    def __init__(self, args):
         # TODO(cmaloney): Support getting master list from zookeeper
-        self.__hosts = hosts
-        self.__health_check = health_check
+        self.__hosts = args.marathon
+        self.__health_check = args.health_check
 
     def api_req_raw(self, method, path, body=None, **kwargs):
+        print(self.__hosts)
         for host in self.__hosts:
             path_str = os.path.join(host, 'v2')
 
@@ -532,14 +538,17 @@ def config(apps, groups, templater):
         if app.hostname:
             app.mode = 'http'
 
-        frontend_head = templater.haproxy_frontend_head
-        frontends += frontend_head.format(
-            bindAddr=app.bindAddr,
-            backend=backend,
-            servicePort=app.servicePort,
-            mode=app.mode,
-            sslCertOptions=' ssl crt ' + app.sslCert if app.sslCert else ''
-        )
+        if app.enable_service_port:
+            frontend_head = templater.haproxy_frontend_head
+            frontends += frontend_head.format(
+                bindAddr=app.bindAddr,
+                backend=backend,
+                servicePort=app.servicePort,
+                mode=app.mode,
+                sslCertOptions=' ssl crt ' + app.sslCert if app.sslCert else ''
+            )
+            frontend_backend_glue = templater.haproxy_frontend_backend_glue
+            frontends += frontend_backend_glue.format(backend=backend)
 
         if app.redirectHttpToHttps:
             logger.debug("rule to redirect http to https traffic")
@@ -629,9 +638,6 @@ def config(apps, groups, templater):
         if app.sticky:
             logger.debug("turning on sticky sessions")
             backends += templater.haproxy_backend_sticky_options
-
-        frontend_backend_glue = templater.haproxy_frontend_backend_glue
-        frontends += frontend_backend_glue.format(backend=backend)
 
         key_func = attrgetter('host', 'port')
         for backendServer in sorted(app.backends, key=key_func):
@@ -777,7 +783,7 @@ def get_health_check(app, portIndex):
     return None
 
 
-def get_apps(marathon):
+def get_apps(marathon, args):
     apps = marathon.list()
     logger.debug("got apps %s", map(lambda app: app["id"], apps))
 
@@ -798,7 +804,7 @@ def get_apps(marathon):
         for i in xrange(len(service_ports)):
             servicePort = service_ports[i]
             service = MarathonService(
-                        appId, servicePort, get_health_check(app, i))
+                        appId, servicePort, get_health_check(app, i), args)
 
             for key_unformatted in label_keys:
                 key = key_unformatted.format(i)
@@ -855,13 +861,14 @@ def regenerate_config(apps, config_file, groups, templater):
 
 class MarathonEventProcessor(object):
 
-    def __init__(self, marathon, config_file, groups):
+    def __init__(self, marathon, args):
         self.__marathon = marathon
         # appId -> MarathonApp
         self.__apps = dict()
-        self.__config_file = config_file
-        self.__groups = groups
+        self.__config_file = args.haproxy_config
+        self.__groups = args.group
         self.__templater = ConfigTemplater()
+        self.__args = args
 
         # Fetch the base data
         self.reset_from_tasks()
@@ -869,7 +876,7 @@ class MarathonEventProcessor(object):
     def reset_from_tasks(self):
         start_time = time.time()
 
-        self.__apps = get_apps(self.__marathon)
+        self.__apps = get_apps(self.__marathon, self.__args)
         regenerate_config(self.__apps,
                           self.__config_file,
                           self.__groups,
@@ -943,14 +950,23 @@ def get_arg_parser():
                         "statuses before adding the app instance into "
                         "the backend pool.",
                         action="store_true")
+    parser.add_argument("--disable-service-port", "-e",
+                        help="Do not bind to service ports by default. If "
+                        "set, only bind to service ports if label "
+                        "HAPROXY_{n}_ENABLE_SERVICE_PORT is set.",
+                        default=False,
+                        action="store_true")
+
+
+    parser.add_argument('--feature', dest='feature', action='store_true')
+    parser.add_argument('--no-feature', dest='feature', action='store_false')
 
     return parser
 
 
-def run_server(marathon, listen_addr, callback_url, config_file, groups):
-    processor = MarathonEventProcessor(marathon,
-                                       config_file,
-                                       groups)
+def run_server(marathon, listen_addr, callback_url, args):
+
+    processor = MarathonEventProcessor(marathon, args)
     marathon.add_subscriber(callback_url)
 
     # TODO(cmaloney): Switch to a sane http server
@@ -975,10 +991,8 @@ def clear_callbacks(marathon, callback_url):
     marathon.remove_subscriber(callback_url)
 
 
-def process_sse_events(marathon, config_file, groups):
-    processor = MarathonEventProcessor(marathon,
-                                       config_file,
-                                       groups)
+def process_sse_events(marathon, args):
+    processor = MarathonEventProcessor(marathon, args)
     events = marathon.get_event_stream()
     for event in events:
         try:
@@ -1014,7 +1028,6 @@ def setup_logging(syslog_socket, log_format):
         syslogHandler.setFormatter(formatter)
         logger.addHandler(syslogHandler)
 
-
 if __name__ == '__main__':
     # Process arguments
     arg_parser = get_arg_parser()
@@ -1039,19 +1052,18 @@ if __name__ == '__main__':
     setup_logging(args.syslog_socket, args.log_format)
 
     # Marathon API connector
-    marathon = Marathon(args.marathon, args.health_check)
+    marathon = Marathon(args)
 
     # If in listening mode, spawn a webserver waiting for events. Otherwise
     # just write the config.
     if args.listening:
         callback_url = args.callback_url or args.listening
         try:
-            run_server(marathon, args.listening, callback_url, args.haproxy_config,
-                       args.group, args.health_check)
+            run_server(marathon, args.listening, callback_url, args)
         finally:
             clear_callbacks(marathon, callback_url)
     elif args.sse:
-        process_sse_events(marathon, args.haproxy_config, args.group)
+        process_sse_events(marathon, args)
     else:
         # Generate base config
-        regenerate_config(get_apps(marathon), args.haproxy_config, args.group, ConfigTemplater())
+        regenerate_config(get_apps(marathon, apps), args.haproxy_config, args.group, ConfigTemplater())
