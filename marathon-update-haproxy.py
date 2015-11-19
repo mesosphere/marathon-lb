@@ -1,11 +1,11 @@
 #!/usr/bin/env python2
 
 """Overview:
-  The servicerouter is a replacement for the haproxy-marathon-bridge.
+  The marathon-lb is a replacement for the haproxy-marathon-bridge.
   It reads the Marathon task information and dynamically generates
   haproxy configuration details.
 
-  To gather the task information, the servicerouter needs to know where
+  To gather the task information, the marathon-lb needs to know where
   to find Marathon. The service configuration details are stored in labels.
 
   Every service port in Marathon can be configured independently.
@@ -20,23 +20,23 @@ Features:
 
 Configuration:
   Service configuration lives in Marathon via labels.
-  The servicerouter just needs to know where to find marathon.
+  The marathon-lb just needs to know where to find marathon.
   To run in listening mode you must also specify the address + port at
-  which the servicerouter can be reached by marathon.
+  which the marathon-lb can be reached by marathon.
 
 
 Usage:
-  $ servicerouter.py --marathon http://marathon1:8080 \
+  $ marathon-update-haproxy.py --marathon http://marathon1:8080 \
         --haproxy-config /etc/haproxy/haproxy.cfg
 
-  The user that executes servicerouter must have the permission to reload
+  The user that executes marathon-lb must have the permission to reload
   haproxy.
 
 
 Labels:
   HAPROXY_GROUP
-    The group of servicerouter instances that point to the service.
-    Service routers with the group '*' will collect all groups.
+    The group of marathon-lb instances that point to the service.
+    Load balancers with the group '*' will collect all groups.
 
   HAPROXY_{n}_VHOST
     The Marathon HTTP Virtual Host proxy hostname to gather.
@@ -69,8 +69,8 @@ Labels:
 
 
 Templates:
-  The servicerouter searches for configuration files in the templates/
-  directory. The templates/ directory contains servicerouter configuration
+  The marathon-lb searches for configuration files in the templates/
+  directory. The templates/ directory contains marathon-lb configuration
   settings and example usage. The templates/ directory is located in a relative
   path from where the script is run.
 
@@ -495,7 +495,7 @@ label_keys = {
     'HAPROXY_{0}_MODE': set_mode
 }
 
-logger = logging.getLogger('servicerouter')
+logger = logging.getLogger('marathon-lb')
 
 
 class MarathonBackend(object):
@@ -1049,7 +1049,7 @@ class MarathonEventProcessor(object):
 
 def get_arg_parser():
     parser = argparse.ArgumentParser(
-        description="Marathon HAProxy Service Router")
+        description="Marathon HAProxy Load Balancer")
     parser.add_argument("--longhelp",
                         help="Print out configuration details",
                         action="store_true"
