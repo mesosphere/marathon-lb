@@ -263,10 +263,9 @@ class ConfigTemplater(object):
       mode http
     ''')
 
-    # TODO(lloesche): make certificate path dynamic and allow multiple certs
     HAPROXY_HTTPS_FRONTEND_HEAD = dedent('''
     frontend marathon_https_in
-      bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+      bind *:443 ssl {sslCerts}
       mode http
     ''')
 
@@ -670,9 +669,13 @@ def config(apps, groups, templater):
     logger.info("generating config")
     config = templater.haproxy_head
     groups = frozenset(groups)
-
+    ssl_certs = os.environ.get("HAPROXY_SSL_CERTS", "/etc/ssl/mesosphere.com.pem").split(",")
+    
     http_frontends = templater.haproxy_http_frontend_head
-    https_frontends = templater.haproxy_https_frontend_head
+    https_frontends = templater.haproxy_https_frontend_head.format(
+        sslCerts=" ".join(map(lambda cert: "crt " + cert, ssl_certs))
+    )
+    
     frontends = str()
     backends = str()
     http_appid_frontends = templater.haproxy_http_frontend_appid_head
