@@ -87,13 +87,13 @@ class ConfigTemplater(object):
       balance
       mode http
       stats enable
+      monitor-uri /_haproxy_health_check
     ''')
 
     HAPROXY_HTTP_FRONTEND_HEAD = dedent('''
     frontend marathon_http_in
       bind *:80
       mode http
-      monitor-uri /_haproxy_health_check
     ''')
 
     HAPROXY_HTTP_FRONTEND_APPID_HEAD = dedent('''
