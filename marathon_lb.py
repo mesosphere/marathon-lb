@@ -1032,7 +1032,7 @@ def get_arg_parser():
     parser.add_argument("--ssl-certs",
                         help="List of SSL certificates separated by comma"
                              "for frontend marathon_https_in"
-                             "Ex: /etc/ssl/mysite1.com,/etc/ssl/mysite2.com",
+                             "Ex: /etc/ssl/mysite1_com.pem,/etc/ssl/mysite2_com.pem",
                         default="/etc/ssl/mesosphere.com.pem")
     parser.add_argument("--skip-validation",
                         help="Skip haproxy config file validation",
