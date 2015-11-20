@@ -1,4 +1,4 @@
-# marathon-lb
+# marathon-lb [![Build Status](https://travis-ci.org/mesosphere/marathon-lb.svg?branch=master)](https://travis-ci.org/mesosphere/marathon-lb)
 Script to update HAProxy based on marathon state.
 
 You can run the script directly, or using the Docker image.
