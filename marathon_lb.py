@@ -762,21 +762,26 @@ def reloadConfig():
               os.path.isfile('/etc/systemd/system/haproxy.service')):
             logger.debug("we seem to be running on systemd based system")
             reloadCommand = ['systemctl', 'reload', 'haproxy']
-        else:
+        elif os.path.isfile('/etc/init.d/haproxy'):
             logger.debug("we seem to be running on a sysvinit based system")
             reloadCommand = ['/etc/init.d/haproxy', 'reload']
+        else:
+            # if no haproxy exists (maybe running in a container)
+            logger.debug("we don't seem to have haproxy on this system. won't reload.")
+            reloadCommand = None
 
-    logger.info("reloading using %s", " ".join(reloadCommand))
-    try:
-        subprocess.check_call(reloadCommand)
-    except OSError as ex:
-        logger.error("unable to reload config using command %s",
-                     " ".join(reloadCommand))
-        logger.error("OSError: %s", ex)
-    except subprocess.CalledProcessError as ex:
-        logger.error("unable to reload config using command %s",
-                     " ".join(reloadCommand))
-        logger.error("reload returned non-zero: %s", ex)
+    if reloadCommand:
+        logger.info("reloading using %s", " ".join(reloadCommand))
+        try:
+            subprocess.check_call(reloadCommand)
+        except OSError as ex:
+            logger.error("unable to reload config using command %s",
+                         " ".join(reloadCommand))
+            logger.error("OSError: %s", ex)
+        except subprocess.CalledProcessError as ex:
+            logger.error("unable to reload config using command %s",
+                         " ".join(reloadCommand))
+            logger.error("reload returned non-zero: %s", ex)
 
 
 def writeConfigAndValidate(config, config_file):
@@ -793,6 +798,14 @@ def writeConfigAndValidate(config, config_file):
     if os.path.isfile(config_file):
         perms = stat.S_IMODE(os.lstat(config_file).st_mode)
     os.chmod(haproxyTempConfigFile, perms)
+
+    # If skip validation flag is provided, don't check.
+    if args.skip_validation:
+        logger.debug("skipping validation. moving temp file %s to %s",
+                    haproxyTempConfigFile,
+                    config_file)
+        move(haproxyTempConfigFile, config_file)
+        return True
 
     # Check that config is valid
     cmd = ['haproxy', '-f', haproxyTempConfigFile, '-c']
@@ -1021,6 +1034,9 @@ def get_arg_parser():
                              "for frontend marathon_https_in"
                              "Ex: /etc/ssl/mysite1.com,/etc/ssl/mysite2.com",
                         default="/etc/ssl/mesosphere.com.pem")
+    parser.add_argument("--skip-validation",
+                        help="Skip haproxy config file validation",
+                        action="store_true")
     return parser
 
 
