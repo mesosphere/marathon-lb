@@ -19,7 +19,7 @@ To create a virtual host the `HAPROXY_0_VHOST` label needs to be set on the
 given application.
 
 ## Deployment
-The package is currently available [from the multiverse](https://github.com/mesosphere/multiverse). 
+The package is currently available [from the multiverse](https://github.com/mesosphere/multiverse).
 To deploy the marathon-lb on the public slaves in your DCOS cluster,
 simply run:
 
@@ -268,10 +268,15 @@ path from where the script is run. Some templates can also be
 
 Some templates may be overridden using app labels,
 as per the [labels section](#app-labels). Strings are interpreted as literal
-HAProxy configuration parameters, with substitutions respected (as per the [templates section](#templates)). The HAProxy configuration will be validated
-for correctness before reloading HAProxy after changes. **Note:** Since the HAProxy config is checked before reloading, if an app's HAProxy
+HAProxy configuration parameters, with substitutions respected (as per the
+[templates section](#templates)). The HAProxy configuration will be validated
+for correctness before reloading HAProxy after changes. **Note:** Since the
+HAProxy config is checked before reloading, if an app's HAProxy
 labels aren't syntactically correct, HAProxy will not be reloaded and may
 result is stale config.
+
+Here is an example for a service called `http-service` which requires that
+`http-keep-alive` be disabled:
 
 ```json
 {
