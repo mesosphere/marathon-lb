@@ -12,7 +12,7 @@
 
 
 Features:
-  - Virtual Host aliases for services
+  - Virtual host aliases for services
   - Soft restart of haproxy
   - SSL Termination
   - (Optional): real-time update from Marathon events
@@ -227,62 +227,83 @@ class ConfigTemplater(object):
     def haproxy_https_frontend_head(self):
         return self.HAPROXY_HTTPS_FRONTEND_HEAD
 
-    @property
-    def haproxy_frontend_head(self):
+    def haproxy_frontend_head(self, app):
+        if 'HAPROXY_{0}_FRONTEND_HEAD' in app.labels:
+            return app.labels['HAPROXY_{0}_FRONTEND_HEAD']
         return self.HAPROXY_FRONTEND_HEAD
 
-    @property
-    def haproxy_backend_redirect_http_to_https(self):
+    def haproxy_backend_redirect_http_to_https(self, app):
+        if 'HAPROXY_{0}_BACKEND_REDIRECT_HTTP_TO_HTTPS' in app.labels:
+            return app.labels['HAPROXY_{0}_BACKEND_REDIRECT_HTTP_TO_HTTPS']
         return self.HAPROXY_BACKEND_REDIRECT_HTTP_TO_HTTPS
 
-    @property
-    def haproxy_backend_head(self):
+    def haproxy_backend_head(self, app):
+        if 'HAPROXY_{0}_BACKEND_HEAD' in app.labels:
+            return app.labels['HAPROXY_{0}_BACKEND_HEAD']
         return self.HAPROXY_BACKEND_HEAD
 
-    @property
-    def haproxy_http_frontend_acl(self):
+    def haproxy_http_frontend_acl(self, app):
+        if 'HAPROXY_{0}_HTTP_FRONTEND_ACL' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTP_FRONTEND_ACL']
         return self.HAPROXY_HTTP_FRONTEND_ACL
 
-    @property
-    def haproxy_http_frontend_appid_acl(self):
+    def haproxy_http_frontend_appid_acl(self, app):
+        if 'HAPROXY_{0}_HTTP_FRONTEND_APPID_ACL' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTP_FRONTEND_APPID_ACL']
         return self.HAPROXY_HTTP_FRONTEND_APPID_ACL
 
-    @property
-    def haproxy_https_frontend_acl(self):
+    def haproxy_https_frontend_acl(self, app):
+        if 'HAPROXY_{0}_HTTPS_FRONTEND_ACL' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTPS_FRONTEND_ACL']
         return self.HAPROXY_HTTPS_FRONTEND_ACL
 
-    @property
-    def haproxy_backend_http_options(self):
+    def haproxy_backend_http_options(self, app):
+        if 'HAPROXY_{0}_BACKEND_HTTP_OPTIONS' in app.labels:
+            return app.labels['HAPROXY_{0}_BACKEND_HTTP_OPTIONS']
         return self.HAPROXY_BACKEND_HTTP_OPTIONS
 
-    @property
-    def haproxy_backend_http_healthcheck_options(self):
+    def haproxy_backend_http_healthcheck_options(self, app):
+        if 'HAPROXY_{0}_BACKEND_HTTP_HEALTHCHECK_OPTIONS' in app.labels:
+            return app.labels['HAPROXY_{0}_BACKEND_HTTP_HEALTHCHECK_OPTIONS']
         return self.HAPROXY_BACKEND_HTTP_HEALTHCHECK_OPTIONS
 
-    @property
-    def haproxy_backend_tcp_healthcheck_options(self):
+    def haproxy_backend_tcp_healthcheck_options(self, app):
+        if 'HAPROXY_{0}_BACKEND_TCP_HEALTHCHECK_OPTIONS' in app.labels:
+            return app.labels['HAPROXY_{0}_BACKEND_TCP_HEALTHCHECK_OPTIONS']
         return self.HAPROXY_BACKEND_TCP_HEALTHCHECK_OPTIONS
 
-    @property
-    def haproxy_backend_sticky_options(self):
+    def haproxy_backend_sticky_options(self, app):
+        if 'HAPROXY_{0}_BACKEND_STICKY_OPTIONS' in app.labels:
+            return app.labels['HAPROXY_{0}_BACKEND_STICKY_OPTIONS']
         return self.HAPROXY_BACKEND_STICKY_OPTIONS
 
-    @property
-    def haproxy_backend_server_options(self):
+    def haproxy_backend_server_options(self, app):
+        if 'HAPROXY_{0}_BACKEND_SERVER_OPTIONS' in app.labels:
+            return app.labels['HAPROXY_{0}_BACKEND_SERVER_OPTIONS']
         return self.HAPROXY_BACKEND_SERVER_OPTIONS
 
-    @property
-    def haproxy_backend_server_http_healthcheck_options(self):
+    def haproxy_backend_server_http_healthcheck_options(self, app):
+        if 'HAPROXY_{0}_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS' in \
+                app.labels:
+            return self.__blank_prefix_or_empty(
+                app.labels['HAPROXY_{0}_BACKEND' +
+                           '_SERVER_HTTP_HEALTHCHECK_OPTIONS']
+                .strip())
         return self.__blank_prefix_or_empty(
             self.HAPROXY_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS.strip())
 
-    @property
-    def haproxy_backend_server_tcp_healthcheck_options(self):
+    def haproxy_backend_server_tcp_healthcheck_options(self, app):
+        if 'HAPROXY_{0}_BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS' in app.labels:
+            return self.__blank_prefix_or_empty(
+                app.labels['HAPROXY_{0}_BACKEND_'
+                           'SERVER_TCP_HEALTHCHECK_OPTIONS']
+                .strip())
         return self.__blank_prefix_or_empty(
             self.HAPROXY_BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS.strip())
 
-    @property
-    def haproxy_frontend_backend_glue(self):
+    def haproxy_frontend_backend_glue(self, app):
+        if 'HAPROXY_{0}_FRONTEND_BACKEND_GLUE' in app.labels:
+            return app.labels['HAPROXY_{0}_FRONTEND_BACKEND_GLUE']
         return self.HAPROXY_FRONTEND_BACKEND_GLUE
 
     def __blank_prefix_or_empty(self, s):
@@ -296,32 +317,36 @@ def string_to_bool(s):
     return s.lower() in ["true", "t", "yes", "y"]
 
 
-def set_hostname(x, y):
-    x.hostname = y
+def set_hostname(x, k, v):
+    x.hostname = v
 
 
-def set_sticky(x, y):
-    x.sticky = string_to_bool(y)
+def set_sticky(x, k, v):
+    x.sticky = string_to_bool(v)
 
 
-def set_redirect_http_to_https(x, y):
-    x.redirectHttpToHttps = string_to_bool(y)
+def set_redirect_http_to_https(x, k, v):
+    x.redirectHttpToHttps = string_to_bool(v)
 
 
-def set_sslCert(x, y):
-    x.sslCert = y
+def set_sslCert(x, k, v):
+    x.sslCert = v
 
 
-def set_bindAddr(x, y):
-    x.bindAddr = y
+def set_bindAddr(x, k, v):
+    x.bindAddr = v
 
 
-def set_port(x, y):
-    x.servicePort = int(y)
+def set_port(x, k, v):
+    x.servicePort = int(v)
 
 
-def set_mode(x, y):
+def set_mode(x, k, v):
     x.mode = y
+
+
+def set_label(x, k, v):
+    x.labels[k] = v
 
 
 label_keys = {
@@ -331,7 +356,21 @@ label_keys = {
     'HAPROXY_{0}_SSL_CERT': set_sslCert,
     'HAPROXY_{0}_BIND_ADDR': set_bindAddr,
     'HAPROXY_{0}_PORT': set_port,
-    'HAPROXY_{0}_MODE': set_mode
+    'HAPROXY_{0}_MODE': set_mode,
+    'HAPROXY_{0}_FRONTEND_HEAD': set_label,
+    'HAPROXY_{0}_BACKEND_REDIRECT_HTTP_TO_HTTPS': set_label,
+    'HAPROXY_{0}_BACKEND_HEAD': set_label,
+    'HAPROXY_{0}_HTTP_FRONTEND_ACL': set_label,
+    'HAPROXY_{0}_HTTPS_FRONTEND_ACL': set_label,
+    'HAPROXY_{0}_HTTP_FRONTEND_APPID_ACL': set_label,
+    'HAPROXY_{0}_BACKEND_HTTP_OPTIONS': set_label,
+    'HAPROXY_{0}_BACKEND_TCP_HEALTHCHECK_OPTIONS': set_label,
+    'HAPROXY_{0}_BACKEND_HTTP_HEALTHCHECK_OPTIONS': set_label,
+    'HAPROXY_{0}_BACKEND_STICKY_OPTIONS': set_label,
+    'HAPROXY_{0}_FRONTEND_BACKEND_GLUE': set_label,
+    'HAPROXY_{0}_BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS': set_label,
+    'HAPROXY_{0}_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS': set_label,
+    'HAPROXY_{0}_BACKEND_SERVER_OPTIONS': set_label,
 }
 
 logger = logging.getLogger('marathon-lb')
@@ -364,6 +403,7 @@ class MarathonService(object):
         self.groups = frozenset()
         self.mode = 'tcp'
         self.healthCheck = healthCheck
+        self.labels = {}
         if healthCheck:
             if healthCheck['protocol'] == 'HTTP':
                 self.mode = 'http'
@@ -533,7 +573,7 @@ def config(apps, groups, templater):
         if app.hostname:
             app.mode = 'http'
 
-        frontend_head = templater.haproxy_frontend_head
+        frontend_head = templater.haproxy_frontend_head(app)
         frontends += frontend_head.format(
             bindAddr=app.bindAddr,
             backend=backend,
@@ -545,11 +585,11 @@ def config(apps, groups, templater):
         if app.redirectHttpToHttps:
             logger.debug("rule to redirect http to https traffic")
             haproxy_backend_redirect_http_to_https = \
-                templater.haproxy_backend_redirect_http_to_https
+                templater.haproxy_backend_redirect_http_to_https(app)
             frontends += haproxy_backend_redirect_http_to_https.format(
                 bindAddr=app.bindAddr)
 
-        backend_head = templater.haproxy_backend_head
+        backend_head = templater.haproxy_backend_head(app)
         backends += backend_head.format(
             backend=backend,
             mode=app.mode
@@ -564,7 +604,7 @@ def config(apps, groups, templater):
                 "adding virtual host for app with hostname %s", app.hostname)
             cleanedUpHostname = re.sub(r'[^a-zA-Z0-9\-]', '_', app.hostname)
 
-            http_frontend_acl = templater.haproxy_http_frontend_acl
+            http_frontend_acl = templater.haproxy_http_frontend_acl(app)
             http_frontends += http_frontend_acl.format(
                 cleanedUpHostname=cleanedUpHostname,
                 hostname=app.hostname,
@@ -572,7 +612,7 @@ def config(apps, groups, templater):
                 backend=backend
             )
 
-            https_frontend_acl = templater.haproxy_https_frontend_acl
+            https_frontend_acl = templater.haproxy_https_frontend_acl(app)
             https_frontends += https_frontend_acl.format(
                 cleanedUpHostname=cleanedUpHostname,
                 hostname=app.hostname,
@@ -589,7 +629,8 @@ def config(apps, groups, templater):
             apps_with_http_appid_backend += [app.appId]
             cleanedUpAppId = re.sub(r'[^a-zA-Z0-9\-]', '_', app.appId)
 
-            http_appid_frontend_acl = templater.haproxy_http_frontend_appid_acl
+            http_appid_frontend_acl = templater \
+                .haproxy_http_frontend_appid_acl(app)
             http_appid_frontends += http_appid_frontend_acl.format(
                 cleanedUpAppId=cleanedUpAppId,
                 hostname=app.hostname,
@@ -598,16 +639,16 @@ def config(apps, groups, templater):
             )
 
         if app.mode == 'http':
-            backends += templater.haproxy_backend_http_options
+            backends += templater.haproxy_backend_http_options(app)
 
         if app.healthCheck:
             health_check_options = None
             if app.mode == 'tcp':
                 health_check_options = templater \
-                    .haproxy_backend_tcp_healthcheck_options
+                    .haproxy_backend_tcp_healthcheck_options(app)
             elif app.mode == 'http':
                 health_check_options = templater \
-                    .haproxy_backend_http_healthcheck_options
+                    .haproxy_backend_http_healthcheck_options(app)
             if health_check_options:
                 backends += health_check_options.format(
                     healthCheck=app.healthCheck,
@@ -629,9 +670,9 @@ def config(apps, groups, templater):
 
         if app.sticky:
             logger.debug("turning on sticky sessions")
-            backends += templater.haproxy_backend_sticky_options
+            backends += templater.haproxy_backend_sticky_options(app)
 
-        frontend_backend_glue = templater.haproxy_frontend_backend_glue
+        frontend_backend_glue = templater.haproxy_frontend_backend_glue(app)
         frontends += frontend_backend_glue.format(backend=backend)
 
         key_func = attrgetter('host', 'port')
@@ -649,10 +690,10 @@ def config(apps, groups, templater):
                 server_health_check_options = None
                 if app.mode == 'tcp':
                     server_health_check_options = templater \
-                        .haproxy_backend_server_tcp_healthcheck_options
+                        .haproxy_backend_server_tcp_healthcheck_options(app)
                 elif app.mode == 'http':
                     server_health_check_options = templater \
-                        .haproxy_backend_server_http_healthcheck_options
+                        .haproxy_backend_server_http_healthcheck_options(app)
                 if server_health_check_options:
                     healthCheckOptions = server_health_check_options.format(
                         healthCheck=app.healthCheck,
@@ -675,8 +716,8 @@ def config(apps, groups, templater):
             ipv4 = resolve_ip(backendServer.host)
 
             if ipv4 is not None:
-                backend_server_options = templater\
-                    .haproxy_backend_server_options
+                backend_server_options = templater \
+                    .haproxy_backend_server_options(app)
                 backends += backend_server_options.format(
                     host=backendServer.host,
                     host_ipv4=ipv4,
@@ -688,9 +729,9 @@ def config(apps, groups, templater):
                     if healthCheckOptions else ''
                 )
             else:
-                logger.warn("Could not resolve ip for host %s, "
-                            "ignoring this backend",
-                            backendServer.host)
+                logger.warning("Could not resolve ip for host %s, "
+                               "ignoring this backend",
+                               backendServer.host)
 
     config += http_frontends
     config += http_appid_frontends
@@ -732,7 +773,7 @@ def reloadConfig():
         logger.error("reload returned non-zero: %s", ex)
 
 
-def writeConfig(config, config_file):
+def writeConfigAndValidate(config, config_file):
     # Write config to a temporary location
     fd, haproxyTempConfigFile = mkstemp()
     logger.debug("writing config to temp file %s", haproxyTempConfigFile)
@@ -747,11 +788,20 @@ def writeConfig(config, config_file):
         perms = stat.S_IMODE(os.lstat(config_file).st_mode)
     os.chmod(haproxyTempConfigFile, perms)
 
-    # Move into place
-    logger.debug("moving temp file %s to %s",
-                 haproxyTempConfigFile,
-                 config_file)
-    move(haproxyTempConfigFile, config_file)
+    # Check that config is valid
+    cmd = ['haproxy', '-f', haproxyTempConfigFile, '-c']
+    logger.debug("checking config with command: " + str(cmd))
+    returncode = subprocess.call(args=cmd)
+    if returncode == 0:
+        # Move into place
+        logger.debug("moving temp file %s to %s",
+                     haproxyTempConfigFile,
+                     config_file)
+        move(haproxyTempConfigFile, config_file)
+        return True
+    else:
+        logger.error("haproxy returned non-zero when checking config")
+        return False
 
 
 def compareWriteAndReloadConfig(config, config_file):
@@ -768,8 +818,10 @@ def compareWriteAndReloadConfig(config, config_file):
     if runningConfig != config:
         logger.info(
             "running config is different from generated config - reloading")
-        writeConfig(config, config_file)
-        reloadConfig()
+        if writeConfigAndValidate(config, config_file):
+            reloadConfig()
+        else:
+            logger.warning("skipping reload: config not valid")
 
 
 def get_health_check(app, portIndex):
@@ -806,7 +858,9 @@ def get_apps(marathon):
                 key = key_unformatted.format(i)
                 if key in marathon_app.app['labels']:
                     func = label_keys[key_unformatted]
-                    func(service, marathon_app.app['labels'][key])
+                    func(service,
+                         key_unformatted,
+                         marathon_app.app['labels'][key])
 
             marathon_app.services[servicePort] = service
 

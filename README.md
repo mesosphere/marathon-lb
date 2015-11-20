@@ -13,7 +13,7 @@ See [comments in script](marathon-update-haproxy.py) for all available options.
 
 Services are exposed on their service port (see
 [Service Discovery & Load Balancing](https://mesosphere.github.io/marathon/docs/service-discovery-load-balancing)
-for reference) as defined in their Marathon definiton. Furthermore, apps are
+for reference) as defined in their Marathon definition. Furthermore, apps are
 only exposed on LBs which have the same LB tag (or group) as defined in the Marathon
 app's labels (using `HAPROXY_GROUP`). HAProxy parameters can be tuned by specify labels in your app.
 
@@ -140,7 +140,8 @@ The full list of labels which can be specified are:
 The marathon-lb searches for configuration files in the `templates/`
 directory. The `templates/` directory contains marathon-lb configuration
 settings and example usage. The `templates/` directory is located in a relative
-path from where the script is run.
+path from where the script is run. Some templates can also be
+[overridden _per app service port_](#overridable-templates).
 
 ```
   HAPROXY_HEAD
@@ -263,4 +264,40 @@ path from where the script is run.
 
   HAPROXY_FRONTEND_BACKEND_GLUE
     This option glues the backend to the frontend.
+```
+#### Overridable templates
+
+Some templates may be overridden using app labels,
+as per the [labels section](#app-labels). Strings are interpreted as literal
+HAProxy configuration parameters, with substitutions respected (as per the [templates section](#templates)). The HAProxy configuration will be validated
+for correctness before reloading HAProxy after changes. **Note:** Since the HAProxy config is checked before reloading, if an app's HAProxy
+labels aren't syntactically correct, HAProxy will not be reloaded and may
+result is stale config.
+
+```json
+{
+  "id": "http-service",
+  "labels":{
+    "HAPROXY_GROUP":"external",
+    "HAPROXY_0_BACKEND_HTTP_OPTIONS":"  option forwardfor\n  no option http-keep-alive\n  http-request set-header X-Forwarded-Port %[dst_port]\n  http-request add-header X-Forwarded-Proto https if { ssl_fc }\n"
+  }
+}
+```
+
+The full list of per service port templates which can be specified are:
+```
+  HAPROXY_{n}_FRONTEND_HEAD
+  HAPROXY_{n}_BACKEND_REDIRECT_HTTP_TO_HTTPS
+  HAPROXY_{n}_BACKEND_HEAD
+  HAPROXY_{n}_HTTP_FRONTEND_ACL
+  HAPROXY_{n}_HTTPS_FRONTEND_ACL
+  HAPROXY_{n}_HTTP_FRONTEND_APPID_ACL
+  HAPROXY_{n}_BACKEND_HTTP_OPTIONS
+  HAPROXY_{n}_BACKEND_TCP_HEALTHCHECK_OPTIONS
+  HAPROXY_{n}_BACKEND_HTTP_HEALTHCHECK_OPTIONS
+  HAPROXY_{n}_BACKEND_STICKY_OPTIONS
+  HAPROXY_{n}_FRONTEND_BACKEND_GLUE
+  HAPROXY_{n}_BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS
+  HAPROXY_{n}_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS
+  HAPROXY_{n}_BACKEND_SERVER_OPTIONS
 ```
