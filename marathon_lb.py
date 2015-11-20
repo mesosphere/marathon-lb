@@ -98,7 +98,7 @@ class ConfigTemplater(object):
 
     HAPROXY_HTTP_FRONTEND_APPID_HEAD = dedent('''
     frontend marathon_http_appid_in
-      bind *:81
+      bind *:9091
       mode http
     ''')
 
@@ -623,7 +623,7 @@ def config(apps, groups, bind_http_https, templater):
 
         # if app mode is http, we add the app to the second http frontend
         # selecting apps by http header X-Marathon-App-Id
-        if bind_http_https and app.mode == 'http' and \
+        if app.mode == 'http' and \
                 app.appId not in apps_with_http_appid_backend:
             logger.debug("adding virtual host for app with id %s", app.appId)
             # remember appids to prevent multiple entries for the same app
@@ -736,7 +736,8 @@ def config(apps, groups, bind_http_https, templater):
 
     if bind_http_https:
         config += http_frontends
-        config += http_appid_frontends
+    config += http_appid_frontends
+    if bind_http_https:
         config += https_frontends
     config += frontends
     config += backends

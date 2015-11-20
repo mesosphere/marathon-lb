@@ -37,7 +37,7 @@ frontend marathon_http_in
   mode http
 
 frontend marathon_http_appid_in
-  bind *:81
+  bind *:9091
   mode http
 
 frontend marathon_https_in
@@ -93,7 +93,7 @@ frontend marathon_http_in
   mode http
 
 frontend marathon_http_appid_in
-  bind *:81
+  bind *:9091
   mode http
   acl app__nginx hdr(x-marathon-app-id) -i /nginx
   use_backend nginx_10000 if app__nginx
