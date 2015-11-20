@@ -9,8 +9,6 @@ to retrieve all running apps, generates a HAProxy config and reloads HAProxy.
 By default, marathon-lb binds to the service port of every application and
 sends incoming requests to the application instances.
 
-See [comments in script](marathon-update-haproxy.py) for all available options.
-
 Services are exposed on their service port (see
 [Service Discovery & Load Balancing](https://mesosphere.github.io/marathon/docs/service-discovery-load-balancing)
 for reference) as defined in their Marathon definition. Furthermore, apps are
@@ -21,6 +19,7 @@ To create a virtual host the `HAPROXY_0_VHOST` label needs to be set on the
 given application.
 
 ## Deployment
+The package is currently available [from the multiverse](https://github.com/mesosphere/multiverse). 
 To deploy the marathon-lb on the public slaves in your DCOS cluster,
 simply run:
 
