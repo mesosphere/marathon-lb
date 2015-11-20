@@ -16,7 +16,12 @@ only exposed on LBs which have the same LB tag (or group) as defined in the Mara
 app's labels (using `HAPROXY_GROUP`). HAProxy parameters can be tuned by specify labels in your app.
 
 To create a virtual host the `HAPROXY_0_VHOST` label needs to be set on the
-given application.
+given application. Applications with a vhost set will be exposed on ports 80
+and 443, in addition to their service port.
+
+All applications are also exposed on port 9091, using the `X-Marathon-App-Id`
+HTTP header. See the documentation for `HAPROXY_HTTP_FRONTEND_APPID_HEAD` in
+the [templates section](#templates)
 
 ## Deployment
 The package is currently available [from the multiverse](https://github.com/mesosphere/multiverse).
@@ -41,19 +46,19 @@ Synopsis: `docker run mesosphere/marathon-lb event|poll ...`
 You can pass in your own certificates for the SSL frontend by setting
 the `HAPROXY_SSL_CERT` environment variable.
 
-#### sse mode
+#### `sse` mode
 In SSE mode, the script connects to the marathon events endpoint to get
 notified about state changes.
 
 Syntax: `docker run mesosphere/marathon-lb sse [other args]`
 
-#### event mode
+#### `event` mode
 In event mode, the script registers a http callback in marathon to get
 notified when state changes.
 
 Syntax: `docker run mesosphere/marathon-lb event callback-addr:port [other args]`
 
-#### poll mode
+#### `poll` mode
 If you can't use the http callbacks, the script can poll the APIs to get
 the schedulers state periodically.
 
@@ -83,7 +88,7 @@ $ ./marathon_lb.py --help
 
 ## HAProxy configuration
 
-### App Labels
+### App labels
 App labels are specified in the Marathon app definition. These can be used to override HAProxy behaviour. For example, to specify the `external` group for an app with a virtual host named `service.mesosphere.com`:
 
 ```json
@@ -152,10 +157,10 @@ path from where the script is run. Some templates can also be
     all virtual hosts as defined by the HAPROXY_{n}_VHOST variable.
 
   HAPROXY_HTTP_FRONTEND_APPID_HEAD
-    An HTTP frontend that binds to port *:81 by default and gathers
+    An HTTP frontend that binds to port *:9091 by default and gathers
     all apps in http mode.
     To use this frontend to forward to your app, configure the app with
-    "HAPROXY_0_MODE=http" then you can access it via a call to the :81 with
+    "HAPROXY_0_MODE=http" then you can access it via a call to the :9091 with
     the header "X-Marathon-App-Id" set to the Marathon AppId.
     Note multiple http ports being exposed by the same marathon app are not
     supported. Only the first http port is available via this frontend.
