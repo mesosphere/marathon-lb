@@ -105,7 +105,7 @@ class ConfigTemplater(object):
     # TODO(lloesche): make certificate path dynamic and allow multiple certs
     HAPROXY_HTTPS_FRONTEND_HEAD = dedent('''
     frontend marathon_https_in
-      bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+      bind *:443 ssl {sslCerts}
       mode http
     ''')
 
@@ -545,14 +545,17 @@ def resolve_ip(host):
             return None
 
 
-def config(apps, groups, bind_http_https, templater):
+def config(apps, groups, bind_http_https, ssl_certs, templater):
     logger.info("generating config")
     config = templater.haproxy_head
     groups = frozenset(groups)
 
     if bind_http_https:
         http_frontends = templater.haproxy_http_frontend_head
-        https_frontends = templater.haproxy_https_frontend_head
+        https_frontends = templater.haproxy_https_frontend_head.format(
+            sslCerts=" ".join(map(lambda cert: "crt " + cert, ssl_certs.split(",")))
+        )
+
     frontends = str()
     backends = str()
     http_appid_frontends = templater.haproxy_http_frontend_appid_head
@@ -908,14 +911,14 @@ def get_apps(marathon):
 
 
 def regenerate_config(apps, config_file, groups, bind_http_https,
-                      templater):
+                      ssl_certs, templater):
     compareWriteAndReloadConfig(config(apps, groups, bind_http_https,
-                                templater), config_file)
+                                ssl_certs, templater), config_file)
 
 
 class MarathonEventProcessor(object):
 
-    def __init__(self, marathon, config_file, groups, bind_http_https):
+    def __init__(self, marathon, config_file, groups, bind_http_https, ssl_certs):
         self.__marathon = marathon
         # appId -> MarathonApp
         self.__apps = dict()
@@ -923,6 +926,7 @@ class MarathonEventProcessor(object):
         self.__groups = groups
         self.__templater = ConfigTemplater()
         self.__bind_http_https = bind_http_https
+        self.__ssl_certs = ssl_certs
 
         # Fetch the base data
         self.reset_from_tasks()
@@ -935,6 +939,7 @@ class MarathonEventProcessor(object):
                           self.__config_file,
                           self.__groups,
                           self.__bind_http_https,
+                          self.__ssl_certs,
                           self.__templater)
 
         logger.debug("updating tasks finished, took %s seconds",
@@ -1010,16 +1015,21 @@ def get_arg_parser():
     parser.add_argument("--dont-bind-http-https",
                         help="Don't bind to HTTP and HTTPS frontends.",
                         action="store_true")
-
+    parser.add_argument("--ssl-certs",
+                        help="List of SSL certificates separated by comma"
+                             "for frontend marathon_https_in"
+                             "Ex: /etc/ssl/mysite1.com,/etc/ssl/mysite2.com",
+                        default="/etc/ssl/mesosphere.com.pem")
     return parser
 
 
 def run_server(marathon, listen_addr, callback_url, config_file, groups,
-               bind_http_https):
+               bind_http_https, ssl_certs):
     processor = MarathonEventProcessor(marathon,
                                        config_file,
                                        groups,
-                                       bind_http_https)
+                                       bind_http_https,
+                                       ssl_certs)
     marathon.add_subscriber(callback_url)
 
     # TODO(cmaloney): Switch to a sane http server
@@ -1044,11 +1054,12 @@ def clear_callbacks(marathon, callback_url):
     marathon.remove_subscriber(callback_url)
 
 
-def process_sse_events(marathon, config_file, groups, bind_http_https):
+def process_sse_events(marathon, config_file, groups, bind_http_https, ssl_certs):
     processor = MarathonEventProcessor(marathon,
                                        config_file,
                                        groups,
-                                       bind_http_https)
+                                       bind_http_https,
+                                       ssl_certs)
     events = marathon.get_event_stream()
     for event in events:
         try:
@@ -1118,13 +1129,13 @@ if __name__ == '__main__':
         try:
             run_server(marathon, args.listening, callback_url,
                        args.haproxy_config, args.group,
-                       not args.dont_bind_http_https)
+                       not args.dont_bind_http_https, args.ssl_certs)
         finally:
             clear_callbacks(marathon, callback_url)
     elif args.sse:
         process_sse_events(marathon, args.haproxy_config, args.group,
-                           not args.dont_bind_http_https)
+                           not args.dont_bind_http_https, args.ssl_certs)
     else:
         # Generate base config
         regenerate_config(get_apps(marathon), args.haproxy_config, args.group,
-                          not args.dont_bind_http_https, ConfigTemplater())
+                          not args.dont_bind_http_https, args.ssl_certs, ConfigTemplater())
