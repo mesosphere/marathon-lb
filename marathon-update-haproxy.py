@@ -915,13 +915,14 @@ def regenerate_config(apps, config_file, groups, bind_http_https,
 
 class MarathonEventProcessor(object):
 
-    def __init__(self, marathon, config_file, groups):
+    def __init__(self, marathon, config_file, groups, bind_http_https):
         self.__marathon = marathon
         # appId -> MarathonApp
         self.__apps = dict()
         self.__config_file = config_file
         self.__groups = groups
         self.__templater = ConfigTemplater()
+        self.__bind_http_https = bind_http_https
 
         # Fetch the base data
         self.reset_from_tasks()
@@ -933,6 +934,7 @@ class MarathonEventProcessor(object):
         regenerate_config(self.__apps,
                           self.__config_file,
                           self.__groups,
+                          self.__bind_http_https,
                           self.__templater)
 
         logger.debug("updating tasks finished, took %s seconds",
@@ -1012,10 +1014,12 @@ def get_arg_parser():
     return parser
 
 
-def run_server(marathon, listen_addr, callback_url, config_file, groups):
+def run_server(marathon, listen_addr, callback_url, config_file, groups,
+               bind_http_https):
     processor = MarathonEventProcessor(marathon,
                                        config_file,
-                                       groups)
+                                       groups,
+                                       bind_http_https)
     marathon.add_subscriber(callback_url)
 
     # TODO(cmaloney): Switch to a sane http server
@@ -1040,10 +1044,11 @@ def clear_callbacks(marathon, callback_url):
     marathon.remove_subscriber(callback_url)
 
 
-def process_sse_events(marathon, config_file, groups):
+def process_sse_events(marathon, config_file, groups, bind_http_https):
     processor = MarathonEventProcessor(marathon,
                                        config_file,
-                                       groups)
+                                       groups,
+                                       bind_http_https)
     events = marathon.get_event_stream()
     for event in events:
         try:
@@ -1112,11 +1117,13 @@ if __name__ == '__main__':
         callback_url = args.callback_url or args.listening
         try:
             run_server(marathon, args.listening, callback_url,
-                       args.haproxy_config, args.group, args.health_check)
+                       args.haproxy_config, args.group,
+                       not args.dont_bind_http_https)
         finally:
             clear_callbacks(marathon, callback_url)
     elif args.sse:
-        process_sse_events(marathon, args.haproxy_config, args.group)
+        process_sse_events(marathon, args.haproxy_config, args.group,
+                           not args.dont_bind_http_https)
     else:
         # Generate base config
         regenerate_config(get_apps(marathon), args.haproxy_config, args.group,
