@@ -549,11 +549,13 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
     logger.info("generating config")
     config = templater.haproxy_head
     groups = frozenset(groups)
+    _ssl_certs = ssl_certs or "/etc/ssl/mesosphere.com.pem"
+    _ssl_certs = _ssl_certs.split(",")
 
     if bind_http_https:
         http_frontends = templater.haproxy_http_frontend_head
         https_frontends = templater.haproxy_https_frontend_head.format(
-            sslCerts=" ".join(map(lambda cert: "crt " + cert, ssl_certs.split(",")))
+            sslCerts=" ".join(map(lambda cert: "crt " + cert, _ssl_certs))
         )
 
     frontends = str()
@@ -767,7 +769,7 @@ def reloadConfig():
             reloadCommand = ['/etc/init.d/haproxy', 'reload']
         else:
             # if no haproxy exists (maybe running in a container)
-            logger.debug("we don't seem to have haproxy on this system. won't reload.")
+            logger.debug("no haproxy detected. won't reload.")
             reloadCommand = None
 
     if reloadCommand:
@@ -802,8 +804,8 @@ def writeConfigAndValidate(config, config_file):
     # If skip validation flag is provided, don't check.
     if args.skip_validation:
         logger.debug("skipping validation. moving temp file %s to %s",
-                    haproxyTempConfigFile,
-                    config_file)
+                     haproxyTempConfigFile,
+                     config_file)
         move(haproxyTempConfigFile, config_file)
         return True
 
@@ -932,7 +934,8 @@ def regenerate_config(apps, config_file, groups, bind_http_https,
 
 class MarathonEventProcessor(object):
 
-    def __init__(self, marathon, config_file, groups, bind_http_https, ssl_certs):
+    def __init__(self, marathon, config_file, groups,
+                 bind_http_https, ssl_certs):
         self.__marathon = marathon
         # appId -> MarathonApp
         self.__apps = dict()
@@ -1032,7 +1035,7 @@ def get_arg_parser():
     parser.add_argument("--ssl-certs",
                         help="List of SSL certificates separated by comma"
                              "for frontend marathon_https_in"
-                             "Ex: /etc/ssl/mysite1_com.pem,/etc/ssl/mysite2_com.pem",
+                             "Ex: /etc/ssl/site1.co.pem,/etc/ssl/site2.co.pem",
                         default="/etc/ssl/mesosphere.com.pem")
     parser.add_argument("--skip-validation",
                         help="Skip haproxy config file validation",
@@ -1071,7 +1074,8 @@ def clear_callbacks(marathon, callback_url):
     marathon.remove_subscriber(callback_url)
 
 
-def process_sse_events(marathon, config_file, groups, bind_http_https, ssl_certs):
+def process_sse_events(marathon, config_file, groups,
+                       bind_http_https, ssl_certs):
     processor = MarathonEventProcessor(marathon,
                                        config_file,
                                        groups,
@@ -1155,4 +1159,5 @@ if __name__ == '__main__':
     else:
         # Generate base config
         regenerate_config(get_apps(marathon), args.haproxy_config, args.group,
-                          not args.dont_bind_http_https, args.ssl_certs, ConfigTemplater())
+                          not args.dont_bind_http_https,
+                          args.ssl_certs, ConfigTemplater())
