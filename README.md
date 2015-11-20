@@ -4,7 +4,7 @@ Script to update HAProxy based on marathon state.
 You can run the script directly, or using the Docker image.
 
 ## Architecture
-The marathon-lb script `marathon-update-haproxy.py` connects to the marathon API
+The marathon-lb script `marathon_lb.py` connects to the marathon API
 to retrieve all running apps, generates a HAProxy config and reloads HAProxy.
 By default, marathon-lb binds to the service port of every application and
 sends incoming requests to the application instances.
@@ -33,7 +33,7 @@ see the [HAProxy documentation](https://cbonte.github.io/haproxy-dconv/configura
 
 For further customization, templates can be added by pointing the dcos cli
 option `template-url` to a tarball containing a directory `templates/`.
-See [comments in script](marathon-update-haproxy.py) on how to name those.
+See [comments in script](marathon_lb.py) on how to name those.
 
 ### Docker
 Synopsis: `docker run mesosphere/marathon-lb event|poll ...`
@@ -64,21 +64,21 @@ environment variable.
 
 ### Direct invocation
 You can also run the update script directly.
-To generate an HAProxy configuration from Marathon running at `localhost:8080` with the `marathon-update-haproxy.py` script, run:
+To generate an HAProxy configuration from Marathon running at `localhost:8080` with the `marathon_lb.py` script, run:
 
 ``` console
-$ ./marathon-update-haproxy.py --marathon http://localhost:8080 --haproxy-config /etc/haproxy/haproxy.cfg --group external
+$ ./marathon_lb.py --marathon http://localhost:8080 --haproxy-config /etc/haproxy/haproxy.cfg --group external
 ```
 
 This will refresh haproxy.cfg, and if there were any changes, then it will
 automatically reload HAProxy. Only apps with the label `HAPROXY_GROUP=external`
 will be exposed on this LB.
 
-`marathon-update-haproxy.py` has a lot of additional functionality like sticky sessions, HTTP to HTTPS redirection, SSL offloading, virtual host support and templating capabilities.
+`marathon_lb.py` has a lot of additional functionality like sticky sessions, HTTP to HTTPS redirection, SSL offloading, virtual host support and templating capabilities.
 
 To get the full documentation run:
 ``` console
-$ ./marathon-update-haproxy.py --help
+$ ./marathon_lb.py --help
 ```
 
 ## HAProxy configuration

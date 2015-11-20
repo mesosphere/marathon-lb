@@ -34,20 +34,20 @@ case "$MODE" in
   event)
     URL=$1; shift
     if [ -z "$URL" ] || echo "$URL" | grep -q '^-'; then
-      echo "$0 event callback-url [marathon-update-haproxy.py args]" >&2
+      echo "$0 event callback-url [marathon_lb.py args]" >&2
       exit 1
     fi
     echo "Using $URL as event callback-url"
     ARGS="-l :8080 -u '$URL'"
     ;;
   *)
-    echo "Unknown mode $MODE. Synopsis: $0 poll|sse|event [marathon-update-haproxy.py args]" >&2
+    echo "Unknown mode $MODE. Synopsis: $0 poll|sse|event [marathon_lb.py args]" >&2
     exit 1
     ;;
 esac
 
 while true; do
-  /marathon-lb/marathon-update-haproxy.py \
+  /marathon-lb/marathon_lb.py \
     --syslog-socket /dev/null \
     --haproxy-config /marathon-lb/haproxy.cfg \
     -c "sv reload $SERVICE" \
