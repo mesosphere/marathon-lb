@@ -545,13 +545,14 @@ def resolve_ip(host):
             return None
 
 
-def config(apps, groups, templater):
+def config(apps, groups, bind_http_https, templater):
     logger.info("generating config")
     config = templater.haproxy_head
     groups = frozenset(groups)
 
-    http_frontends = templater.haproxy_http_frontend_head
-    https_frontends = templater.haproxy_https_frontend_head
+    if bind_http_https:
+        http_frontends = templater.haproxy_http_frontend_head
+        https_frontends = templater.haproxy_https_frontend_head
     frontends = str()
     backends = str()
     http_appid_frontends = templater.haproxy_http_frontend_appid_head
@@ -599,7 +600,7 @@ def config(apps, groups, templater):
         # of our haproxy config
         # TODO(lloesche): Check if the hostname is already defined by another
         # service
-        if app.hostname:
+        if bind_http_https and app.hostname:
             logger.debug(
                 "adding virtual host for app with hostname %s", app.hostname)
             cleanedUpHostname = re.sub(r'[^a-zA-Z0-9\-]', '_', app.hostname)
@@ -622,7 +623,7 @@ def config(apps, groups, templater):
 
         # if app mode is http, we add the app to the second http frontend
         # selecting apps by http header X-Marathon-App-Id
-        if app.mode == 'http' and \
+        if bind_http_https and app.mode == 'http' and \
                 app.appId not in apps_with_http_appid_backend:
             logger.debug("adding virtual host for app with id %s", app.appId)
             # remember appids to prevent multiple entries for the same app
@@ -733,9 +734,10 @@ def config(apps, groups, templater):
                                "ignoring this backend",
                                backendServer.host)
 
-    config += http_frontends
-    config += http_appid_frontends
-    config += https_frontends
+    if bind_http_https:
+        config += http_frontends
+        config += http_appid_frontends
+        config += https_frontends
     config += frontends
     config += backends
 
@@ -905,9 +907,10 @@ def get_apps(marathon):
     return apps_list
 
 
-def regenerate_config(apps, config_file, groups, templater):
-    compareWriteAndReloadConfig(config(apps, groups, templater),
-                                config_file)
+def regenerate_config(apps, config_file, groups, bind_http_https,
+                      templater):
+    compareWriteAndReloadConfig(config(apps, groups, bind_http_https,
+                                templater), config_file)
 
 
 class MarathonEventProcessor(object):
@@ -1001,6 +1004,9 @@ def get_arg_parser():
                         help="If set, respect Marathon's health check "
                         "statuses before adding the app instance into "
                         "the backend pool.",
+                        action="store_true")
+    parser.add_argument("--dont-bind-http-https",
+                        help="Don't bind to HTTP and HTTPS frontends.",
                         action="store_true")
 
     return parser
@@ -1114,4 +1120,4 @@ if __name__ == '__main__':
     else:
         # Generate base config
         regenerate_config(get_apps(marathon), args.haproxy_config, args.group,
-                          ConfigTemplater())
+                          not args.dont_bind_http_https, ConfigTemplater())
