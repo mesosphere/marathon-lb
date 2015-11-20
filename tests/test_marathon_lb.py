@@ -8,9 +8,11 @@ class TestMarathonUpdateHaproxy(unittest.TestCase):
         apps = dict()
         groups = ['external']
         bind_http_https = True
+        ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
 
-        config = marathon_lb.config(apps, groups, bind_http_https, templater)
+        config = marathon_lb.config(apps, groups, bind_http_https,
+                                    ssl_certs, templater)
         expected = '''global
   daemon
   log /dev/log local0
@@ -46,10 +48,100 @@ frontend marathon_https_in
 '''
         self.assertEqual(config, expected)
 
+    def test_config_with_ssl_no_apps(self):
+        apps = dict()
+        groups = ['external']
+        bind_http_https = True
+        ssl_certs = "/etc/haproxy/mysite.com.pem"
+        templater = marathon_lb.ConfigTemplater()
+
+        config = marathon_lb.config(apps, groups, bind_http_https,
+                                    ssl_certs, templater)
+        expected = '''global
+  daemon
+  log /dev/log local0
+  log /dev/log local1 notice
+  maxconn 4096
+  tune.ssl.default-dh-param 2048
+defaults
+  log               global
+  retries           3
+  maxconn           2000
+  timeout connect   5s
+  timeout client    50s
+  timeout server    50s
+  option            redispatch
+listen stats
+  bind 0.0.0.0:9090
+  balance
+  mode http
+  stats enable
+  monitor-uri /_haproxy_health_check
+
+frontend marathon_http_in
+  bind *:80
+  mode http
+
+frontend marathon_http_appid_in
+  bind *:81
+  mode http
+
+frontend marathon_https_in
+  bind *:443 ssl crt /etc/haproxy/mysite.com.pem
+  mode http
+'''
+        self.assertEqual(config, expected)
+
+    def test_config_with_multissl_no_apps(self):
+        apps = dict()
+        groups = ['external']
+        bind_http_https = True
+        ssl_certs = "/etc/haproxy/mysite1.com.pem,/etc/haproxy/mysite2.com.pem"
+        templater = marathon_lb.ConfigTemplater()
+
+        config = marathon_lb.config(apps, groups, bind_http_https,
+                                    ssl_certs, templater)
+        expected = '''global
+  daemon
+  log /dev/log local0
+  log /dev/log local1 notice
+  maxconn 4096
+  tune.ssl.default-dh-param 2048
+defaults
+  log               global
+  retries           3
+  maxconn           2000
+  timeout connect   5s
+  timeout client    50s
+  timeout server    50s
+  option            redispatch
+listen stats
+  bind 0.0.0.0:9090
+  balance
+  mode http
+  stats enable
+  monitor-uri /_haproxy_health_check
+
+frontend marathon_http_in
+  bind *:80
+  mode http
+
+frontend marathon_http_appid_in
+  bind *:81
+  mode http
+
+frontend marathon_https_in
+'''
+        expected += "  bind *:443 ssl crt /etc/haproxy/mysite1.com.pem " \
+                    "crt /etc/haproxy/mysite2.com.pem"
+        expected += "\n  mode http\n"
+        self.assertEqual(config, expected)
+
     def test_config_simple_app(self):
         apps = dict()
         groups = ['external']
         bind_http_https = True
+        ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
 
         healthCheck = {
@@ -66,7 +158,8 @@ frontend marathon_https_in
         app.groups = ['external']
         apps = [app]
 
-        config = marathon_lb.config(apps, groups, bind_http_https, templater)
+        config = marathon_lb.config(apps, groups, bind_http_https,
+                                    ssl_certs, templater)
         expected = '''global
   daemon
   log /dev/log local0

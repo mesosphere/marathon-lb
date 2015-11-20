@@ -2,9 +2,31 @@
 set -euo pipefail
 
 SERVICE="/marathon-lb/service/haproxy"
+
+# Iterate through the arguments to see if any SSL certificate is provided.
+while [[ $# > 1 ]]
+do
+key="$1"
+
+case $key in
+    --ssl-certs)
+    SSL_CERTS="$2"
+    shift # past argument
+    ;;
+    *)
+            # unknown option
+    ;;
+esac
+shift # past argument or value
+done
+
+
 if [ -n "${HAPROXY_SSL_CERT-}" ]; then
+  # if provided via environment variable, use it.
   echo "$HAPROXY_SSL_CERT" > /etc/ssl/mesosphere.com.pem
-else
+elif ! [ -n "${SSL_CERTS-}" ]; then
+  # if no environment variable or command line argument is provided,
+  # create self-signed ssl certificate
   openssl genrsa -out /tmp/server-key.pem 2048
   openssl req -new -key /tmp/server-key.pem -out /tmp/server-csr.pem -subj /CN=*/
   openssl x509 -req -in /tmp/server-csr.pem -out /tmp/server-cert.pem -signkey /tmp/server-key.pem -days 3650
