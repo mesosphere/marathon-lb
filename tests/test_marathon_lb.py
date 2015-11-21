@@ -46,7 +46,7 @@ frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
   mode http
 '''
-        self.assertEqual(config, expected)
+        self.assertMultiLineEqual(config, expected)
 
     def test_config_with_ssl_no_apps(self):
         apps = dict()
@@ -83,14 +83,14 @@ frontend marathon_http_in
   mode http
 
 frontend marathon_http_appid_in
-  bind *:81
+  bind *:9091
   mode http
 
 frontend marathon_https_in
   bind *:443 ssl crt /etc/haproxy/mysite.com.pem
   mode http
 '''
-        self.assertEqual(config, expected)
+        self.assertMultiLineEqual(config, expected)
 
     def test_config_with_multissl_no_apps(self):
         apps = dict()
@@ -127,7 +127,7 @@ frontend marathon_http_in
   mode http
 
 frontend marathon_http_appid_in
-  bind *:81
+  bind *:9091
   mode http
 
 frontend marathon_https_in
@@ -135,7 +135,7 @@ frontend marathon_https_in
         expected += "  bind *:443 ssl crt /etc/haproxy/mysite1.com.pem " \
                     "crt /etc/haproxy/mysite2.com.pem"
         expected += "\n  mode http\n"
-        self.assertEqual(config, expected)
+        self.assertMultiLineEqual(config, expected)
 
     def test_config_simple_app(self):
         apps = dict()
@@ -209,4 +209,4 @@ backend nginx_10000
   option  httpchk GET /
   timeout check 10s
 '''
-        self.assertEqual(config, expected)
+        self.assertMultiLineEqual(config, expected)
