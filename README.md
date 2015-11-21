@@ -86,6 +86,33 @@ To get the full documentation run:
 $ ./marathon_lb.py --help
 ```
 
+### Providing SSL certificates
+You can provide your SSL certificate paths to be placed in frontend marathon_https_in section with `--ssl-certs`.
+
+``` console
+$ ./marathon_lb.py --marathon http://localhost:8080 --haproxy-config /etc/haproxy/haproxy.cfg --group external --ssl-certs /etc/ssl/site1.co,/etc/ssl/site2.co
+```
+
+If you are using the script directly, you have two options:
+
+ * Provide nothing and config will use `/etc/ssl/mesosphere.com.pem` as the certificate path. Put the certificate in this path or edit the file for the correct path.
+ * Provide `--ssl-certs` command line argument and config will use these paths.
+
+If you are using run.sh or Docker image, you have three options:
+
+ * Provide your certificate text in `HAPROXY_SSL_CERT` environment variable. Contents will be written to `/etc/ssl/mesosphere.com.pem`. Config will use this path unless you specified extra certificate paths as in the next option.
+ * Provide SSL certificate paths with `--ssl-certs` command line argument. Your config will use these certificate paths.
+ * Provide nothing and it will create self-signed certificate on `/etc/ssl/mesosphere.com.pem` and config will use it.
+
+
+### Skipping configuration validation
+You can skip the configuration file validation (via calling haproxy service) process if you don't have haproxy installed. This is especially useful if you are running HAProxy on Docker containers.
+
+``` console
+$ ./marathon_lb.py --marathon http://localhost:8080 --haproxy-config /etc/haproxy/haproxy.cfg --group external --skip-validation
+```
+
+
 ## HAProxy configuration
 
 ### App labels

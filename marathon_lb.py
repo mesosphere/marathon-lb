@@ -105,7 +105,7 @@ class ConfigTemplater(object):
     # TODO(lloesche): make certificate path dynamic and allow multiple certs
     HAPROXY_HTTPS_FRONTEND_HEAD = dedent('''
     frontend marathon_https_in
-      bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+      bind *:443 ssl {sslCerts}
       mode http
     ''')
 
@@ -545,14 +545,19 @@ def resolve_ip(host):
             return None
 
 
-def config(apps, groups, bind_http_https, templater):
+def config(apps, groups, bind_http_https, ssl_certs, templater):
     logger.info("generating config")
     config = templater.haproxy_head
     groups = frozenset(groups)
+    _ssl_certs = ssl_certs or "/etc/ssl/mesosphere.com.pem"
+    _ssl_certs = _ssl_certs.split(",")
 
     if bind_http_https:
         http_frontends = templater.haproxy_http_frontend_head
-        https_frontends = templater.haproxy_https_frontend_head
+        https_frontends = templater.haproxy_https_frontend_head.format(
+            sslCerts=" ".join(map(lambda cert: "crt " + cert, _ssl_certs))
+        )
+
     frontends = str()
     backends = str()
     http_appid_frontends = templater.haproxy_http_frontend_appid_head
@@ -759,21 +764,26 @@ def reloadConfig():
               os.path.isfile('/etc/systemd/system/haproxy.service')):
             logger.debug("we seem to be running on systemd based system")
             reloadCommand = ['systemctl', 'reload', 'haproxy']
-        else:
+        elif os.path.isfile('/etc/init.d/haproxy'):
             logger.debug("we seem to be running on a sysvinit based system")
             reloadCommand = ['/etc/init.d/haproxy', 'reload']
+        else:
+            # if no haproxy exists (maybe running in a container)
+            logger.debug("no haproxy detected. won't reload.")
+            reloadCommand = None
 
-    logger.info("reloading using %s", " ".join(reloadCommand))
-    try:
-        subprocess.check_call(reloadCommand)
-    except OSError as ex:
-        logger.error("unable to reload config using command %s",
-                     " ".join(reloadCommand))
-        logger.error("OSError: %s", ex)
-    except subprocess.CalledProcessError as ex:
-        logger.error("unable to reload config using command %s",
-                     " ".join(reloadCommand))
-        logger.error("reload returned non-zero: %s", ex)
+    if reloadCommand:
+        logger.info("reloading using %s", " ".join(reloadCommand))
+        try:
+            subprocess.check_call(reloadCommand)
+        except OSError as ex:
+            logger.error("unable to reload config using command %s",
+                         " ".join(reloadCommand))
+            logger.error("OSError: %s", ex)
+        except subprocess.CalledProcessError as ex:
+            logger.error("unable to reload config using command %s",
+                         " ".join(reloadCommand))
+            logger.error("reload returned non-zero: %s", ex)
 
 
 def writeConfigAndValidate(config, config_file):
@@ -790,6 +800,14 @@ def writeConfigAndValidate(config, config_file):
     if os.path.isfile(config_file):
         perms = stat.S_IMODE(os.lstat(config_file).st_mode)
     os.chmod(haproxyTempConfigFile, perms)
+
+    # If skip validation flag is provided, don't check.
+    if args.skip_validation:
+        logger.debug("skipping validation. moving temp file %s to %s",
+                     haproxyTempConfigFile,
+                     config_file)
+        move(haproxyTempConfigFile, config_file)
+        return True
 
     # Check that config is valid
     cmd = ['haproxy', '-f', haproxyTempConfigFile, '-c']
@@ -909,14 +927,15 @@ def get_apps(marathon):
 
 
 def regenerate_config(apps, config_file, groups, bind_http_https,
-                      templater):
+                      ssl_certs, templater):
     compareWriteAndReloadConfig(config(apps, groups, bind_http_https,
-                                templater), config_file)
+                                ssl_certs, templater), config_file)
 
 
 class MarathonEventProcessor(object):
 
-    def __init__(self, marathon, config_file, groups, bind_http_https):
+    def __init__(self, marathon, config_file, groups,
+                 bind_http_https, ssl_certs):
         self.__marathon = marathon
         # appId -> MarathonApp
         self.__apps = dict()
@@ -924,6 +943,7 @@ class MarathonEventProcessor(object):
         self.__groups = groups
         self.__templater = ConfigTemplater()
         self.__bind_http_https = bind_http_https
+        self.__ssl_certs = ssl_certs
 
         # Fetch the base data
         self.reset_from_tasks()
@@ -936,6 +956,7 @@ class MarathonEventProcessor(object):
                           self.__config_file,
                           self.__groups,
                           self.__bind_http_https,
+                          self.__ssl_certs,
                           self.__templater)
 
         logger.debug("updating tasks finished, took %s seconds",
@@ -1011,16 +1032,24 @@ def get_arg_parser():
     parser.add_argument("--dont-bind-http-https",
                         help="Don't bind to HTTP and HTTPS frontends.",
                         action="store_true")
-
+    parser.add_argument("--ssl-certs",
+                        help="List of SSL certificates separated by comma"
+                             "for frontend marathon_https_in"
+                             "Ex: /etc/ssl/site1.co.pem,/etc/ssl/site2.co.pem",
+                        default="/etc/ssl/mesosphere.com.pem")
+    parser.add_argument("--skip-validation",
+                        help="Skip haproxy config file validation",
+                        action="store_true")
     return parser
 
 
 def run_server(marathon, listen_addr, callback_url, config_file, groups,
-               bind_http_https):
+               bind_http_https, ssl_certs):
     processor = MarathonEventProcessor(marathon,
                                        config_file,
                                        groups,
-                                       bind_http_https)
+                                       bind_http_https,
+                                       ssl_certs)
     marathon.add_subscriber(callback_url)
 
     # TODO(cmaloney): Switch to a sane http server
@@ -1045,11 +1074,13 @@ def clear_callbacks(marathon, callback_url):
     marathon.remove_subscriber(callback_url)
 
 
-def process_sse_events(marathon, config_file, groups, bind_http_https):
+def process_sse_events(marathon, config_file, groups,
+                       bind_http_https, ssl_certs):
     processor = MarathonEventProcessor(marathon,
                                        config_file,
                                        groups,
-                                       bind_http_https)
+                                       bind_http_https,
+                                       ssl_certs)
     events = marathon.get_event_stream()
     for event in events:
         try:
@@ -1119,13 +1150,14 @@ if __name__ == '__main__':
         try:
             run_server(marathon, args.listening, callback_url,
                        args.haproxy_config, args.group,
-                       not args.dont_bind_http_https)
+                       not args.dont_bind_http_https, args.ssl_certs)
         finally:
             clear_callbacks(marathon, callback_url)
     elif args.sse:
         process_sse_events(marathon, args.haproxy_config, args.group,
-                           not args.dont_bind_http_https)
+                           not args.dont_bind_http_https, args.ssl_certs)
     else:
         # Generate base config
         regenerate_config(get_apps(marathon), args.haproxy_config, args.group,
-                          not args.dont_bind_http_https, ConfigTemplater())
+                          not args.dont_bind_http_https,
+                          args.ssl_certs, ConfigTemplater())
