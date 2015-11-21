@@ -98,7 +98,7 @@ If you are using the script directly, you have two options:
  * Provide nothing and config will use `/etc/ssl/mesosphere.com.pem` as the certificate path. Put the certificate in this path or edit the file for the correct path.
  * Provide `--ssl-certs` command line argument and config will use these paths.
 
-If you are using run.sh or Docker image, you have three options:
+If you are using the provided `run` script or Docker image, you have three options:
 
  * Provide your certificate text in `HAPROXY_SSL_CERT` environment variable. Contents will be written to `/etc/ssl/mesosphere.com.pem`. Config will use this path unless you specified extra certificate paths as in the next option.
  * Provide SSL certificate paths with `--ssl-certs` command line argument. Your config will use these certificate paths.
