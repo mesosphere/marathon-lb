@@ -4,20 +4,17 @@ set -euo pipefail
 SERVICE="/marathon-lb/service/haproxy"
 
 # Iterate through the arguments to see if any SSL certificate is provided.
-while [[ $# > 1 ]]
+for key in "$@"
 do
-key="$1"
 
 case $key in
     --ssl-certs)
-    SSL_CERTS="$2"
-    shift # past argument
+    SSL_CERTS="yes"
     ;;
     *)
             # unknown option
     ;;
 esac
-shift # past argument or value
 done
 
 
