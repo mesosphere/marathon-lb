@@ -26,7 +26,7 @@ Configuration:
 
 
 Usage:
-  $ marathon-update-haproxy.py --marathon http://marathon1:8080 \
+  $ marathon-lb.py --marathon http://marathon1:8080 \
         --haproxy-config /etc/haproxy/haproxy.cfg
 
   The user that executes marathon-lb must have the permission to reload

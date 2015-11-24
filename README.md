@@ -53,16 +53,16 @@ notified about state changes.
 Syntax: `docker run mesosphere/marathon-lb sse [other args]`
 
 #### `event` mode
-In event mode, the script registers a http callback in marathon to get
+In event mode, the script registers a HTTP callback in marathon to get
 notified when state changes.
 
 Syntax: `docker run mesosphere/marathon-lb event callback-addr:port [other args]`
 
 #### `poll` mode
-If you can't use the http callbacks, the script can poll the APIs to get
+If you can't use the HTTP callbacks, the script can poll the APIs to get
 the schedulers state periodically.
 
-Synatax: `docker run mesosphere/marathon-lb poll [other args]`
+Syntax: `docker run mesosphere/marathon-lb poll [other args]`
 
 To change the poll interval (defaults to 60s), you can set the `POLL_INTERVAL`
 environment variable.
@@ -75,7 +75,7 @@ To generate an HAProxy configuration from Marathon running at `localhost:8080` w
 $ ./marathon_lb.py --marathon http://localhost:8080 --haproxy-config /etc/haproxy/haproxy.cfg --group external
 ```
 
-This will refresh haproxy.cfg, and if there were any changes, then it will
+This will refresh `haproxy.cfg`, and if there were any changes, then it will
 automatically reload HAProxy. Only apps with the label `HAPROXY_GROUP=external`
 will be exposed on this LB.
 
@@ -106,7 +106,7 @@ If you are using the provided `run` script or Docker image, you have three optio
 
 
 ### Skipping configuration validation
-You can skip the configuration file validation (via calling haproxy service) process if you don't have haproxy installed. This is especially useful if you are running HAProxy on Docker containers.
+You can skip the configuration file validation (via calling HAProxy service) process if you don't have HAProxy installed. This is especially useful if you are running HAProxy on Docker containers.
 
 ``` console
 $ ./marathon_lb.py --marathon http://localhost:8080 --haproxy-config /etc/haproxy/haproxy.cfg --group external --skip-validation
@@ -185,12 +185,12 @@ path from where the script is run. Some templates can also be
 
   HAPROXY_HTTP_FRONTEND_APPID_HEAD
     An HTTP frontend that binds to port *:9091 by default and gathers
-    all apps in http mode.
+    all apps in HTTP mode.
     To use this frontend to forward to your app, configure the app with
     "HAPROXY_0_MODE=http" then you can access it via a call to the :9091 with
     the header "X-Marathon-App-Id" set to the Marathon AppId.
-    Note multiple http ports being exposed by the same marathon app are not
-    supported. Only the first http port is available via this frontend.
+    Note multiple HTTP ports being exposed by the same marathon app are not
+    supported. Only the first HTTP port is available via this frontend.
 
   HAPROXY_HTTPS_FRONTEND_HEAD
     An HTTPS frontend for encrypted connections that binds to port *:443 by
@@ -305,7 +305,7 @@ HAProxy configuration parameters, with substitutions respected (as per the
 for correctness before reloading HAProxy after changes. **Note:** Since the
 HAProxy config is checked before reloading, if an app's HAProxy
 labels aren't syntactically correct, HAProxy will not be reloaded and may
-result is stale config.
+result in stale config.
 
 Here is an example for a service called `http-service` which requires that
 `http-keep-alive` be disabled:
@@ -322,18 +322,18 @@ Here is an example for a service called `http-service` which requires that
 
 The full list of per service port templates which can be specified are:
 ```
-  HAPROXY_{n}_FRONTEND_HEAD
-  HAPROXY_{n}_BACKEND_REDIRECT_HTTP_TO_HTTPS
-  HAPROXY_{n}_BACKEND_HEAD
-  HAPROXY_{n}_HTTP_FRONTEND_ACL
-  HAPROXY_{n}_HTTPS_FRONTEND_ACL
-  HAPROXY_{n}_HTTP_FRONTEND_APPID_ACL
-  HAPROXY_{n}_BACKEND_HTTP_OPTIONS
-  HAPROXY_{n}_BACKEND_TCP_HEALTHCHECK_OPTIONS
-  HAPROXY_{n}_BACKEND_HTTP_HEALTHCHECK_OPTIONS
-  HAPROXY_{n}_BACKEND_STICKY_OPTIONS
-  HAPROXY_{n}_FRONTEND_BACKEND_GLUE
-  HAPROXY_{n}_BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS
-  HAPROXY_{n}_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS
-  HAPROXY_{n}_BACKEND_SERVER_OPTIONS
+HAPROXY_{n}_FRONTEND_HEAD
+HAPROXY_{n}_BACKEND_REDIRECT_HTTP_TO_HTTPS
+HAPROXY_{n}_BACKEND_HEAD
+HAPROXY_{n}_HTTP_FRONTEND_ACL
+HAPROXY_{n}_HTTPS_FRONTEND_ACL
+HAPROXY_{n}_HTTP_FRONTEND_APPID_ACL
+HAPROXY_{n}_BACKEND_HTTP_OPTIONS
+HAPROXY_{n}_BACKEND_TCP_HEALTHCHECK_OPTIONS
+HAPROXY_{n}_BACKEND_HTTP_HEALTHCHECK_OPTIONS
+HAPROXY_{n}_BACKEND_STICKY_OPTIONS
+HAPROXY_{n}_FRONTEND_BACKEND_GLUE
+HAPROXY_{n}_BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS
+HAPROXY_{n}_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS
+HAPROXY_{n}_BACKEND_SERVER_OPTIONS
 ```
