@@ -1,5 +1,5 @@
 # marathon-lb [![Build Status](https://travis-ci.org/mesosphere/marathon-lb.svg?branch=master)](https://travis-ci.org/mesosphere/marathon-lb)
-Marathon-lb is a tool for managing HAProxy based on [Marathon's](https://github.com/mesosphere/marathon) app state.
+Marathon-lb is a tool for managing HAProxy, by consuming [Marathon's](https://github.com/mesosphere/marathon) app state.
 
 ### Features
 
