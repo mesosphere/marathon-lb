@@ -1,7 +1,15 @@
 # marathon-lb [![Build Status](https://travis-ci.org/mesosphere/marathon-lb.svg?branch=master)](https://travis-ci.org/mesosphere/marathon-lb)
-Marathon-lb is a tool for managing HAProxy based on [Marathon's](https://github.com/mesosphere/marathon) state.
+Marathon-lb is a tool for managing HAProxy based on [Marathon's](https://github.com/mesosphere/marathon) app state.
 
-You can run the script directly, or using the Docker image.
+### Features
+
+ * Real-time LB updates, via [Marathon's event bus](https://mesosphere.github.io/marathon/docs/event-bus.html)
+ * Support for Marathon's health checks
+ * Multi-cert SSL support
+ * Per-service HAProxy templates
+ * DCOS integration
+ * Automated Docker image builds ([mesosphere/marathon-lb](https://hub.docker.com/r/mesosphere/marathon-lb))
+ * Global HAProxy templates can be supplied at startup
 
 ## Architecture
 The marathon-lb script `marathon_lb.py` connects to the marathon API
