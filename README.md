@@ -3,13 +3,14 @@ Marathon-lb is a tool for managing HAProxy, by consuming [Marathon's](https://gi
 
 ### Features
 
- * Real-time LB updates, via [Marathon's event bus](https://mesosphere.github.io/marathon/docs/event-bus.html)
- * Support for Marathon's health checks
- * Multi-cert SSL support
- * Per-service HAProxy templates
+ * **Stateless design**: no direct dependency on any third-party state store like ZooKeeper or etcd (_except through Marathon_)
+ * **Real-time LB updates**, via [Marathon's event bus](https://mesosphere.github.io/marathon/docs/event-bus.html)
+ * Support for Marathon's **health checks**
+ * **Multi-cert SSL** support
+ * Per-service **HAProxy templates**
  * DCOS integration
  * Automated Docker image builds ([mesosphere/marathon-lb](https://hub.docker.com/r/mesosphere/marathon-lb))
- * Global HAProxy templates can be supplied at startup
+ * Global HAProxy templates which can be supplied at launch
 
 ## Architecture
 The marathon-lb script `marathon_lb.py` connects to the marathon API
