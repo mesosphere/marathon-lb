@@ -775,7 +775,7 @@ def reloadConfig():
     if reloadCommand:
         logger.info("reloading using %s", " ".join(reloadCommand))
         try:
-            subprocess.check_call(reloadCommand)
+            subprocess.check_call(reloadCommand, close_fds=True)
         except OSError as ex:
             logger.error("unable to reload config using command %s",
                          " ".join(reloadCommand))
