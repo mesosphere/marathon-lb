@@ -342,7 +342,7 @@ def set_port(x, k, v):
 
 
 def set_mode(x, k, v):
-    x.mode = y
+    x.mode = v
 
 
 def set_label(x, k, v):
