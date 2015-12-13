@@ -57,7 +57,8 @@ the `HAPROXY_SSL_CERT` environment variable.
 
 #### `sse` mode
 In SSE mode, the script connects to the marathon events endpoint to get
-notified about state changes.
+notified about state changes. This only works with Marathon 0.11.0 or
+newer versions.
 
 Syntax: `docker run mesosphere/marathon-lb sse [other args]`
 
