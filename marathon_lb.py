@@ -660,7 +660,7 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
                     healthCheck=app.healthCheck,
                     healthCheckPortIndex=app.healthCheck['portIndex'],
                     healthCheckProtocol=app.healthCheck['protocol'],
-                    healthCheckPath=app.healthCheck['path'],
+                    healthCheckPath=app.healthCheck.get('path', '/'),
                     healthCheckTimeoutSeconds=app.healthCheck[
                         'timeoutSeconds'],
                     healthCheckIntervalSeconds=app.healthCheck[
@@ -705,7 +705,7 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
                         healthCheck=app.healthCheck,
                         healthCheckPortIndex=app.healthCheck['portIndex'],
                         healthCheckProtocol=app.healthCheck['protocol'],
-                        healthCheckPath=app.healthCheck['path'],
+                        healthCheckPath=app.healthCheck.get('path', '/'),
                         healthCheckTimeoutSeconds=app.healthCheck[
                             'timeoutSeconds'],
                         healthCheckIntervalSeconds=app.healthCheck[
