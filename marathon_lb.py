@@ -1057,12 +1057,12 @@ def run_server(marathon, listen_addr, callback_url, config_file, groups,
     def wsgi_app(env, start_response):
         length = int(env['CONTENT_LENGTH'])
         data = env['wsgi.input'].read(length)
-        processor.handle_event(json.loads(data))
+        processor.handle_event(json.loads(data.decode('utf-8')))
         # TODO(cmaloney): Make this have a simple useful webui for debugging /
         # monitoring
         start_response('200 OK', [('Content-Type', 'text/html')])
 
-        return "Got it\n"
+        return ["Got it\n".encode('utf-8')]
 
     listen_uri = urlparse(listen_addr)
     httpd = make_server(listen_uri.hostname, listen_uri.port, wsgi_app)
