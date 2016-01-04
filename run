@@ -70,7 +70,7 @@ while true; do
     --syslog-socket /dev/null \
     --haproxy-config /marathon-lb/haproxy.cfg \
     -c "sv reload $SERVICE" \
-    $ARGS $@ &
+    $ARGS "$@" &
   wait $! || exit $? # Needed for the traps to work
   if [ "$MODE" != "poll" ]; then
     exit 0
