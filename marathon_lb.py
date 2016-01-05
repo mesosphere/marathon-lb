@@ -49,7 +49,7 @@ from tempfile import mkstemp
 from textwrap import dedent
 from wsgiref.simple_server import make_server
 from sseclient import SSEClient
-from urllib.parse import urlparse
+from six.moves import urllib
 
 import argparse
 import json
@@ -1064,7 +1064,7 @@ def run_server(marathon, listen_addr, callback_url, config_file, groups,
 
         return ["Got it\n".encode('utf-8')]
 
-    listen_uri = urlparse(listen_addr)
+    listen_uri = urllib.urlparse(listen_addr)
     httpd = make_server(listen_uri.hostname, listen_uri.port, wsgi_app)
     httpd.serve_forever()
 
