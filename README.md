@@ -178,11 +178,11 @@ The full list of labels which can be specified are:
 
 ### Templates
 
-The marathon-lb searches for configuration files in the `templates/`
-directory. The `templates/` directory contains marathon-lb configuration
-settings and example usage. The `templates/` directory is located in a relative
+Marathon-lb searches for configuration files in the `templates/`
+directory. The `templates/` directory is located in a relative
 path from where the script is run. Some templates can also be
-[overridden _per app service port_](#overridable-templates).
+[overridden _per app service port_](#overridable-templates). You may add your
+own templates to the Docker image, or provide them at startup.
 
 ```
   HAPROXY_HEAD
