@@ -1161,9 +1161,11 @@ if __name__ == '__main__':
                                    args.group,
                                    not args.dont_bind_http_https,
                                    args.ssl_certs)
-            except ConnectionError as e:
-                logger.error("ConnectionError: %s", e)
+            except:
+                e = sys.exc_info()[0]
+                logger.error("Caught exception: %s", e)
                 logger.error("Reconnecting...")
+            time.sleep(1)
     else:
         # Generate base config
         regenerate_config(get_apps(marathon), args.haproxy_config, args.group,
