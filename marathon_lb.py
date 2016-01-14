@@ -1162,8 +1162,7 @@ if __name__ == '__main__':
                                    not args.dont_bind_http_https,
                                    args.ssl_certs)
             except:
-                e = sys.exc_info()[0]
-                logger.error("Caught exception: %s", e)
+                logger.exception("Caught exception")
                 logger.error("Reconnecting...")
             time.sleep(1)
     else:
