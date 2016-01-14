@@ -1154,8 +1154,16 @@ if __name__ == '__main__':
         finally:
             clear_callbacks(marathon, callback_url)
     elif args.sse:
-        process_sse_events(marathon, args.haproxy_config, args.group,
-                           not args.dont_bind_http_https, args.ssl_certs)
+        while True:
+            try:
+                process_sse_events(marathon,
+                                   args.haproxy_config,
+                                   args.group,
+                                   not args.dont_bind_http_https,
+                                   args.ssl_certs)
+            except ConnectionError as e:
+                logger.error("ConnectionError: %s", e)
+                logger.error("Reconnecting...")
     else:
         # Generate base config
         regenerate_config(get_apps(marathon), args.haproxy_config, args.group,
