@@ -658,7 +658,7 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
             if health_check_options:
                 backends += health_check_options.format(
                     healthCheck=app.healthCheck,
-                    healthCheckPortIndex=app.healthCheck['portIndex'],
+                    healthCheckPortIndex=app.healthCheck.get('portIndex'),
                     healthCheckProtocol=app.healthCheck['protocol'],
                     healthCheckPath=app.healthCheck.get('path', '/'),
                     healthCheckTimeoutSeconds=app.healthCheck[
@@ -703,7 +703,7 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
                 if server_health_check_options:
                     healthCheckOptions = server_health_check_options.format(
                         healthCheck=app.healthCheck,
-                        healthCheckPortIndex=app.healthCheck['portIndex'],
+                        healthCheckPortIndex=app.healthCheck.get('portIndex'),
                         healthCheckProtocol=app.healthCheck['protocol'],
                         healthCheckPath=app.healthCheck.get('path', '/'),
                         healthCheckTimeoutSeconds=app.healthCheck[
@@ -847,7 +847,7 @@ def compareWriteAndReloadConfig(config, config_file):
 
 def get_health_check(app, portIndex):
     for check in app['healthChecks']:
-        if check['portIndex'] == portIndex:
+        if check.get('portIndex') == portIndex:
             return check
     return None
 
