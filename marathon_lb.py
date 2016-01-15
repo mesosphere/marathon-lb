@@ -117,7 +117,7 @@ class ConfigTemplater(object):
 
     HAPROXY_BACKEND_HEAD = dedent('''
     backend {backend}
-      balance roundrobin
+      balance {balance}
       mode {mode}
     ''')
 
@@ -345,6 +345,10 @@ def set_mode(x, k, v):
     x.mode = v
 
 
+def set_balance(x, k, v):
+    x.balance = v
+
+
 def set_label(x, k, v):
     x.labels[k] = v
 
@@ -357,6 +361,7 @@ label_keys = {
     'HAPROXY_{0}_BIND_ADDR': set_bindAddr,
     'HAPROXY_{0}_PORT': set_port,
     'HAPROXY_{0}_MODE': set_mode,
+    'HAPROXY_{0}_BALANCE': set_balance,
     'HAPROXY_{0}_FRONTEND_HEAD': set_label,
     'HAPROXY_{0}_BACKEND_REDIRECT_HTTP_TO_HTTPS': set_label,
     'HAPROXY_{0}_BACKEND_HEAD': set_label,
@@ -402,6 +407,7 @@ class MarathonService(object):
         self.bindAddr = '*'
         self.groups = frozenset()
         self.mode = 'tcp'
+        self.balance = 'roundrobin'
         self.healthCheck = healthCheck
         self.labels = {}
         if healthCheck:
@@ -598,6 +604,7 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
         backend_head = templater.haproxy_backend_head(app)
         backends += backend_head.format(
             backend=backend,
+            balance=app.balance,
             mode=app.mode
         )
 
