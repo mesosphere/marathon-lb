@@ -211,9 +211,7 @@ backend nginx_10000
 '''
         self.assertMultiLineEqual(config, expected)
 
-
     def test_config_healthcheck_command(self):
-        self.maxDiff = None
         apps = dict()
         groups = ['external']
         bind_http_https = True
