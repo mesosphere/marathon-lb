@@ -606,25 +606,9 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
         # TODO(lloesche): Check if the hostname is already defined by another
         # service
         if bind_http_https and app.hostname:
-            logger.debug(
-                "adding virtual host for app with hostname %s", app.hostname)
-            cleanedUpHostname = re.sub(r'[^a-zA-Z0-9\-]', '_', app.hostname)
-
-            http_frontend_acl = templater.haproxy_http_frontend_acl(app)
-            http_frontends += http_frontend_acl.format(
-                cleanedUpHostname=cleanedUpHostname,
-                hostname=app.hostname,
-                appId=app.appId,
-                backend=backend
-            )
-
-            https_frontend_acl = templater.haproxy_https_frontend_acl(app)
-            https_frontends += https_frontend_acl.format(
-                cleanedUpHostname=cleanedUpHostname,
-                hostname=app.hostname,
-                appId=app.appId,
-                backend=backend
-            )
+            p_fe, s_fe = generateHttpVhostAcl(templater, app, backend)
+            http_frontends += p_fe
+            https_frontends += s_fe
 
         # if app mode is http, we add the app to the second http frontend
         # selecting apps by http header X-Marathon-App-Id
@@ -784,6 +768,36 @@ def reloadConfig():
             logger.error("unable to reload config using command %s",
                          " ".join(reloadCommand))
             logger.error("reload returned non-zero: %s", ex)
+
+
+def generateHttpVhostAcl(templater, app, backend):
+    # If the hostname contains the delimiter ';', then the marathon app is
+    # requesting multiple hostname matches for the same backend, and we need
+    # to use alternate templates from the default one-acl/one-use_backend.
+    staging_http_frontends = ""
+    staging_https_frontends = ""
+
+    logger.debug(
+        "adding virtual host for app with hostname %s", app.hostname)
+    acl_name = re.sub(r'[^a-zA-Z0-9\-]', '_', app.hostname)
+
+    http_frontend_acl = templater.haproxy_http_frontend_acl(app)
+    staging_http_frontends += http_frontend_acl.format(
+        cleanedUpHostname=acl_name,
+        hostname=app.hostname,
+        appId=app.appId,
+        backend=backend
+    )
+
+    https_frontend_acl = templater.haproxy_https_frontend_acl(app)
+    staging_https_frontends += https_frontend_acl.format(
+        cleanedUpHostname=acl_name,
+        hostname=app.hostname,
+        appId=app.appId,
+        backend=backend
+    )
+
+    return (staging_http_frontends, staging_https_frontends)
 
 
 def writeConfigAndValidate(config, config_file):
