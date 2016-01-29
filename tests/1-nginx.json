@@ -1,0 +1,32 @@
+{
+  "id": "nginx",
+  "container": {
+    "type": "DOCKER",
+    "docker": {
+      "image": "brndnmtthws/nginx-echo-sleep",
+      "network": "BRIDGE",
+      "portMappings": [
+        { "hostPort": 0, "containerPort": 8080, "servicePort": 10000 }
+      ],
+      "forcePullImage":true
+    }
+  },
+  "instances": 5,
+  "cpus": 0.1,
+  "mem": 65,
+  "healthChecks": [{
+      "protocol": "HTTP",
+      "path": "/",
+      "portIndex": 0,
+      "timeoutSeconds": 15,
+      "gracePeriodSeconds": 15,
+      "intervalSeconds": 3,
+      "maxConsecutiveFailures": 10
+  }],
+  "labels":{
+    "HAPROXY_DEPLOYMENT_GROUP":"nginx",
+    "HAPROXY_DEPLOYMENT_ALT_PORT":"10001",
+    "HAPROXY_GROUP":"external"
+  },
+  "acceptedResourceRoles":["*", "slave_public"]
+}
