@@ -801,6 +801,10 @@ def generateHttpVhostAcl(templater, app, backend):
 
 
 def writeConfigAndValidate(config, config_file):
+    # Test run, print to stdout and exit
+    if args.dry:
+        print(config)
+        sys.exit()
     # Write config to a temporary location
     fd, haproxyTempConfigFile = mkstemp()
     logger.debug("writing config to temp file %s", haproxyTempConfigFile)
@@ -1053,6 +1057,9 @@ def get_arg_parser():
                         default="/etc/ssl/mesosphere.com.pem")
     parser.add_argument("--skip-validation",
                         help="Skip haproxy config file validation",
+                        action="store_true")
+    parser.add_argument("--dry", "-d",
+                        help="Only print configuration to console",
                         action="store_true")
     return parser
 
