@@ -210,3 +210,78 @@ backend nginx_10000
   timeout check 10s
 '''
         self.assertMultiLineEqual(config, expected)
+
+    def test_config_app_label_balance(self):
+        apps = dict()
+        groups = ['external']
+        bind_http_https = True
+        ssl_certs = ""
+        templater = marathon_lb.ConfigTemplater()
+
+        healthCheck = {
+            "path": "/",
+            "protocol": "HTTP",
+            "portIndex": 0,
+            "gracePeriodSeconds": 10,
+            "intervalSeconds": 2,
+            "timeoutSeconds": 10,
+            "maxConsecutiveFailures": 10,
+            "ignoreHttp1xx": False
+        }
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app.groups = ['external']
+        app.balance = 'leastconn'
+        apps = [app]
+
+        config = marathon_lb.config(apps, groups, bind_http_https,
+                                    ssl_certs, templater)
+        expected = '''global
+  daemon
+  log /dev/log local0
+  log /dev/log local1 notice
+  maxconn 4096
+  tune.ssl.default-dh-param 2048
+defaults
+  log               global
+  retries           3
+  maxconn           2000
+  timeout connect   5s
+  timeout client    50s
+  timeout server    50s
+  option            redispatch
+listen stats
+  bind 0.0.0.0:9090
+  balance
+  mode http
+  stats enable
+  monitor-uri /_haproxy_health_check
+
+frontend marathon_http_in
+  bind *:80
+  mode http
+
+frontend marathon_http_appid_in
+  bind *:9091
+  mode http
+  acl app__nginx hdr(x-marathon-app-id) -i /nginx
+  use_backend nginx_10000 if app__nginx
+
+frontend marathon_https_in
+  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  mode http
+
+frontend nginx_10000
+  bind *:10000
+  mode http
+  use_backend nginx_10000
+
+backend nginx_10000
+  balance leastconn
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  option  httpchk GET /
+  timeout check 10s
+'''
+        self.assertMultiLineEqual(config, expected)
