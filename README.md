@@ -174,6 +174,10 @@ The full list of labels which can be specified are:
   HAPROXY_{n}_MODE
     Set the connection mode to either TCP or HTTP. The default is TCP.
     Ex: HAPROXY_0_MODE = 'http'
+
+  HAPROXY_{n}_BALANCE
+    Set the load balancing algorithm to be used in a backend. The default is roundrobin.
+    Ex: HAPROXY_0_BALANCE = 'leastconn'
 ```
 
 ### Templates
