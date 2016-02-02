@@ -10,6 +10,7 @@ class Arguments:
     marathon = "http://marathon"
     dry_run = True
     initial_instances = 1
+    marathon_auth_credential_file = None
 
 
 class MyResponse:
@@ -28,7 +29,7 @@ class TestBluegreenDeploy(unittest.TestCase):
     from mock import patch
 
     @mock.patch('requests.get',
-                mock.Mock(side_effect=lambda k:
+                mock.Mock(side_effect=lambda k, auth:
                           MyResponse('tests/bluegreen_app_blue.json')))
     def test_simple(self):
         # This test just checks the output of the program against

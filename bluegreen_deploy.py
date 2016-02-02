@@ -55,7 +55,7 @@ def query_yes_no(question, default="yes"):
 
 def get_app_info(args, deployment_group, alt_port):
     url = args.marathon + "/v2/apps"
-    response = requests.get(url)
+    response = requests.get(url, auth=get_marathon_auth_params(args))
     response.raise_for_status()
     apps = response.json()
     existing_app = None
@@ -128,12 +128,12 @@ def find_tasks_to_kill(tasks, hostports):
 def check_if_tasks_drained(args, app, existing_app):
     time.sleep(args.step_delay)
     url = args.marathon + "/v2/apps" + existing_app['id']
-    response = requests.get(url)
+    response = requests.get(url, auth=get_marathon_auth_params(args))
     response.raise_for_status()
     existing_app = response.json()['app']
 
     url = args.marathon + "/v2/apps" + app['id']
-    response = requests.get(url)
+    response = requests.get(url, auth=get_marathon_auth_params(args))
     response.raise_for_status()
     app = response.json()['app']
 
@@ -252,7 +252,8 @@ def check_if_tasks_drained(args, app, existing_app):
         logger.info("About to delete old app {}".format(existing_app['id']))
         if args.force or query_yes_no("Continue?"):
             url = args.marathon + "/v2/apps" + existing_app['id']
-            response = requests.delete(url)
+            response = requests.delete(url,
+                                       auth=get_marathon_auth_params(args))
             response.raise_for_status()
             return True
         else:
@@ -267,7 +268,8 @@ def check_if_tasks_drained(args, app, existing_app):
         url = args.marathon + "/v2/apps" + app['id']
         data = json.dumps({'instances': instances})
         headers = {'Content-Type': 'application/json'}
-        response = requests.put(url, headers=headers, data=data)
+        response = requests.put(url, headers=headers, data=data,
+                                auth=get_marathon_auth_params(args))
         response.raise_for_status()
 
         # Scale old app down
@@ -275,7 +277,8 @@ def check_if_tasks_drained(args, app, existing_app):
                     .format(len(tasks_to_kill)))
         data = json.dumps({'ids': tasks_to_kill})
         url = args.marathon + "/v2/tasks/delete?scale=true"
-        response = requests.post(url, headers=headers, data=data)
+        response = requests.post(url, headers=headers, data=data,
+                                 auth=get_marathon_auth_params(args))
         response.raise_for_status()
 
         return check_if_tasks_drained(args,
@@ -289,7 +292,8 @@ def start_deployment(args, app, existing_app, resuming):
         url = args.marathon + "/v2/apps"
         data = json.dumps(app)
         headers = {'Content-Type': 'application/json'}
-        response = requests.post(url, headers=headers, data=data)
+        response = requests.post(url, headers=headers, data=data,
+                                 auth=get_marathon_auth_params(args))
         response.raise_for_status()
     if existing_app is not None:
         return check_if_tasks_drained(args,
@@ -419,6 +423,7 @@ def get_arg_parser():
                         action="store_true"
                         )
     parser = set_logging_args(parser)
+    parser = set_marathon_auth_args(parser)
     return parser
 
 

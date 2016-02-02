@@ -21,6 +21,30 @@ def setup_logging(logger, syslog_socket, log_format):
         logger.addHandler(syslogHandler)
 
 
+def set_marathon_auth_args(parser):
+    parser.add_argument("--marathon-auth-credential-file",
+                        help="Path to file containing a user/pass for "
+                        "the Marathon HTTP API in the format of 'user:pass'."
+                        )
+
+    return parser
+
+
+def get_marathon_auth_params(args):
+    if args.marathon_auth_credential_file is None:
+        return None
+
+    line = None
+    with open(args.marathon_auth_credential_file, 'r') as f:
+        line = f.readline().rstrip('\r\n')
+
+    if line is not None:
+        splat = line.split(':')
+        return (splat[0], splat[1])
+
+    return None
+
+
 def set_logging_args(parser):
     default_log_socket = "/dev/log"
     if sys.platform == "darwin":

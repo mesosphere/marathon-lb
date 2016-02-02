@@ -2,4 +2,3 @@ requests
 six
 sseclient
 python-dateutil
-mock
