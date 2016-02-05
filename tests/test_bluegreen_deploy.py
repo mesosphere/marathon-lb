@@ -34,7 +34,7 @@ class TestBluegreenDeploy(unittest.TestCase):
     def test_simple(self):
         # This test just checks the output of the program against
         # some expected output
-        from io import StringIO
+        from six import StringIO
 
         out = StringIO()
         bluegreen_deploy.process_json(Arguments(), out)
