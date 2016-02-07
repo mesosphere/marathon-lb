@@ -831,16 +831,16 @@ def reloadConfig():
 
 
 def generateHttpVhostAcl(templater, app, backend):
-    # If the hostname contains the delimiter ';', then the marathon app is
+    # If the hostname contains the delimiter ',', then the marathon app is
     # requesting multiple hostname matches for the same backend, and we need
     # to use alternate templates from the default one-acl/one-use_backend.
     staging_http_frontends = ""
     staging_https_frontends = ""
 
-    if ";" in app.hostname:
+    if "," in app.hostname:
         logger.debug(
             "vhost label specifies multiple hosts: %s", app.hostname)
-        vhosts = app.hostname.split(';')
+        vhosts = app.hostname.split(',')
         acl_name = re.sub(r'[^a-zA-Z0-9\-]', '_', vhosts[0])
 
         for vhost_hostname in vhosts:

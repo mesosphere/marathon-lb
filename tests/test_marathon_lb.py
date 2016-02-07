@@ -406,7 +406,7 @@ backend nginx_10000
             "ignoreHttp1xx": False
         }
         app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
-        app.hostname = "test.example.com;test"
+        app.hostname = "test.example.com,test"
         app.groups = ['external']
         apps = [app]
 
