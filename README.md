@@ -24,9 +24,10 @@ for reference) as defined in their Marathon definition. Furthermore, apps are
 only exposed on LBs which have the same LB tag (or group) as defined in the Marathon
 app's labels (using `HAPROXY_GROUP`). HAProxy parameters can be tuned by specify labels in your app.
 
-To create a virtual host the `HAPROXY_0_VHOST` label needs to be set on the
+To create a virtual host or hosts the `HAPROXY_0_VHOST` label needs to be set on the
 given application. Applications with a vhost set will be exposed on ports 80
-and 443, in addition to their service port.
+and 443, in addition to their service port. Multiple virtual hosts may be specified
+in HAPROXY_0_VHOST using a comma as a delimiter between hostnames.
 
 All applications are also exposed on port 9091, using the `X-Marathon-App-Id`
 HTTP header. See the documentation for `HAPROXY_HTTP_FRONTEND_APPID_HEAD` in
@@ -162,8 +163,9 @@ The full list of labels which can be specified are:
     The target number of app instances to seek during deployment. You generally do not need to modify this unless you implement your own deployment orchestrator.
 
   HAPROXY_{n}_VHOST
-    The Marathon HTTP Virtual Host proxy hostname to gather.
+    The Marathon HTTP Virtual Host proxy hostname(s) to gather.
     Ex: HAPROXY_0_VHOST = 'marathon.mesosphere.com'
+    Ex: HAPROXY_0_VHOST = 'marathon.mesosphere.com,marathon'
 
   HAPROXY_{n}_STICKY
     Enable sticky request routing for the service.
