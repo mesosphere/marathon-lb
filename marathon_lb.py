@@ -860,7 +860,7 @@ def generateHttpVhostAcl(templater, app, backend):
                 backend=backend
             )
 
-        # We've added the http acl lines, now route them all to the same backend
+        # We've added the http acl lines, now route them to the same backend
         http_frontend_route = templater.haproxy_http_frontend_routing_only(app)
         staging_http_frontends += http_frontend_route.format(
             cleanedUpHostname=acl_name,
