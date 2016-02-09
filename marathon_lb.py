@@ -459,12 +459,13 @@ class MarathonApp(object):
 
 class Marathon(object):
 
-    def __init__(self, hosts, health_check):
+    def __init__(self, hosts, health_check, auth):
         # TODO(cmaloney): Support getting master list from zookeeper
         self.__hosts = hosts
         self.__health_check = health_check
+        self.__auth = auth
 
-    def api_req_raw(self, method, path, body=None, **kwargs):
+    def api_req_raw(self, method, path, auth, body=None, **kwargs):
         for host in self.__hosts:
             path_str = os.path.join(host, 'v2')
 
@@ -473,6 +474,7 @@ class Marathon(object):
             response = requests.request(
                 method,
                 path_str,
+                auth=auth,
                 headers={
                     'Accept': 'application/json',
                     'Content-Type': 'application/json'
@@ -491,7 +493,7 @@ class Marathon(object):
         return response
 
     def api_req(self, method, path, **kwargs):
-        return self.api_req_raw(method, path, **kwargs).json()
+        return self.api_req_raw(method, path, self.__auth, **kwargs).json()
 
     def create(self, app_json):
         return self.api_req('POST', ['apps'], app_json)
@@ -529,7 +531,7 @@ class Marathon(object):
         url = self.__hosts[0]+"/v2/events"
         logger.info(
             "SSE Active, trying fetch events from from {0}".format(url))
-        return SSEClient(url)
+        return SSEClient(url, auth=self.__auth)
 
 
 def has_group(groups, app_groups):
@@ -1188,6 +1190,7 @@ def get_arg_parser():
                         help="Only print configuration to console",
                         action="store_true")
     parser = set_logging_args(parser)
+    parser = set_marathon_auth_args(parser)
     return parser
 
 
@@ -1282,7 +1285,9 @@ if __name__ == '__main__':
     setup_logging(logger, args.syslog_socket, args.log_format)
 
     # Marathon API connector
-    marathon = Marathon(args.marathon, args.health_check)
+    marathon = Marathon(args.marathon,
+                        args.health_check,
+                        get_marathon_auth_params(args))
 
     # If in listening mode, spawn a webserver waiting for events. Otherwise
     # just write the config.
