@@ -1,6 +1,6 @@
 #!/bin/bash
 exec 2>&1
-PIDFILE="/tmp/haproxy.pid"
+export PIDFILE="/tmp/haproxy.pid"
 exec 200<$0
 
 reload() {
@@ -9,15 +9,41 @@ reload() {
     echo "Invalid config"
     return 1
   fi
-  if ! flock -n 200; then
+  if ! flock 200; then
     echo "Can't aquire lock, reload already in progress?"
     return
   fi
-  haproxy -p $PIDFILE -f /marathon-lb/haproxy.cfg -sf $(cat $PIDFILE)
+
+  # Begin to drop SYN packets with firewall rules
+  IFS=',' read -ra ADDR <<< "$PORTS"
+  for i in "${ADDR[@]}"; do
+    iptables -w -I INPUT -p tcp --dport $i --syn -j DROP
+  done
+
+  # Wait to settle
+  sleep 0.5
+
+  # Save the current HAProxy state
+  socat /var/run/haproxy/socket - <<< "show servers state" > /var/state/haproxy/global
+
+  # Trigger reload
+  haproxy -p $PIDFILE -f /marathon-lb/haproxy.cfg -D -sf $(cat $PIDFILE)
+
+  # Remove the firewall rules
+  IFS=',' read -ra ADDR <<< "$PORTS"
+  for i in "${ADDR[@]}"; do
+    iptables -w -D INPUT -p tcp --dport $i --syn -j DROP
+  done
+
+  # Need to wait 1s to prevent TCP SYN exponential backoff
+  sleep 1
   flock -u 200
 }
 
-haproxy -p $PIDFILE -f /marathon-lb/haproxy.cfg
+mkdir -p /var/state/haproxy
+mkdir -p /var/run/haproxy
+
+reload
 
 trap reload SIGHUP
-while true; do sleep 1; done
+while true; do sleep 0.5; done

@@ -146,6 +146,21 @@ The full list of labels which can be specified are:
     The group of marathon-lb instances that point to the service.
     Load balancers with the group '*' will collect all groups.
 
+  HAPROXY_DEPLOYMENT_GROUP
+    Deployment group to which this app belongs.
+
+  HAPROXY_DEPLOYMENT_ALT_PORT
+    Alternate service port to be used during a blue/green deployment.
+
+  HAPROXY_DEPLOYMENT_COLOUR
+    Blue/green deployment colour. Used by the bluegreen_deploy.py script to determine the state of a deploy. You generally do not need to modify this unless you implement your own deployment orchestrator.
+
+  HAPROXY_DEPLOYMENT_STARTED_AT
+    The time at which a deployment started. You generally do not need to modify this unless you implement your own deployment orchestrator.
+
+  HAPROXY_DEPLOYMENT_TARGET_INSTANCES
+    The target number of app instances to seek during deployment. You generally do not need to modify this unless you implement your own deployment orchestrator.
+
   HAPROXY_{n}_VHOST
     The Marathon HTTP Virtual Host proxy hostname to gather.
     Ex: HAPROXY_0_VHOST = 'marathon.mesosphere.com'
@@ -351,3 +366,25 @@ HAPROXY_{n}_BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS
 HAPROXY_{n}_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS
 HAPROXY_{n}_BACKEND_SERVER_OPTIONS
 ```
+
+## Zero downtime deployments
+
+Marathon-lb is able to perform canary style blue/green deployment with zero downtime. To execute such deployments, you must follow certain patterns when using Marathon.
+
+The deployment method is described [in this Marathon document](https://mesosphere.github.io/marathon/docs/blue-green-deploy.html). Marathon-lb provides an implementation of the aforementioned deployment method with the script [`bluegreen_deploy.py`](bluegreen_deploy.py). To perform a zero downtime deploy using `bluegreen_deploy.py`, you must:
+
+
+- Specify the `HAPROXY_DEPLOYMENT_GROUP` and `HAPROXY_DEPLOYMENT_ALT_PORT` labels in your app template
+  - `HAPROXY_DEPLOYMENT_GROUP`: This label uniquely identifies a set of apps belonging to a blue/green deployment, and will be used as the app name in the HAProxy configuration
+  - `HAPROXY_DEPLOYMENT_ALT_PORT`: An alternate service port is required because Marathon requires service ports to be unique across all apps
+- Only use 1 service port: multiple ports are not yet implemented
+- Use the provided `bluegreen_deploy.py` script to orchestrate the deploy: the script will make API calls to Marathon, and use the HAProxy stats endpoint to gracefully terminate instances
+- The marathon-lb container must be run in privileged mode (to execute `iptables` commands) due to the issues outlined in the excellent blog post by the [Yelp engineering team found here](http://engineeringblog.yelp.com/2015/04/true-zero-downtime-haproxy-reloads.html)
+
+An example minimal configuration for a [test instance of nginx is included here](tests/1-nginx.json). You might execute a deployment from a CI tool like Jenkins with:
+
+```
+./bluegreen_deploy.py -j 1-nginx.json -m http://master.mesos:8080 -f -l http://marathon-lb.marathon.mesos:9090
+```
+
+Zero downtime deployments are accomplished through the use of a Lua module, which reports the number of HAProxy processes which are currently running by hitting the stats endpoint at the `/_haproxy_getpids`. After a restart, there will be multiple HAProxy PIDs until all remaining connections have gracefully terminated. By waiting for all connections to complete, you may safely and deterministically drain tasks.

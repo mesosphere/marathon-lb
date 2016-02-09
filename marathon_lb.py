@@ -50,6 +50,7 @@ from textwrap import dedent
 from wsgiref.simple_server import make_server
 from sseclient import SSEClient
 from six.moves import urllib
+from common import *
 
 import argparse
 import json
@@ -64,6 +65,9 @@ import subprocess
 import sys
 import socket
 import time
+import dateutil.parser
+import math
+import threading
 
 
 class ConfigTemplater(object):
@@ -72,22 +76,29 @@ class ConfigTemplater(object):
       daemon
       log /dev/log local0
       log /dev/log local1 notice
-      maxconn 4096
+      maxconn 10000
       tune.ssl.default-dh-param 2048
+      server-state-file global
+      server-state-base /var/state/haproxy/
+      lua-load /marathon-lb/getpids.lua
     defaults
+      load-server-state-from-file global
       log               global
       retries           3
-      maxconn           2000
-      timeout connect   5s
-      timeout client    50s
-      timeout server    50s
+      maxconn           5000
+      timeout connect   3s
+      timeout client    30s
+      timeout server    30s
       option            redispatch
+      option            dontlognull
     listen stats
       bind 0.0.0.0:9090
       balance
       mode http
       stats enable
       monitor-uri /_haproxy_health_check
+      acl getpid path /_haproxy_getpids
+      http-request use-service lua.getpids if getpid
     ''')
 
     HAPROXY_HTTP_FRONTEND_HEAD = dedent('''
@@ -158,7 +169,8 @@ class ConfigTemplater(object):
 '''
 
     HAPROXY_BACKEND_SERVER_OPTIONS = '''\
-  server {serverName} {host_ipv4}:{port}{cookieOptions}{healthCheckOptions}
+  server {serverName} {host_ipv4}:{port}{cookieOptions}{healthCheckOptions}\
+{otherOptions}
 '''
 
     HAPROXY_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS = '''\
@@ -378,14 +390,15 @@ label_keys = {
     'HAPROXY_{0}_BACKEND_SERVER_OPTIONS': set_label,
 }
 
-logger = logging.getLogger('marathon-lb')
+logger = logging.getLogger('marathon_lb')
 
 
 class MarathonBackend(object):
 
-    def __init__(self, host, port):
+    def __init__(self, host, port, draining):
         self.host = host
         self.port = port
+        self.draining = draining
 
     def __hash__(self):
         return hash((self.host, self.port))
@@ -414,8 +427,8 @@ class MarathonService(object):
             if healthCheck['protocol'] == 'HTTP':
                 self.mode = 'http'
 
-    def add_backend(self, host, port):
-        self.backends.add(MarathonBackend(host, port))
+    def add_backend(self, host, port, draining):
+        self.backends.add(MarathonBackend(host, port, draining))
 
     def __hash__(self):
         return hash(self.servicePort)
@@ -723,7 +736,8 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
                     cookieOptions=' check cookie ' +
                     serverName if app.sticky else '',
                     healthCheckOptions=healthCheckOptions
-                    if healthCheckOptions else ''
+                    if healthCheckOptions else '',
+                    otherOptions=' disabled' if backendServer.draining else ''
                 )
             else:
                 logger.warning("Could not resolve ip for host %s, "
@@ -739,6 +753,16 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
     config += backends
 
     return config
+
+
+def get_haproxy_pids():
+    try:
+        return subprocess.check_output(
+            "pidof haproxy",
+            stderr=subprocess.STDOUT,
+            shell=True)
+    except subprocess.CalledProcessError as ex:
+        return ''
 
 
 def reloadConfig():
@@ -766,7 +790,14 @@ def reloadConfig():
     if reloadCommand:
         logger.info("reloading using %s", " ".join(reloadCommand))
         try:
+            start_time = time.time()
+            pids = get_haproxy_pids()
             subprocess.check_call(reloadCommand, close_fds=True)
+            # Wait until the reload actually occurs
+            while pids == get_haproxy_pids():
+                time.sleep(0.1)
+            logger.debug("reload finished, took %s seconds",
+                         time.time() - start_time)
         except OSError as ex:
             logger.error("unable to reload config using command %s",
                          " ".join(reloadCommand))
@@ -882,7 +913,82 @@ def get_apps(marathon):
     logger.debug("got apps %s", [app["id"] for app in apps])
 
     marathon_apps = []
+    # This process requires 2 passes: the first is to gather apps belonging
+    # to a deployment group.
+    processed_apps = []
+    deployment_groups = {}
     for app in apps:
+        deployment_group = None
+        if 'HAPROXY_DEPLOYMENT_GROUP' in app['labels']:
+            deployment_group = app['labels']['HAPROXY_DEPLOYMENT_GROUP']
+            # mutate the app id to match deployment group
+            if deployment_group[0] != '/':
+                deployment_group = '/' + deployment_group
+            app['id'] = deployment_group
+        else:
+            processed_apps.append(app)
+            continue
+        if deployment_group in deployment_groups:
+            # merge the groups, with the oldest taking precedence
+            prev = deployment_groups[deployment_group]
+            cur = app
+
+            prev_date = dateutil.parser.parse(
+                prev['labels']['HAPROXY_DEPLOYMENT_STARTED_AT'])
+            cur_date = dateutil.parser.parse(
+                cur['labels']['HAPROXY_DEPLOYMENT_STARTED_AT'])
+            old = new = None
+            if prev_date < cur_date:
+                old = prev
+                new = cur
+            else:
+                new = prev
+                old = cur
+
+            target_instances = \
+                int(new['labels']['HAPROXY_DEPLOYMENT_TARGET_INSTANCES'])
+
+            # mark N tasks from old app as draining, where N is the
+            # number of instances in the new app
+            old_tasks = sorted(old['tasks'],
+                               key=lambda task: task['host'] +
+                               ":" + str(task['ports']))
+
+            healthy_new_instances = 0
+            if len(app['healthChecks']) > 0:
+                for task in new['tasks']:
+                    if 'healthCheckResults' not in task:
+                        continue
+                    alive = True
+                    for result in task['healthCheckResults']:
+                        if not result['alive']:
+                            alive = False
+                    if alive:
+                        healthy_new_instances += 1
+            else:
+                healthy_new_instances = new['instances']
+
+            maximum_drainable = \
+                max(0, (healthy_new_instances + old['instances']) -
+                    target_instances)
+
+            for i in range(0, min(len(old_tasks),
+                                  healthy_new_instances,
+                                  maximum_drainable)):
+                old_tasks[i]['draining'] = True
+
+            # merge tasks from new app into old app
+            merged = old
+            old_tasks.extend(new['tasks'])
+            merged['tasks'] = old_tasks
+
+            deployment_groups[deployment_group] = merged
+        else:
+            deployment_groups[deployment_group] = app
+
+    processed_apps.extend(deployment_groups.values())
+
+    for app in processed_apps:
         appId = app['id']
         if appId[1:] == os.environ.get("FRAMEWORK_NAME"):
             continue
@@ -929,6 +1035,9 @@ def get_apps(marathon):
                     continue
 
             task_ports = task['ports']
+            draining = False
+            if 'draining' in task:
+                draining = task['draining']
 
             # if different versions of app have different number of ports,
             # try to match as many ports as possible
@@ -940,10 +1049,12 @@ def get_apps(marathon):
                 service = marathon_app.services.get(service_port, None)
                 if service:
                     service.groups = marathon_app.groups
-                    service.add_backend(task['host'], task_port)
+                    service.add_backend(task['host'],
+                                        task_port,
+                                        draining)
 
     # Convert into a list for easier consumption
-    apps_list = list()
+    apps_list = []
     for marathon_app in marathon_apps:
         for service in list(marathon_app.services.values()):
             if service.backends:
@@ -970,45 +1081,66 @@ class MarathonEventProcessor(object):
         self.__bind_http_https = bind_http_https
         self.__ssl_certs = ssl_certs
 
+        self.__condition = threading.Condition()
+        self.__thread = threading.Thread(target=self.do_reset)
+        self.__pending_reset = False
+        self.__thread.start()
+
         # Fetch the base data
         self.reset_from_tasks()
 
+    def do_reset(self):
+        with self.__condition:
+            while True:
+                self.__condition.acquire()
+                if not self.__pending_reset:
+                    self.__condition.wait()
+                self.__pending_reset = False
+                self.__condition.release()
+
+                try:
+                    start_time = time.time()
+
+                    self.__apps = get_apps(self.__marathon)
+                    regenerate_config(self.__apps,
+                                      self.__config_file,
+                                      self.__groups,
+                                      self.__bind_http_https,
+                                      self.__ssl_certs,
+                                      self.__templater)
+
+                    logger.debug("updating tasks finished, took %s seconds",
+                                 time.time() - start_time)
+                except requests.exceptions.ConnectionError as e:
+                    logger.error("Connection error({0}): {1}".format(
+                        e.errno, e.strerror))
+
     def reset_from_tasks(self):
-        start_time = time.time()
-
-        self.__apps = get_apps(self.__marathon)
-        regenerate_config(self.__apps,
-                          self.__config_file,
-                          self.__groups,
-                          self.__bind_http_https,
-                          self.__ssl_certs,
-                          self.__templater)
-
-        logger.debug("updating tasks finished, took %s seconds",
-                     time.time() - start_time)
+        self.__condition.acquire()
+        self.__pending_reset = True
+        self.__condition.notify()
+        self.__condition.release()
 
     def handle_event(self, event):
         if event['eventType'] == 'status_update_event' or \
-                event['eventType'] == 'health_status_changed_event':
+                event['eventType'] == 'health_status_changed_event' or \
+                event['eventType'] == 'api_post_event':
             # TODO (cmaloney): Handle events more intelligently so we don't
             # unnecessarily hammer the Marathon API.
-            try:
-                self.reset_from_tasks()
-            except requests.exceptions.ConnectionError as e:
-                logger.error("Connection error({0}): {1}".format(
-                    e.errno, e.strerror))
+            self.reset_from_tasks()
 
 
 def get_arg_parser():
     parser = argparse.ArgumentParser(
-        description="Marathon HAProxy Load Balancer")
+        description="Marathon HAProxy Load Balancer",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--longhelp",
                         help="Print out configuration details",
                         action="store_true"
                         )
     parser.add_argument("--marathon", "-m",
                         nargs="+",
-                        help="Marathon endpoint, eg. -m " +
+                        help="[required] Marathon endpoint, eg. -m " +
                              "http://marathon1:8080 -m http://marathon2:8080"
                         )
     parser.add_argument("--listening", "-l",
@@ -1019,27 +1151,14 @@ def get_arg_parser():
                         help="The HTTP address that Marathon can call this " +
                              "script back at (http://lb1:8080)"
                         )
-    default_log_socket = "/dev/log"
-    if sys.platform == "darwin":
-        default_log_socket = "/var/run/syslog"
-
-    parser.add_argument("--syslog-socket",
-                        help="Socket to write syslog messages to. "
-                        "Use '/dev/null' to disable logging to syslog",
-                        default=default_log_socket
-                        )
-    parser.add_argument("--log-format",
-                        help="Set log message format",
-                        default="%(name)s: %(message)s"
-                        )
     parser.add_argument("--haproxy-config",
                         help="Location of haproxy configuration",
                         default="/etc/haproxy/haproxy.cfg"
                         )
     parser.add_argument("--group",
-                        help="Only generate config for apps which list the "
-                        "specified names. Defaults to apps without groups. "
-                        "Use '*' to match all groups",
+                        help="[required] Only generate config for apps which"
+                        " list the specified names. Use '*' to match all"
+                        " groups",
                         action="append",
                         default=list())
     parser.add_argument("--command", "-c",
@@ -1068,6 +1187,7 @@ def get_arg_parser():
     parser.add_argument("--dry", "-d",
                         help="Only print configuration to console",
                         action="store_true")
+    parser = set_logging_args(parser)
     return parser
 
 
@@ -1121,6 +1241,9 @@ def process_sse_events(marathon, config_file, groups,
                     data = json.loads(real_event_data)
                     logger.info(
                         "received event of type {0}".format(data['eventType']))
+                    if data['eventType'] == 'event_stream_detached':
+                        # Need to re-attach to stream
+                        return
                     processor.handle_event(data)
             else:
                 logger.info("skipping empty message")
@@ -1128,21 +1251,6 @@ def process_sse_events(marathon, config_file, groups,
             print(event.data)
             print("Unexpected error:", sys.exc_info()[0])
             raise
-
-
-def setup_logging(syslog_socket, log_format):
-    logger.setLevel(logging.DEBUG)
-
-    formatter = logging.Formatter(log_format)
-
-    consoleHandler = logging.StreamHandler()
-    consoleHandler.setFormatter(formatter)
-    logger.addHandler(consoleHandler)
-
-    if args.syslog_socket != '/dev/null':
-        syslogHandler = SysLogHandler(args.syslog_socket)
-        syslogHandler.setFormatter(formatter)
-        logger.addHandler(syslogHandler)
 
 
 if __name__ == '__main__':
@@ -1165,8 +1273,13 @@ if __name__ == '__main__':
             arg_parser.error('argument --group is required: please' +
                              'specify at least one group name')
 
+    # Set request retries
+    s = requests.Session()
+    a = requests.adapters.HTTPAdapter(max_retries=3)
+    s.mount('http://', a)
+
     # Setup logging
-    setup_logging(args.syslog_socket, args.log_format)
+    setup_logging(logger, args.syslog_socket, args.log_format)
 
     # Marathon API connector
     marathon = Marathon(args.marathon, args.health_check)
