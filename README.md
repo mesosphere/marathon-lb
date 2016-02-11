@@ -24,9 +24,10 @@ for reference) as defined in their Marathon definition. Furthermore, apps are
 only exposed on LBs which have the same LB tag (or group) as defined in the Marathon
 app's labels (using `HAPROXY_GROUP`). HAProxy parameters can be tuned by specify labels in your app.
 
-To create a virtual host the `HAPROXY_0_VHOST` label needs to be set on the
+To create a virtual host or hosts the `HAPROXY_0_VHOST` label needs to be set on the
 given application. Applications with a vhost set will be exposed on ports 80
-and 443, in addition to their service port.
+and 443, in addition to their service port. Multiple virtual hosts may be specified
+in HAPROXY_0_VHOST using a comma as a delimiter between hostnames.
 
 All applications are also exposed on port 9091, using the `X-Marathon-App-Id`
 HTTP header. See the documentation for `HAPROXY_HTTP_FRONTEND_APPID_HEAD` in
@@ -162,8 +163,9 @@ The full list of labels which can be specified are:
     The target number of app instances to seek during deployment. You generally do not need to modify this unless you implement your own deployment orchestrator.
 
   HAPROXY_{n}_VHOST
-    The Marathon HTTP Virtual Host proxy hostname to gather.
+    The Marathon HTTP Virtual Host proxy hostname(s) to gather.
     Ex: HAPROXY_0_VHOST = 'marathon.mesosphere.com'
+    Ex: HAPROXY_0_VHOST = 'marathon.mesosphere.com,marathon'
 
   HAPROXY_{n}_STICKY
     Enable sticky request routing for the service.
@@ -279,6 +281,16 @@ own templates to the Docker image, or provide them at startup.
   HAPROXY_HTTP_FRONTEND_ACL
     The ACL that glues a backend to the corresponding virtual host
     of the HAPROXY_HTTP_FRONTEND_HEAD.
+
+  HAPROXY_HTTP_FRONTEND_ACL_ONLY
+    Define the ACL matching a particular hostname, but unlike
+    HAPROXY_HTTP_FRONTEND_ACL, only do the ACL portion. Does not glue
+    the ACL to the backend. This is useful only in the case of multiple
+    vhosts routing to the same backend
+
+  HAPROXY_HTTP_FRONTEND_ROUTING_ONLY
+    This is the counterpart to HAPROXY_HTTP_FRONTEND_ACL_ONLY which
+    glues the acl name to the appropriate backend.
 
   HAPROXY_HTTP_FRONTEND_APPID_ACL
     The ACL that glues a backend to the corresponding app
