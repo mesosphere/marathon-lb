@@ -282,6 +282,16 @@ own templates to the Docker image, or provide them at startup.
     The ACL that glues a backend to the corresponding virtual host
     of the HAPROXY_HTTP_FRONTEND_HEAD.
 
+  HAPROXY_HTTP_FRONTEND_ACL_ONLY
+    Define the ACL matching a particular hostname, but unlike
+    HAPROXY_HTTP_FRONTEND_ACL, only do the ACL portion. Does not glue
+    the ACL to the backend. This is useful only in the case of multiple
+    vhosts routing to the same backend
+
+  HAPROXY_HTTP_FRONTEND_ROUTING_ONLY
+    This is the counterpart to HAPROXY_HTTP_FRONTEND_ACL_ONLY which
+    glues the acl name to the appropriate backend.
+
   HAPROXY_HTTP_FRONTEND_APPID_ACL
     The ACL that glues a backend to the corresponding app
     of the HAPROXY_HTTP_FRONTEND_APPID_HEAD.
