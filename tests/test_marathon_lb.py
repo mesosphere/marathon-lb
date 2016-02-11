@@ -412,27 +412,7 @@ backend nginx_10000
 
         config = marathon_lb.config(apps, groups, bind_http_https,
                                     ssl_certs, templater)
-        expected = '''global
-  daemon
-  log /dev/log local0
-  log /dev/log local1 notice
-  maxconn 4096
-  tune.ssl.default-dh-param 2048
-defaults
-  log               global
-  retries           3
-  maxconn           2000
-  timeout connect   5s
-  timeout client    50s
-  timeout server    50s
-  option            redispatch
-listen stats
-  bind 0.0.0.0:9090
-  balance
-  mode http
-  stats enable
-  monitor-uri /_haproxy_health_check
-
+        expected = self.base_config + '''
 frontend marathon_http_in
   bind *:80
   mode http
