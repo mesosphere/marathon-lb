@@ -83,7 +83,7 @@ optional arguments:
                         ports for IP-per-task applications (default: 10100)
   --syslog-socket SYSLOG_SOCKET
                         Socket to write syslog messages to. Use '/dev/null' to
-                        disable logging to syslog (default: /var/run/syslog)
+                        disable logging to syslog (default: /dev/log)
   --log-format LOG_FORMAT
                         Set log message format (default: %(name)s:
                         %(message)s)
@@ -520,6 +520,32 @@ glues the acl names to the appropriate backend
   http-request auth realm "{realm}" if host_{cleanedUpHostname} path_{backend} !auth_{cleanedUpHostname}
   use_backend {backend} if host_{cleanedUpHostname} path_{backend}
 ```
+## `HAPROXY_HTTP_BACKEND_ACL_ALLOW_DENY`
+  *Global*
+
+Specified as `HAPROXY_HTTP_BACKEND_ACL_ALLOW_DENY` template.
+
+This option denies all IPs (or IP ranges) not explicitly allowed to access the HTTP backend.
+Use with HAPROXY_HTTP_BACKEND_NETWORK_ALLOWED_ACL.
+
+
+**Default template for `HAPROXY_HTTP_BACKEND_ACL_ALLOW_DENY`:**
+```
+  http-request allow if network_allowed
+  http-request deny
+```
+## `HAPROXY_HTTP_BACKEND_NETWORK_ALLOWED_ACL`
+  *Overridable*
+
+Specified as `HAPROXY_HTTP_BACKEND_NETWORK_ALLOWED_ACL` template or with label `HAPROXY_{n}_HTTP_BACKEND_NETWORK_ALLOWED_ACL`.
+
+This option set the IPs (or IP ranges) having access to the HTTP backend.
+
+
+**Default template for `HAPROXY_HTTP_BACKEND_NETWORK_ALLOWED_ACL`:**
+```
+  acl network_allowed src {network_allowed}
+```
 ## `HAPROXY_HTTP_BACKEND_PROXYPASS`
   *Overridable*
 
@@ -777,6 +803,32 @@ glues the acl names to the appropriate backend
   http-request auth realm "{realm}" if host_{cleanedUpHostname} path_{backend} !auth_{cleanedUpHostname}
   use_backend {backend} if host_{cleanedUpHostname} path_{backend}
 ```
+## `HAPROXY_TCP_BACKEND_ACL_ALLOW_DENY`
+  *Global*
+
+Specified as `HAPROXY_TCP_BACKEND_ACL_ALLOW_DENY` template.
+
+This option denies all IPs (or IP ranges) not explicitly allowed to access the TCP backend.
+Use with HAPROXY_TCP_BACKEND_ACL_ALLOW_DENY.
+
+
+**Default template for `HAPROXY_TCP_BACKEND_ACL_ALLOW_DENY`:**
+```
+  tcp-request content accept if network_allowed
+  tcp-request content reject
+```
+## `HAPROXY_TCP_BACKEND_NETWORK_ALLOWED_ACL`
+  *Overridable*
+
+Specified as `HAPROXY_TCP_BACKEND_NETWORK_ALLOWED_ACL` template or with label `HAPROXY_{n}_TCP_BACKEND_NETWORK_ALLOWED_ACL`.
+
+This option set the IPs (or IP ranges) having access to the TCP backend.
+
+
+**Default template for `HAPROXY_TCP_BACKEND_NETWORK_ALLOWED_ACL`:**
+```
+  acl network_allowed src {network_allowed}
+```
 ## `HAPROXY_USERLIST_HEAD`
   *Overridable*
 
@@ -802,6 +854,16 @@ Specified as `HAPROXY_{n}_AUTH`.
 The http basic auth definition.
 
 Ex: `HAPROXY_0_AUTH = realm:username:encryptedpassword`
+
+## `HAPROXY_{n}_BACKEND_NETWORK_ALLOWED_ACL`
+  *per service port*
+
+Specified as `HAPROXY_{n}_BACKEND_NETWORK_ALLOWED_ACL`.
+
+Set the IPs (or IP ranges) having access to the backend. By default every IP is allowed.
+
+Ex: `HAPROXY_0_BACKEND_NETWORK_ALLOWED_ACL = '127.0.0.1/8, 10.1.55.43'`
+                    
 
 ## `HAPROXY_{n}_BACKEND_WEIGHT`
   *per service port*

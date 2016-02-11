@@ -114,6 +114,7 @@ class MarathonService(object):
         self.healthCheck = healthCheck
         self.labels = {}
         self.backend_weight = 0
+        self.network_allowed = None
         if healthCheck:
             if healthCheck['protocol'] == 'HTTP':
                 self.mode = 'http'
@@ -389,6 +390,20 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
                     hostname=app.hostname,
                     redirpath=app.redirpath
                 )
+
+        # Set network allowed ACLs
+        if app.mode == 'http' and app.network_allowed:
+            for network in app.network_allowed.split():
+                backends += templater.\
+                            haproxy_http_backend_network_allowed_acl(app).\
+                            format(network_allowed=network)
+            backends += templater.haproxy_http_backend_acl_allow_deny
+        elif app.mode == 'tcp' and app.network_allowed:
+            for network in app.network_allowed.split():
+                backends += templater.\
+                            haproxy_tcp_backend_network_allowed_acl(app).\
+                            format(network_allowed=network)
+            backends += templater.haproxy_tcp_backend_acl_allow_deny
 
         if app.healthCheck:
             health_check_options = None
