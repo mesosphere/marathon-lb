@@ -28,7 +28,7 @@ done
 
 if [ -n "${HAPROXY_SSL_CERT-}" ]; then
   # if provided via environment variable, use it.
-  echo "$HAPROXY_SSL_CERT" > /etc/ssl/mesosphere.com.pem
+  echo -e "$HAPROXY_SSL_CERT" > /etc/ssl/mesosphere.com.pem
 elif ! [ -n "${SSL_CERTS-}" ]; then
   # if no environment variable or command line argument is provided,
   # create self-signed ssl certificate
