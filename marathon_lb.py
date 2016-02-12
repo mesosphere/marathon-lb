@@ -50,6 +50,7 @@ from textwrap import dedent
 from wsgiref.simple_server import make_server
 from sseclient import SSEClient
 from six.moves.urllib import parse
+from itertools import cycle
 from common import *
 
 import argparse
@@ -484,6 +485,7 @@ class Marathon(object):
         self.__hosts = hosts
         self.__health_check = health_check
         self.__auth = auth
+        self.__cycle_hosts = cycle(self.__hosts)
 
     def api_req_raw(self, method, path, auth, body=None, **kwargs):
         for host in self.__hosts:
@@ -548,10 +550,14 @@ class Marathon(object):
                 params={'callbackUrl': callbackUrl})
 
     def get_event_stream(self):
-        url = self.__hosts[0]+"/v2/events"
+        url = self.host+"/v2/events"
         logger.info(
             "SSE Active, trying fetch events from from {0}".format(url))
         return SSEClient(url, auth=self.__auth)
+
+    @property
+    def host(self):
+        return next(self.__cycle_hosts)
 
 
 def has_group(groups, app_groups):
