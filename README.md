@@ -240,6 +240,7 @@ own templates to the Docker image, or provide them at startup.
     Sets HTTP health check options, for example timeout check and httpchk GET.
     Parameters of the first health check for this service are exposed as:
       * healthCheckPortIndex
+      * healthCheckPort
       * healthCheckProtocol
       * healthCheckPath
       * healthCheckTimeoutSeconds
@@ -248,6 +249,7 @@ own templates to the Docker image, or provide them at startup.
       * healthCheckGracePeriodSeconds
       * healthCheckMaxConsecutiveFailures
       * healthCheckFalls is set to healthCheckMaxConsecutiveFailures + 1
+      * healthCheckPortOptions is set to " port {healthCheckPort}"
     Defaults to empty string.
     Example:
       option  httpchk GET {healthCheckPath}
@@ -258,12 +260,14 @@ own templates to the Docker image, or provide them at startup.
     Sets TCP health check options, for example timeout check.
     Parameters of the first health check for this service are exposed as:
       * healthCheckPortIndex
+      * healthCheckPort
       * healthCheckProtocol
       * healthCheckTimeoutSeconds
       * healthCheckIntervalSeconds
       * healthCheckGracePeriodSeconds
       * healthCheckMaxConsecutiveFailures
       * healthCheckFalls is set to healthCheckMaxConsecutiveFailures + 1
+      * healthCheckPortOptions is set to " port {healthCheckPort}"
     Defaults to empty string.
     Example:
       timeout check {healthCheckTimeoutSeconds}s
@@ -308,6 +312,7 @@ own templates to the Docker image, or provide them at startup.
     Sets HTTP health check options for a single server, e.g. check inter.
     Parameters of the first health check for this service are exposed as:
       * healthCheckPortIndex
+      * healthCheckPort
       * healthCheckProtocol
       * healthCheckPath
       * healthCheckTimeoutSeconds
@@ -316,6 +321,7 @@ own templates to the Docker image, or provide them at startup.
       * healthCheckGracePeriodSeconds
       * healthCheckMaxConsecutiveFailures
       * healthCheckFalls is set to healthCheckMaxConsecutiveFailures + 1
+      * healthCheckPortOptions is set to " port {healthCheckPort}"
     Defaults to empty string.
     Example:
       check inter {healthCheckIntervalSeconds}s fall {healthCheckFalls}
@@ -324,12 +330,15 @@ own templates to the Docker image, or provide them at startup.
     Sets TCP health check options for a single server, e.g. check inter.
     Parameters of the first health check for this service are exposed as:
       * healthCheckPortIndex
+      * healthCheckPort
       * healthCheckProtocol
       * healthCheckTimeoutSeconds
       * healthCheckIntervalSeconds
       * healthCheckGracePeriodSeconds
       * healthCheckMaxConsecutiveFailures
       * healthCheckFalls is set to healthCheckMaxConsecutiveFailures + 1
+      * healthCheckPortOptions is set to " port {healthCheckPort}"
+      
     Defaults to empty string.
     Example:
       check inter {healthCheckIntervalSeconds}s fall {healthCheckFalls}

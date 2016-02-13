@@ -183,7 +183,7 @@ class ConfigTemplater(object):
 '''
 
     HAPROXY_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS = '''\
-  check inter {healthCheckIntervalSeconds}s fall {healthCheckFalls}
+  check inter {healthCheckIntervalSeconds}s fall {healthCheckFalls}{healthCheckPortOptions}
 '''
     HAPROXY_BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS = ''
 
@@ -688,9 +688,11 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
                 health_check_options = templater \
                     .haproxy_backend_http_healthcheck_options(app)
             if health_check_options:
+                healthCheckPort = app.healthCheck.get('port')
                 backends += health_check_options.format(
                     healthCheck=app.healthCheck,
                     healthCheckPortIndex=app.healthCheck.get('portIndex'),
+                    healthCheckPort=healthCheckPort,
                     healthCheckProtocol=app.healthCheck['protocol'],
                     healthCheckPath=app.healthCheck.get('path', '/'),
                     healthCheckTimeoutSeconds=app.healthCheck[
@@ -703,7 +705,9 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
                     healthCheckMaxConsecutiveFailures=app.healthCheck[
                         'maxConsecutiveFailures'],
                     healthCheckFalls=app.healthCheck[
-                        'maxConsecutiveFailures'] + 1
+                        'maxConsecutiveFailures'] + 1,
+                    healthCheckPortOptions=' port ' +
+                    str(healthCheckPort) if healthCheckPort else ''
                 )
 
         if app.sticky:
@@ -733,9 +737,11 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
                     server_health_check_options = templater \
                         .haproxy_backend_server_http_healthcheck_options(app)
                 if server_health_check_options:
+                    healthCheckPort = app.healthCheck.get('port')
                     healthCheckOptions = server_health_check_options.format(
                         healthCheck=app.healthCheck,
                         healthCheckPortIndex=app.healthCheck.get('portIndex'),
+                        healthCheckPort=healthCheckPort,
                         healthCheckProtocol=app.healthCheck['protocol'],
                         healthCheckPath=app.healthCheck.get('path', '/'),
                         healthCheckTimeoutSeconds=app.healthCheck[
@@ -749,7 +755,9 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
                         healthCheckMaxConsecutiveFailures=app.healthCheck[
                             'maxConsecutiveFailures'],
                         healthCheckFalls=app.healthCheck[
-                            'maxConsecutiveFailures'] + 1
+                            'maxConsecutiveFailures'] + 1,
+                        healthCheckPortOptions=' port ' +
+                        str(healthCheckPort) if healthCheckPort else ''
                     )
             ipv4 = resolve_ip(backendServer.host)
 
@@ -963,6 +971,8 @@ def compareWriteAndReloadConfig(config, config_file):
 
 def get_health_check(app, portIndex):
     for check in app['healthChecks']:
+        if check.get('port'):
+            return check
         if check.get('portIndex') == portIndex:
             return check
     return None
