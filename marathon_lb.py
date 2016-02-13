@@ -183,7 +183,8 @@ class ConfigTemplater(object):
 '''
 
     HAPROXY_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS = '''\
-  check inter {healthCheckIntervalSeconds}s fall {healthCheckFalls}{healthCheckPortOptions}
+  check inter {healthCheckIntervalSeconds}s fall {healthCheckFalls}\
+{healthCheckPortOptions}
 '''
     HAPROXY_BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS = ''
 
