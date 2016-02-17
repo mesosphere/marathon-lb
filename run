@@ -75,7 +75,7 @@ esac
 
 if [ -n "${HAPROXY_SYSCTL_PARAMS-}" ]; then
   echo "setting sysctl params to: ${HAPROXY_SYSCTL_PARAMS}"
-  sysctl $HAPROXY_SYSCTL_PARAMS
+  sysctl -w $HAPROXY_SYSCTL_PARAMS
 fi
 
 while true; do
