@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 # Note: before you run this test, make sure you set:
-#   sysctl net.ipv4.tcp_max_syn_backlog=20000
+#   sysctl -w net.ipv4.tcp_max_syn_backlog=20000
 # To make sure that all the TCP connections are retried correctly.
 
 require 'cassandra'
