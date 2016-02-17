@@ -993,10 +993,19 @@ def get_apps(marathon):
             prev = deployment_groups[deployment_group]
             cur = app
 
-            prev_date = dateutil.parser.parse(
-                prev['labels']['HAPROXY_DEPLOYMENT_STARTED_AT'])
-            cur_date = dateutil.parser.parse(
-                cur['labels']['HAPROXY_DEPLOYMENT_STARTED_AT'])
+            # TODO(brenden): do something more intelligent when the label is
+            # missing.
+            if 'HAPROXY_DEPLOYMENT_STARTED_AT' in prev['labels']:
+                prev_date = dateutil.parser.parse(
+                    prev['labels']['HAPROXY_DEPLOYMENT_STARTED_AT'])
+            else:
+                prev_date = ''
+            if 'HAPROXY_DEPLOYMENT_STARTED_AT' in cur['labels']:
+                cur_date = dateutil.parser.parse(
+                    cur['labels']['HAPROXY_DEPLOYMENT_STARTED_AT'])
+            else:
+                cur_date = ''
+
             old = new = None
             if prev_date < cur_date:
                 old = prev
@@ -1174,6 +1183,10 @@ class MarathonEventProcessor(object):
                 except requests.exceptions.ConnectionError as e:
                     logger.error("Connection error({0}): {1}".format(
                         e.errno, e.strerror))
+                except:
+                    print(event.data)
+                    print("Unexpected error:", sys.exc_info()[0])
+                    raise
 
     def reset_from_tasks(self):
         self.__condition.acquire()
@@ -1185,8 +1198,6 @@ class MarathonEventProcessor(object):
         if event['eventType'] == 'status_update_event' or \
                 event['eventType'] == 'health_status_changed_event' or \
                 event['eventType'] == 'api_post_event':
-            # TODO (cmaloney): Handle events more intelligently so we don't
-            # unnecessarily hammer the Marathon API.
             self.reset_from_tasks()
 
 
@@ -1303,7 +1314,8 @@ def process_sse_events(marathon, config_file, groups,
                     logger.info(
                         "received event of type {0}".format(data['eventType']))
                     if data['eventType'] == 'event_stream_detached':
-                        # Need to re-attach to stream
+                        # Need to force reload and re-attach to stream
+                        processor.reset_from_tasks()
                         return
                     processor.handle_event(data)
             else:
