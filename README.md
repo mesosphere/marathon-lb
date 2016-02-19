@@ -24,10 +24,10 @@ for reference) as defined in their Marathon definition. Furthermore, apps are
 only exposed on LBs which have the same LB tag (or group) as defined in the Marathon
 app's labels (using `HAPROXY_GROUP`). HAProxy parameters can be tuned by specify labels in your app.
 
-To create a virtual host or hosts the `HAPROXY_0_VHOST` label needs to be set on the
+To create a virtual host or hosts the `HAPROXY_{n}_VHOST` label needs to be set on the
 given application. Applications with a vhost set will be exposed on ports 80
 and 443, in addition to their service port. Multiple virtual hosts may be specified
-in HAPROXY_0_VHOST using a comma as a delimiter between hostnames.
+in `HAPROXY_{n}_VHOST` using a comma as a delimiter between hostnames.
 
 All applications are also exposed on port 9091, using the `X-Marathon-App-Id`
 HTTP header. See the documentation for `HAPROXY_HTTP_FRONTEND_APPID_HEAD` in
