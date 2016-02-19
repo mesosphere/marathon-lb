@@ -1197,7 +1197,6 @@ class MarathonEventProcessor(object):
                 except:
                     print(event.data)
                     print("Unexpected error:", sys.exc_info()[0])
-                    raise
 
     def reset_from_tasks(self):
         self.__condition.acquire()
