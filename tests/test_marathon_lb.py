@@ -9,7 +9,7 @@ class TestMarathonUpdateHaproxy(unittest.TestCase):
   daemon
   log /dev/log local0
   log /dev/log local1 notice
-  maxconn 10000
+  maxconn 50000
   tune.ssl.default-dh-param 2048
   server-state-file global
   server-state-base /var/state/haproxy/
@@ -17,12 +17,19 @@ class TestMarathonUpdateHaproxy(unittest.TestCase):
 defaults
   load-server-state-from-file global
   log               global
-  retries           3
-  maxconn           5000
-  timeout connect   3s
-  timeout client    30s
-  timeout server    30s
+  retries                   3
+  backlog               10000
+  maxconn               10000
+  timeout connect          3s
+  timeout client          30s
+  timeout server          30s
+  timeout tunnel        3600s
+  timeout http-keep-alive  1s
+  timeout http-request    15s
+  timeout queue           30s
+  timeout tarpit          60s
   option            redispatch
+  option            http-server-close
   option            dontlognull
 listen stats
   bind 0.0.0.0:9090
