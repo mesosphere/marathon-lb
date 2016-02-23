@@ -14,7 +14,7 @@ class TestCodeFormat(unittest.TestCase):
 
     def test_pep8_conformance(self):
         """Test that we conform to PEP8."""
-        pep8style = pep8.StyleGuide(quiet=True)
+        pep8style = pep8.StyleGuide()
         result = pep8style.check_files(self.get_py_files())
         self.assertEqual(result.total_errors, 0,
                          "Found code style errors (and warnings).")
