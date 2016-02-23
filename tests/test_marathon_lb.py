@@ -11,6 +11,8 @@ class TestMarathonUpdateHaproxy(unittest.TestCase):
   log /dev/log local1 notice
   maxconn 10000
   tune.ssl.default-dh-param 2048
+  ssl-default-bind-options no-sslv3 no-tls-tickets force-tlsv12
+  ssl-default-bind-ciphers AES128+EECDH:AES128+EDH
   server-state-file global
   server-state-base /var/state/haproxy/
   lua-load /marathon-lb/getpids.lua
