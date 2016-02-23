@@ -79,6 +79,8 @@ class ConfigTemplater(object):
       log /dev/log local1 notice
       maxconn 50000
       tune.ssl.default-dh-param 2048
+      ssl-default-bind-options no-sslv3 no-tls-tickets force-tlsv12
+      ssl-default-bind-ciphers AES128+EECDH:AES128+EDH
       server-state-file global
       server-state-base /var/state/haproxy/
       lua-load /marathon-lb/getpids.lua
@@ -130,7 +132,7 @@ class ConfigTemplater(object):
 
     HAPROXY_FRONTEND_HEAD = dedent('''
     frontend {backend}
-      bind {bindAddr}:{servicePort}{sslCertOptions}
+      bind {bindAddr}:{servicePort}{sslCert}{bindOptions}
       mode {mode}
     ''')
 
@@ -374,6 +376,10 @@ def set_sslCert(x, k, v):
     x.sslCert = v
 
 
+def set_bindOptions(x, k, v):
+    x.bindOptions = v
+
+
 def set_bindAddr(x, k, v):
     x.bindAddr = v
 
@@ -399,6 +405,7 @@ label_keys = {
     'HAPROXY_{0}_STICKY': set_sticky,
     'HAPROXY_{0}_REDIRECT_TO_HTTPS': set_redirect_http_to_https,
     'HAPROXY_{0}_SSL_CERT': set_sslCert,
+    'HAPROXY_{0}_BIND_OPTIONS': set_bindOptions,
     'HAPROXY_{0}_BIND_ADDR': set_bindAddr,
     'HAPROXY_{0}_PORT': set_port,
     'HAPROXY_{0}_MODE': set_mode,
@@ -446,6 +453,7 @@ class MarathonService(object):
         self.sticky = False
         self.redirectHttpToHttps = False
         self.sslCert = None
+        self.bindOptions = None
         self.bindAddr = '*'
         self.groups = frozenset()
         self.mode = 'tcp'
@@ -640,7 +648,8 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
             backend=backend,
             servicePort=app.servicePort,
             mode=app.mode,
-            sslCertOptions=' ssl crt ' + app.sslCert if app.sslCert else ''
+            sslCert=' ssl crt ' + app.sslCert if app.sslCert else '',
+            bindOptions=' ' + app.bindOptions if app.bindOptions else ''
         )
 
         if app.redirectHttpToHttps:

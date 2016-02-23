@@ -179,6 +179,10 @@ The full list of labels which can be specified are:
     Enable the given SSL certificate for TLS/SSL traffic.
     Ex: HAPROXY_0_SSL_CERT = '/etc/ssl/certs/marathon.mesosphere.com'
 
+  HAPROXY_{n}_BIND_OPTIONS
+    Set additional bind options
+    Ex: HAPROXY_0_BIND_OPTIONS = 'ciphers AES128+EECDH:AES128+EDH force-tlsv12 no-sslv3'
+
   HAPROXY_{n}_BIND_ADDR
     Bind to the specific address for the service.
     Ex: HAPROXY_0_BIND_ADDR = '10.0.0.42'
