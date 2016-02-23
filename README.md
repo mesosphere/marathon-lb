@@ -235,10 +235,6 @@ own templates to the Docker image, or provide them at startup.
     HAPROXY_{n}_VHOST variable. You must modify this file to
     include your certificate.
 
-  HAPROXY_BACKEND_REDIRECT_HTTP_TO_HTTPS
-    This template is used with backends where the
-    HAPROXY_{n}_REDIRECT_TO_HTTPS label is defined.
-
   HAPROXY_BACKEND_HTTP_OPTIONS
     Sets HTTP headers, for example X-Forwarded-For and X-Forwarded-Proto.
 
@@ -260,7 +256,6 @@ own templates to the Docker image, or provide them at startup.
     Example:
       option  httpchk GET {healthCheckPath}
       timeout check {healthCheckTimeoutSeconds}s
-
 
   HAPROXY_BACKEND_TCP_HEALTHCHECK_OPTIONS
     Sets TCP health check options, for example timeout check.
@@ -288,19 +283,17 @@ own templates to the Docker image, or provide them at startup.
     Defines the type of load balancing, roundrobin by default,
     and connection mode, TCP or HTTP.
 
-  HAPROXY_HTTP_FRONTEND_ACL
-    The ACL that glues a backend to the corresponding virtual host
-    of the HAPROXY_HTTP_FRONTEND_HEAD.
-
   HAPROXY_HTTP_FRONTEND_ACL_ONLY
-    Define the ACL matching a particular hostname, but unlike
-    HAPROXY_HTTP_FRONTEND_ACL, only do the ACL portion. Does not glue
-    the ACL to the backend. This is useful only in the case of multiple
-    vhosts routing to the same backend
+    Define the ACL matching a particular hostname, used when one or more
+    virtual hosts are requested.
 
   HAPROXY_HTTP_FRONTEND_ROUTING_ONLY
-    This is the counterpart to HAPROXY_HTTP_FRONTEND_ACL_ONLY which
+    This is a counterpart to HAPROXY_HTTP_FRONTEND_ACL_ONLY which
     glues the acl name to the appropriate backend.
+    
+  HAPROXY_HTTP_FRONTEND_REDIRECT_TO_HTTPS_ONLY
+    This is a counterpart to HAPROXY_HTTP_FRONTEND_ACL_ONLY which
+    redirects to HTTPS when HAPROXY_{n}_REDIRECT_TO_HTTPS is defined.
 
   HAPROXY_HTTP_FRONTEND_APPID_ACL
     The ACL that glues a backend to the corresponding app
@@ -310,9 +303,12 @@ own templates to the Docker image, or provide them at startup.
     The ACL that performs the SNI based hostname matching
     for the HAPROXY_HTTPS_FRONTEND_HEAD.
 
+  HAPROXY_FRONTEND_REDIRECT_TO_HTTPS
+    This template is used within the application specific frontend 
+    when the HAPROXY_{n}_REDIRECT_TO_HTTPS label is defined.
+
   HAPROXY_BACKEND_SERVER_OPTIONS
     The options for each physical server added to a backend.
-
 
   HAPROXY_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS
     Sets HTTP health check options for a single server, e.g. check inter.
@@ -379,11 +375,13 @@ Here is an example for a service called `http-service` which requires that
 The full list of per service port templates which can be specified are:
 ```
 HAPROXY_{n}_FRONTEND_HEAD
-HAPROXY_{n}_BACKEND_REDIRECT_HTTP_TO_HTTPS
 HAPROXY_{n}_BACKEND_HEAD
-HAPROXY_{n}_HTTP_FRONTEND_ACL
+HAPROXY_{n}_HTTP_FRONTEND_ACL_ONLY
+HAPROXY_{n}_HTTP_FRONTEND_ROUTING_ONLY
+HAPROXY_{n}_HTTP_FRONTEND_REDIRECT_TO_HTTPS_ONLY
 HAPROXY_{n}_HTTPS_FRONTEND_ACL
 HAPROXY_{n}_HTTP_FRONTEND_APPID_ACL
+HAPROXY_{n}_FRONTEND_REDIRECT_TO_HTTPS
 HAPROXY_{n}_BACKEND_HTTP_OPTIONS
 HAPROXY_{n}_BACKEND_TCP_HEALTHCHECK_OPTIONS
 HAPROXY_{n}_BACKEND_HTTP_HEALTHCHECK_OPTIONS
