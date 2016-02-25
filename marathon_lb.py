@@ -160,6 +160,24 @@ class ConfigTemplater(object):
   use_backend {backend} if host_{cleanedUpHostname}
 '''
 
+    HAPROXY_HTTP_FRONTEND_ACL_WITH_PATH = '''\
+  acl host_{cleanedUpHostname} hdr(host) -i {hostname}
+  acl path_{cleanedUpHostname} path_beg {path}
+  use_backend {backend} if host_{cleanedUpHostname} path_{cleanedUpHostname}
+'''
+
+    HAPROXY_HTTP_FRONTEND_ACL_ONLY_WITH_PATH = '''\
+  acl path_{cleanedUpHostname} path_beg {path}
+'''
+
+    HAPROXY_HTTPS_FRONTEND_ACL_ONLY_WITH_PATH = '''\
+  acl path_{cleanedUpHostname} path_beg {path}
+'''
+
+    HAPROXY_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH = '''\
+  use_backend {backend} if host_{cleanedUpHostname} path_{cleanedUpHostname}
+'''
+
     HAPROXY_HTTP_FRONTEND_APPID_ACL = '''\
   acl app_{cleanedUpAppId} hdr(x-marathon-app-id) -i {appId}
   use_backend {backend} if app_{cleanedUpAppId}
@@ -167,6 +185,10 @@ class ConfigTemplater(object):
 
     HAPROXY_HTTPS_FRONTEND_ACL = '''\
   use_backend {backend} if {{ ssl_fc_sni {hostname} }}
+'''
+
+    HAPROXY_HTTPS_FRONTEND_ACL_WITH_PATH = '''\
+  use_backend {backend} if {{ ssl_fc_sni {hostname} }} path_{cleanedUpHostname}
 '''
 
     HAPROXY_BACKEND_HTTP_OPTIONS = '''\
@@ -218,6 +240,10 @@ class ConfigTemplater(object):
             'HAPROXY_HTTP_FRONTEND_ACL',
             'HAPROXY_HTTP_FRONTEND_ACL_ONLY',
             'HAPROXY_HTTP_FRONTEND_ROUTING_ONLY',
+            'HAPROXY_HTTP_FRONTEND_ACL_WITH_PATH',
+            'HAPROXY_HTTP_FRONTEND_ACL_ONLY_WITH_PATH',
+            'HAPROXY_HTTPS_FRONTEND_ACL_ONLY_WITH_PATH',
+            'HAPROXY_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH',
             'HAPROXY_HTTP_FRONTEND_APPID_ACL',
             'HAPROXY_HTTPS_FRONTEND_ACL',
             'HAPROXY_BACKEND_HTTP_OPTIONS',
@@ -290,6 +316,27 @@ class ConfigTemplater(object):
             return app.labels['HAPROXY_{0}_HTTP_FRONTEND_ROUTING_ONLY']
         return self.HAPROXY_HTTP_FRONTEND_ROUTING_ONLY
 
+    def haproxy_http_frontend_acl_with_path(self, app):
+        if 'HAPROXY_{0}_HTTP_FRONTEND_ACL_WITH_PATH' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTP_FRONTEND_ACL_WITH_PATH']
+        return self.HAPROXY_HTTP_FRONTEND_ACL_WITH_PATH
+
+    def haproxy_http_frontend_acl_only_with_path(self, app):
+        if 'HAPROXY_{0}_HTTP_FRONTEND_ACL_ONLY_WITH_PATH' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTP_FRONTEND_ACL_ONLY_WITH_PATH']
+        return self.HAPROXY_HTTP_FRONTEND_ACL_ONLY_WITH_PATH
+
+    def haproxy_https_frontend_acl_only_with_path(self, app):
+        if 'HAPROXY_{0}_HTTPS_FRONTEND_ACL_ONLY_WITH_PATH' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTPS_FRONTEND_ACL_ONLY_WITH_PATH']
+        return self.HAPROXY_HTTPS_FRONTEND_ACL_ONLY_WITH_PATH
+
+    def haproxy_http_frontend_routing_only_with_path(self, app):
+        if 'HAPROXY_{0}_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH' in app.labels:
+            return \
+                app.labels['HAPROXY_{0}_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH']
+        return self.HAPROXY_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH
+
     def haproxy_http_frontend_appid_acl(self, app):
         if 'HAPROXY_{0}_HTTP_FRONTEND_APPID_ACL' in app.labels:
             return app.labels['HAPROXY_{0}_HTTP_FRONTEND_APPID_ACL']
@@ -299,6 +346,11 @@ class ConfigTemplater(object):
         if 'HAPROXY_{0}_HTTPS_FRONTEND_ACL' in app.labels:
             return app.labels['HAPROXY_{0}_HTTPS_FRONTEND_ACL']
         return self.HAPROXY_HTTPS_FRONTEND_ACL
+
+    def haproxy_https_frontend_acl_with_path(self, app):
+        if 'HAPROXY_{0}_HTTPS_FRONTEND_ACL_WITH_PATH' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTPS_FRONTEND_ACL_WITH_PATH']
+        return self.HAPROXY_HTTPS_FRONTEND_ACL_WITH_PATH
 
     def haproxy_backend_http_options(self, app):
         if 'HAPROXY_{0}_BACKEND_HTTP_OPTIONS' in app.labels:
@@ -364,6 +416,10 @@ def set_hostname(x, k, v):
     x.hostname = v
 
 
+def set_path(x, k, v):
+    x.path = v
+
+
 def set_sticky(x, k, v):
     x.sticky = string_to_bool(v)
 
@@ -402,6 +458,7 @@ def set_label(x, k, v):
 
 label_keys = {
     'HAPROXY_{0}_VHOST': set_hostname,
+    'HAPROXY_{0}_PATH': set_path,
     'HAPROXY_{0}_STICKY': set_sticky,
     'HAPROXY_{0}_REDIRECT_TO_HTTPS': set_redirect_http_to_https,
     'HAPROXY_{0}_SSL_CERT': set_sslCert,
@@ -450,6 +507,7 @@ class MarathonService(object):
         self.servicePort = servicePort
         self.backends = set()
         self.hostname = None
+        self.path = None
         self.sticky = False
         self.redirectHttpToHttps = False
         self.sslCert = None
@@ -874,6 +932,22 @@ def generateHttpVhostAcl(templater, app, backend):
         vhosts = app.hostname.split(',')
         acl_name = re.sub(r'[^a-zA-Z0-9\-]', '_', vhosts[0])
 
+        if app.path:
+            # Set the path ACL if it exists
+            logger.debug("adding path acl, path=%s", app.path)
+            http_frontend_acl = \
+                templater.haproxy_http_frontend_acl_only_with_path(app)
+            staging_http_frontends += http_frontend_acl.format(
+                cleanedUpHostname=acl_name,
+                path=app.path
+            )
+            https_frontend_acl = \
+                templater.haproxy_https_frontend_acl_only_with_path(app)
+            staging_https_frontends += https_frontend_acl.format(
+                cleanedUpHostname=acl_name,
+                path=app.path
+            )
+
         for vhost_hostname in vhosts:
             logger.debug("processing vhost %s", vhost_hostname)
             http_frontend_acl = templater.haproxy_http_frontend_acl_only(app)
@@ -883,20 +957,41 @@ def generateHttpVhostAcl(templater, app, backend):
             )
 
             # Tack on the SSL ACL as well
-            https_frontend_acl = templater.haproxy_https_frontend_acl(app)
-            staging_https_frontends += https_frontend_acl.format(
-                cleanedUpHostname=acl_name,
-                hostname=vhost_hostname,
-                appId=app.appId,
-                backend=backend
-            )
+            if app.path:
+                https_frontend_acl = \
+                    templater.haproxy_https_frontend_acl_with_path(app)
+                staging_https_frontends += https_frontend_acl.format(
+                    cleanedUpHostname=acl_name,
+                    hostname=vhost_hostname,
+                    path=app.path,
+                    appId=app.appId,
+                    backend=backend
+                )
+            else:
+                https_frontend_acl = templater.haproxy_https_frontend_acl(app)
+                staging_https_frontends += https_frontend_acl.format(
+                    cleanedUpHostname=acl_name,
+                    hostname=vhost_hostname,
+                    appId=app.appId,
+                    backend=backend
+                )
 
         # We've added the http acl lines, now route them to the same backend
-        http_frontend_route = templater.haproxy_http_frontend_routing_only(app)
-        staging_http_frontends += http_frontend_route.format(
-            cleanedUpHostname=acl_name,
-            backend=backend
-        )
+        if app.path:
+            http_frontend_route = \
+                templater.haproxy_http_frontend_routing_only_with_path(app)
+            staging_http_frontends += http_frontend_route.format(
+                cleanedUpHostname=acl_name,
+                backend=backend
+            )
+        else:
+            http_frontend_route = \
+                templater.haproxy_http_frontend_routing_only(app)
+            staging_http_frontends += http_frontend_route.format(
+                cleanedUpHostname=acl_name,
+                path=app.path,
+                backend=backend
+            )
 
     else:
         # A single hostname in the VHOST label
@@ -904,13 +999,24 @@ def generateHttpVhostAcl(templater, app, backend):
             "adding virtual host for app with hostname %s", app.hostname)
         acl_name = re.sub(r'[^a-zA-Z0-9\-]', '_', app.hostname)
 
-        http_frontend_acl = templater.haproxy_http_frontend_acl(app)
-        staging_http_frontends += http_frontend_acl.format(
-            cleanedUpHostname=acl_name,
-            hostname=app.hostname,
-            appId=app.appId,
-            backend=backend
-        )
+        if app.path:
+            http_frontend_acl = \
+                templater.haproxy_http_frontend_acl_with_path(app)
+            staging_http_frontends += http_frontend_acl.format(
+                cleanedUpHostname=acl_name,
+                hostname=app.hostname,
+                path=app.path,
+                appId=app.appId,
+                backend=backend
+            )
+        else:
+            http_frontend_acl = templater.haproxy_http_frontend_acl(app)
+            staging_http_frontends += http_frontend_acl.format(
+                cleanedUpHostname=acl_name,
+                hostname=app.hostname,
+                appId=app.appId,
+                backend=backend
+            )
 
         https_frontend_acl = templater.haproxy_https_frontend_acl(app)
         staging_https_frontends += https_frontend_acl.format(
