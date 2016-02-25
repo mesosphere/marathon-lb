@@ -169,6 +169,13 @@ The full list of labels which can be specified are:
     Ex: HAPROXY_0_VHOST = 'marathon.mesosphere.com'
     Ex: HAPROXY_0_VHOST = 'marathon.mesosphere.com,marathon'
 
+  HAPROXY_{n}_PATH
+    The HTTP path to match, starting at the beginning. To specify multiple paths,
+    pass a space separated list. The syntax matches that of the `path_beg` config
+    option in HAProxy. To use the path routing, you must also define a VHost.
+    Ex: HAPROXY_0_PATH = '/v2/api/derp'
+    Ex: HAPROXY_0_PATH = '-i /multiple /paths'
+
   HAPROXY_{n}_STICKY
     Enable sticky request routing for the service.
     Ex: HAPROXY_0_STICKY = true
@@ -302,12 +309,33 @@ own templates to the Docker image, or provide them at startup.
     This is the counterpart to HAPROXY_HTTP_FRONTEND_ACL_ONLY which
     glues the acl name to the appropriate backend.
 
+  HAPROXY_HTTP_FRONTEND_ACL_WITH_PATH
+    The ACL that glues a backend to the corresponding virtual host with path
+    of the HAPROXY_HTTP_FRONTEND_HEAD.
+
+  HAPROXY_HTTP_FRONTEND_ACL_ONLY_WITH_PATH
+    Define the ACL matching a particular hostname with path, but unlike
+    HAPROXY_HTTP_FRONTEND_ACL_WITH_PATH, only do the ACL portion. Does not glue
+    the ACL to the backend. This is useful only in the case of multiple
+    vhosts routing to the same backend
+
+  HAPROXY_HTTP_FRONTEND_ACL_ONLY_WITH_PATH
+    Same as HAPROXY_HTTP_FRONTEND_ACL_ONLY_WITH_PATH except for HTTPS.
+
+  HAPROXY_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH
+    This is the counterpart to HAPROXY_HTTP_FRONTEND_ACL_ONLY_WITH_PATH which
+    glues the acl names to the appropriate backend.
+
   HAPROXY_HTTP_FRONTEND_APPID_ACL
     The ACL that glues a backend to the corresponding app
     of the HAPROXY_HTTP_FRONTEND_APPID_HEAD.
 
   HAPROXY_HTTPS_FRONTEND_ACL
     The ACL that performs the SNI based hostname matching
+    for the HAPROXY_HTTPS_FRONTEND_HEAD.
+
+  HAPROXY_HTTPS_FRONTEND_ACL_WITH_PATH
+    The ACL that performs the SNI based hostname matching with path
     for the HAPROXY_HTTPS_FRONTEND_HEAD.
 
   HAPROXY_BACKEND_SERVER_OPTIONS
@@ -344,7 +372,7 @@ own templates to the Docker image, or provide them at startup.
       * healthCheckMaxConsecutiveFailures
       * healthCheckFalls is set to healthCheckMaxConsecutiveFailures + 1
       * healthCheckPortOptions is set to " port {healthCheckPort}"
-      
+
     Defaults to empty string.
     Example:
       check inter {healthCheckIntervalSeconds}s fall {healthCheckFalls}
@@ -382,16 +410,22 @@ HAPROXY_{n}_FRONTEND_HEAD
 HAPROXY_{n}_BACKEND_REDIRECT_HTTP_TO_HTTPS
 HAPROXY_{n}_BACKEND_HEAD
 HAPROXY_{n}_HTTP_FRONTEND_ACL
-HAPROXY_{n}_HTTPS_FRONTEND_ACL
+HAPROXY_{n}_HTTP_FRONTEND_ACL_ONLY
+HAPROXY_{n}_HTTP_FRONTEND_ROUTING_ONLY
+HAPROXY_{n}_HTTP_FRONTEND_ACL_WITH_PATH
+HAPROXY_{n}_HTTP_FRONTEND_ACL_ONLY_WITH_PATH
+HAPROXY_{n}_HTTPS_FRONTEND_ACL_ONLY_WITH_PATH
+HAPROXY_{n}_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH
 HAPROXY_{n}_HTTP_FRONTEND_APPID_ACL
+HAPROXY_{n}_HTTPS_FRONTEND_ACL
+HAPROXY_{n}_HTTPS_FRONTEND_ACL_WITH_PATH
 HAPROXY_{n}_BACKEND_HTTP_OPTIONS
-HAPROXY_{n}_BACKEND_TCP_HEALTHCHECK_OPTIONS
 HAPROXY_{n}_BACKEND_HTTP_HEALTHCHECK_OPTIONS
+HAPROXY_{n}_BACKEND_TCP_HEALTHCHECK_OPTIONS
 HAPROXY_{n}_BACKEND_STICKY_OPTIONS
-HAPROXY_{n}_FRONTEND_BACKEND_GLUE
-HAPROXY_{n}_BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS
-HAPROXY_{n}_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS
 HAPROXY_{n}_BACKEND_SERVER_OPTIONS
+HAPROXY_{n}_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS
+HAPROXY_{n}_FRONTEND_BACKEND_GLUE
 ```
 
 ## Zero downtime deployments
