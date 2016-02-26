@@ -147,6 +147,8 @@ The full list of labels which can be specified are:
 ```
   HAPROXY_GROUP
     The group of marathon-lb instances that point to the service.
+    This is a global group for all services running on different vhosts in a application
+    This can be overrided for each service port. If it is not overriden this will be default group.
     Load balancers with the group '*' will collect all groups.
 
   HAPROXY_DEPLOYMENT_GROUP
@@ -200,6 +202,28 @@ The full list of labels which can be specified are:
     Bind to the specific port for the service.
     This overrides the servicePort which has to be unique.
     Ex: HAPROXY_0_PORT = 80
+
+  HAPROXY_{n}_GROUP
+    Haproxy group per service. This helps us have different HA Proxy groups per service port.
+    This overrides HAPROXY_GROUP for the particular service.
+    If you have both external and internal services running on same set of instances on 
+    different ports, you can use this feature to add them to different haproxy configs.
+    Ex: HAPROXY_0_GROUP = 'external'
+        HAPROXY_1_GROUP = 'internal'
+
+    Now if you run marathon_lb with --group external, it just adds the service on HAPROXY_0_PORT 
+    (or first service port incase HAPROXY_0_HOST is not configured) to haproxy config and similarly 
+    if you run it with --group internal, it adds service on HAPROXY_1_PORT to haproxy config.
+    If the configuration is a combination of HAPROXY_GROUP and HAPROXY_{n}_GROUP, 
+    the more specific definition takes precedence.
+    Ex: HAPROXY_0_GROUP = 'external'
+        HAPROXY_GROUP   = 'internal'
+
+    Considering the above example where the configuration is hybrid, Service running on 
+    HAPROXY_0_PORT is associated with just 'external' haproxy group and not 'internal' group.
+    And since there is no Haproxy group mentioned for second service (HAPROXY_1_GROUP not defined) 
+    it falls back to default HAPROXY_GROUP and gets associated with 'internal' group.
+
 
   HAPROXY_{n}_MODE
     Set the connection mode to either TCP or HTTP. The default is TCP.
