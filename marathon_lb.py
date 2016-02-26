@@ -756,7 +756,7 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
 
         if app.healthCheck:
             health_check_options = None
-            if app.mode == 'tcp':
+            if app.mode == 'tcp' or app.healthCheck['protocol'] == 'TCP':
                 health_check_options = templater \
                     .haproxy_backend_tcp_healthcheck_options(app)
             elif app.mode == 'http':
@@ -805,7 +805,7 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
             healthCheckOptions = None
             if app.healthCheck:
                 server_health_check_options = None
-                if app.mode == 'tcp':
+                if app.mode == 'tcp' or app.healthCheck['protocol'] == 'TCP':
                     server_health_check_options = templater \
                         .haproxy_backend_server_tcp_healthcheck_options(app)
                 elif app.mode == 'http':
