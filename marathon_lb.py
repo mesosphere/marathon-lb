@@ -691,8 +691,13 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
 
     for app in sorted(apps, key=attrgetter('appId', 'servicePort')):
         # App only applies if we have it's group
-        if not has_group(groups, app.haproxy_groups):
-            continue
+        ## Check if there is a haproxy group associated with service group, if not fallback to original HAPROXY group. This is added for backward compatability with HAPROXY_GROUP 
+	if app.haproxy_groups:
+            if not has_group(groups, app.haproxy_groups):
+                continue
+	else:
+	    if not has_group(groups, app.groups):
+		continue
 
         logger.debug("configuring app %s", app.appId)
         backend = app.appId[1:].replace('/', '_') + '_' + str(app.servicePort)
