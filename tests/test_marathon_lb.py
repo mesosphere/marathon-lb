@@ -220,7 +220,7 @@ frontend nginx_10000
 backend nginx_10000
   balance roundrobin
   mode tcp
-  server 1_1_1_1_1024 1.1.1.1:1024
+  server 1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -636,5 +636,62 @@ backend nginx_10000
   option  httpchk GET /
   timeout check 10s
   server 1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11 port 1024
+'''
+        self.assertMultiLineEqual(config, expected)
+
+    def test_config_simple_app_tcp_healthcheck(self):
+        apps = dict()
+        groups = ['external']
+        bind_http_https = True
+        ssl_certs = ""
+        templater = marathon_lb.ConfigTemplater()
+
+        healthCheck = {
+            "protocol": "TCP",
+            "portIndex": 0,
+            "gracePeriodSeconds": 10,
+            "intervalSeconds": 2,
+            "timeoutSeconds": 10,
+            "maxConsecutiveFailures": 10,
+            "ignoreHttp1xx": False
+        }
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app.groups = ['external']
+        app.add_backend("1.1.1.1", 1024, False)
+        app.hostname = "test.example.com"
+        apps = [app]
+
+        config = marathon_lb.config(apps, groups, bind_http_https,
+                                    ssl_certs, templater)
+        expected = self.base_config + '''
+frontend marathon_http_in
+  bind *:80
+  mode http
+  acl host_test_example_com hdr(host) -i test.example.com
+  use_backend nginx_10000 if host_test_example_com
+
+frontend marathon_http_appid_in
+  bind *:9091
+  mode http
+  acl app__nginx hdr(x-marathon-app-id) -i /nginx
+  use_backend nginx_10000 if app__nginx
+
+frontend marathon_https_in
+  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  mode http
+  use_backend nginx_10000 if { ssl_fc_sni test.example.com }
+
+frontend nginx_10000
+  bind *:10000
+  mode http
+  use_backend nginx_10000
+
+backend nginx_10000
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  server 1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
