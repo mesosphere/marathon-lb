@@ -455,9 +455,13 @@ def set_balance(x, k, v):
 def set_label(x, k, v):
     x.labels[k] = v
 
+def set_group(x,k,v):
+    x.haproxy_groups=v.split(',')
+
 
 label_keys = {
     'HAPROXY_{0}_VHOST': set_hostname,
+    'HAPROXY_{0}_GROUP': set_group,
     'HAPROXY_{0}_PATH': set_path,
     'HAPROXY_{0}_STICKY': set_sticky,
     'HAPROXY_{0}_REDIRECT_TO_HTTPS': set_redirect_http_to_https,
@@ -507,6 +511,7 @@ class MarathonService(object):
         self.servicePort = servicePort
         self.backends = set()
         self.hostname = None
+        self.haproxy_groups = frozenset()
         self.path = None
         self.sticky = False
         self.redirectHttpToHttps = False
@@ -686,7 +691,7 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
 
     for app in sorted(apps, key=attrgetter('appId', 'servicePort')):
         # App only applies if we have it's group
-        if not has_group(groups, app.groups):
+        if not has_group(groups, app.haproxy_groups):
             continue
 
         logger.debug("configuring app %s", app.appId)
