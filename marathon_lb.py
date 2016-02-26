@@ -455,8 +455,8 @@ def set_balance(x, k, v):
 def set_label(x, k, v):
     x.labels[k] = v
 
-def set_group(x,k,v):
-    x.haproxy_groups=v.split(',')
+def set_group(x, k, v):
+    x.haproxy_groups = v.split(',')
 
 
 label_keys = {
@@ -691,13 +691,15 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
 
     for app in sorted(apps, key=attrgetter('appId', 'servicePort')):
         # App only applies if we have it's group
-        ## Check if there is a haproxy group associated with service group, if not fallback to original HAPROXY group. This is added for backward compatability with HAPROXY_GROUP 
-	if app.haproxy_groups:
+        # Check if there is a haproxy group associated with service group, 
+	# if not fallback to original HAPROXY group.
+	# This is added for backward compatability with HAPROXY_GROUP 
+        if app.haproxy_groups:
             if not has_group(groups, app.haproxy_groups):
                 continue
-	else:
+        else:
 	    if not has_group(groups, app.groups):
-		continue
+                continue
 
         logger.debug("configuring app %s", app.appId)
         backend = app.appId[1:].replace('/', '_') + '_' + str(app.servicePort)
