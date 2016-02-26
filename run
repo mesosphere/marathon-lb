@@ -65,7 +65,7 @@ case "$MODE" in
       exit 1
     fi
     echo "Using $URL as event callback-url"
-    ARGS="-l :8080 -u '$URL'"
+    ARGS="-u $URL"
     ;;
   *)
     echo "Unknown mode $MODE. Synopsis: $0 poll|sse|event [marathon_lb.py args]" >&2
