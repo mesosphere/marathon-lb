@@ -217,7 +217,10 @@ class ConfigTemplater(object):
   check inter {healthCheckIntervalSeconds}s fall {healthCheckFalls}\
 {healthCheckPortOptions}
 '''
-    HAPROXY_BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS = ''
+    HAPROXY_BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS = '''\
+  check inter {healthCheckIntervalSeconds}s fall {healthCheckFalls}\
+{healthCheckPortOptions}
+'''
 
     HAPROXY_FRONTEND_BACKEND_GLUE = '''\
   use_backend {backend}
@@ -756,7 +759,7 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
 
         if app.healthCheck:
             health_check_options = None
-            if app.mode == 'tcp':
+            if app.mode == 'tcp' or app.healthCheck['protocol'] == 'TCP':
                 health_check_options = templater \
                     .haproxy_backend_tcp_healthcheck_options(app)
             elif app.mode == 'http':
@@ -805,7 +808,7 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
             healthCheckOptions = None
             if app.healthCheck:
                 server_health_check_options = None
-                if app.mode == 'tcp':
+                if app.mode == 'tcp' or app.healthCheck['protocol'] == 'TCP':
                     server_health_check_options = templater \
                         .haproxy_backend_server_tcp_healthcheck_options(app)
                 elif app.mode == 'http':
