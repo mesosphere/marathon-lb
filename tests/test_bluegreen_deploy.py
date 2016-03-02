@@ -11,6 +11,7 @@ class Arguments:
     dry_run = True
     initial_instances = 1
     marathon_auth_credential_file = None
+    auth_credentials = None
 
 
 class MyResponse:
@@ -26,7 +27,6 @@ class MyResponse:
 
 
 class TestBluegreenDeploy(unittest.TestCase):
-    from mock import patch
 
     @mock.patch('requests.get',
                 mock.Mock(side_effect=lambda k, auth:
