@@ -53,7 +53,10 @@ option `template-url` to a tarball containing a directory `templates/`.
 See [comments in script](marathon_lb.py) on how to name those.
 
 ### Docker
-Synopsis: `docker run mesosphere/marathon-lb event|poll ...`
+Synopsis: `docker run -e PORT=$portnumber mesosphere/marathon-lb event|poll ...`
+
+You must set `PORT` environment variable to allow haproxy bind to this port.
+Syntax: `docker run PORT=9090 mesosphere/marathon-lb sse [other args]`
 
 You can pass in your own certificates for the SSL frontend by setting
 the `HAPROXY_SSL_CERT` environment variable.
@@ -85,7 +88,12 @@ You can also run the update script directly.
 To generate an HAProxy configuration from Marathon running at `localhost:8080` with the `marathon_lb.py` script, run:
 
 ``` console
-$ ./marathon_lb.py --marathon http://localhost:8080 --haproxy-config /etc/haproxy/haproxy.cfg --group external
+$ ./marathon_lb.py --marathon http://localhost:8080 --group external
+```
+
+It is possible to pass `--marathon-auth-credentials=` option if your Marathon requires authentication:
+```
+$ ./marathon_lb.py --marathon http://localhost:8080 --marathon-auth-credentials=admin:password
 ```
 
 This will refresh `haproxy.cfg`, and if there were any changes, then it will
@@ -103,7 +111,7 @@ $ ./marathon_lb.py --help
 You can provide your SSL certificate paths to be placed in frontend marathon_https_in section with `--ssl-certs`.
 
 ``` console
-$ ./marathon_lb.py --marathon http://localhost:8080 --haproxy-config /etc/haproxy/haproxy.cfg --group external --ssl-certs /etc/ssl/site1.co,/etc/ssl/site2.co
+$ ./marathon_lb.py --marathon http://localhost:8080 --group external --ssl-certs /etc/ssl/site1.co,/etc/ssl/site2.co
 ```
 
 If you are using the script directly, you have two options:
@@ -122,7 +130,7 @@ If you are using the provided `run` script or Docker image, you have three optio
 You can skip the configuration file validation (via calling HAProxy service) process if you don't have HAProxy installed. This is especially useful if you are running HAProxy on Docker containers.
 
 ``` console
-$ ./marathon_lb.py --marathon http://localhost:8080 --haproxy-config /etc/haproxy/haproxy.cfg --group external --skip-validation
+$ ./marathon_lb.py --marathon http://localhost:8080 --group external --skip-validation
 ```
 
 

@@ -26,23 +26,32 @@ def set_marathon_auth_args(parser):
                         help="Path to file containing a user/pass for "
                         "the Marathon HTTP API in the format of 'user:pass'."
                         )
+    parser.add_argument("--marathon-auth-credentials",
+                        help="user/pass for the Marathon HTTP API in the "
+                             "format of 'user:pass'.")
 
     return parser
 
 
 def get_marathon_auth_params(args):
-    if args.marathon_auth_credential_file is None:
-        return None
+    marathon_auth = None
+    if args.marathon_auth_credential_file:
+        with open(args.marathon_auth_credential_file, 'r') as f:
+            line = f.readline().rstrip('\r\n')
 
-    line = None
-    with open(args.marathon_auth_credential_file, 'r') as f:
-        line = f.readline().rstrip('\r\n')
+        if line:
+            marathon_auth = tuple(line.split(':'))
+    elif args.marathon_auth_credentials:
+        marathon_auth = \
+            tuple(args.marathon_auth_credentials.split(':'))
 
-    if line is not None:
-        splat = line.split(':')
-        return (splat[0], splat[1])
+    if marathon_auth and len(marathon_auth) != 2:
+        print(
+            "Please provide marathon credentials in user:pass format"
+        )
+        sys.exit(1)
 
-    return None
+    return marathon_auth
 
 
 def set_logging_args(parser):
