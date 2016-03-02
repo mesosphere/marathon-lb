@@ -69,6 +69,7 @@ import time
 import dateutil.parser
 import math
 import threading
+import random
 
 
 class ConfigTemplater(object):
@@ -1460,10 +1461,6 @@ def process_sse_events(marathon, config_file, groups,
                     data = json.loads(real_event_data)
                     logger.info(
                         "received event of type {0}".format(data['eventType']))
-                    if data['eventType'] == 'event_stream_detached':
-                        # Need to force reload and re-attach to stream
-                        processor.reset_from_tasks()
-                        return
                     processor.handle_event(data)
             else:
                 logger.info("skipping empty message")
@@ -1527,7 +1524,7 @@ if __name__ == '__main__':
             except:
                 logger.exception("Caught exception")
                 logger.error("Reconnecting...")
-            time.sleep(1)
+            time.sleep(random.random() * 3)
     else:
         # Generate base config
         regenerate_config(get_apps(marathon), args.haproxy_config, args.group,
