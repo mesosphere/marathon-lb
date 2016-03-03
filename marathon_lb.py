@@ -163,20 +163,20 @@ class ConfigTemplater(object):
 
     HAPROXY_HTTP_FRONTEND_ACL_WITH_PATH = '''\
   acl host_{cleanedUpHostname} hdr(host) -i {hostname}
-  acl path_{cleanedUpHostname} path_beg {path}
-  use_backend {backend} if host_{cleanedUpHostname} path_{cleanedUpHostname}
+  acl path_{backend} path_beg {path}
+  use_backend {backend} if host_{cleanedUpHostname} path_{backend}
 '''
 
     HAPROXY_HTTP_FRONTEND_ACL_ONLY_WITH_PATH = '''\
-  acl path_{cleanedUpHostname} path_beg {path}
+  acl path_{backend} path_beg {path}
 '''
 
     HAPROXY_HTTPS_FRONTEND_ACL_ONLY_WITH_PATH = '''\
-  acl path_{cleanedUpHostname} path_beg {path}
+  acl path_{backend} path_beg {path}
 '''
 
     HAPROXY_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH = '''\
-  use_backend {backend} if host_{cleanedUpHostname} path_{cleanedUpHostname}
+  use_backend {backend} if host_{cleanedUpHostname} path_{backend}
 '''
 
     HAPROXY_HTTP_FRONTEND_APPID_ACL = '''\
@@ -189,7 +189,7 @@ class ConfigTemplater(object):
 '''
 
     HAPROXY_HTTPS_FRONTEND_ACL_WITH_PATH = '''\
-  use_backend {backend} if {{ ssl_fc_sni {hostname} }} path_{cleanedUpHostname}
+  use_backend {backend} if {{ ssl_fc_sni {hostname} }} path_{backend}
 '''
 
     HAPROXY_BACKEND_HTTP_OPTIONS = '''\
@@ -955,14 +955,14 @@ def generateHttpVhostAcl(templater, app, backend):
             http_frontend_acl = \
                 templater.haproxy_http_frontend_acl_only_with_path(app)
             staging_http_frontends += http_frontend_acl.format(
-                cleanedUpHostname=acl_name,
-                path=app.path
+                path=app.path,
+                backend=backend
             )
             https_frontend_acl = \
                 templater.haproxy_https_frontend_acl_only_with_path(app)
             staging_https_frontends += https_frontend_acl.format(
-                cleanedUpHostname=acl_name,
-                path=app.path
+                path=app.path,
+                backend=backend
             )
 
         for vhost_hostname in vhosts:
