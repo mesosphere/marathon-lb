@@ -375,8 +375,8 @@ frontend marathon_http_in
   bind *:80
   mode http
   acl host_test_example_com hdr(host) -i test.example.com
-  acl path_test_example_com path_beg /some/path
-  use_backend nginx_10000 if host_test_example_com path_test_example_com
+  acl path_nginx_10000 path_beg /some/path
+  use_backend nginx_10000 if host_test_example_com path_nginx_10000
 
 frontend marathon_http_appid_in
   bind *:9091
@@ -435,10 +435,10 @@ backend nginx_10000
 frontend marathon_http_in
   bind *:80
   mode http
-  acl path_test_example_com path_beg /some/path
+  acl path_nginx_10000 path_beg /some/path
   acl host_test_example_com hdr(host) -i test.example.com
   acl host_test_example_com hdr(host) -i test
-  use_backend nginx_10000 if host_test_example_com path_test_example_com
+  use_backend nginx_10000 if host_test_example_com path_nginx_10000
 
 frontend marathon_http_appid_in
   bind *:9091
@@ -449,10 +449,10 @@ frontend marathon_http_appid_in
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
   mode http
-  acl path_test_example_com path_beg /some/path
+  acl path_nginx_10000 path_beg /some/path
   use_backend nginx_10000 if { ssl_fc_sni test.example.com } ''' + \
-                                      '''path_test_example_com
-  use_backend nginx_10000 if { ssl_fc_sni test } path_test_example_com
+                                      '''path_nginx_10000
+  use_backend nginx_10000 if { ssl_fc_sni test } path_nginx_10000
 
 frontend nginx_10000
   bind *:10000
