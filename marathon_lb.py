@@ -980,7 +980,6 @@ def generateHttpVhostAcl(templater, app, backend):
                 staging_https_frontends += https_frontend_acl.format(
                     cleanedUpHostname=acl_name,
                     hostname=vhost_hostname,
-                    path=app.path,
                     appId=app.appId,
                     backend=backend
                 )
@@ -1026,6 +1025,20 @@ def generateHttpVhostAcl(templater, app, backend):
                 appId=app.appId,
                 backend=backend
             )
+            https_frontend_acl = \
+                templater.haproxy_https_frontend_acl_only_with_path(app)
+            staging_https_frontends += https_frontend_acl.format(
+                path=app.path,
+                backend=backend
+            )
+            https_frontend_acl = \
+                templater.haproxy_https_frontend_acl_with_path(app)
+            staging_https_frontends += https_frontend_acl.format(
+                cleanedUpHostname=acl_name,
+                hostname=app.hostname,
+                appId=app.appId,
+                backend=backend
+            )
         else:
             http_frontend_acl = templater.haproxy_http_frontend_acl(app)
             staging_http_frontends += http_frontend_acl.format(
@@ -1034,14 +1047,13 @@ def generateHttpVhostAcl(templater, app, backend):
                 appId=app.appId,
                 backend=backend
             )
-
-        https_frontend_acl = templater.haproxy_https_frontend_acl(app)
-        staging_https_frontends += https_frontend_acl.format(
-            cleanedUpHostname=acl_name,
-            hostname=app.hostname,
-            appId=app.appId,
-            backend=backend
-        )
+            https_frontend_acl = templater.haproxy_https_frontend_acl(app)
+            staging_https_frontends += https_frontend_acl.format(
+                cleanedUpHostname=acl_name,
+                hostname=app.hostname,
+                appId=app.appId,
+                backend=backend
+            )
 
     return (staging_http_frontends, staging_https_frontends)
 
