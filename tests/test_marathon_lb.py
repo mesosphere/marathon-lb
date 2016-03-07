@@ -387,7 +387,8 @@ frontend marathon_http_appid_in
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
   mode http
-  use_backend nginx_10000 if { ssl_fc_sni test.example.com }
+  acl path_nginx_10000 path_beg /some/path
+  use_backend nginx_10000 if { ssl_fc_sni test.example.com } path_nginx_10000
 
 frontend nginx_10000
   bind *:10000
