@@ -1303,6 +1303,7 @@ class MarathonEventProcessor(object):
         self.__condition = threading.Condition()
         self.__thread = threading.Thread(target=self.do_reset)
         self.__pending_reset = False
+        self.__stop = False
         self.__thread.start()
 
         # Fetch the base data
@@ -1310,8 +1311,12 @@ class MarathonEventProcessor(object):
 
     def do_reset(self):
         with self.__condition:
+            logger.info('starting event processor thread')
             while True:
                 self.__condition.acquire()
+                if self.__stop:
+                    logger.info('stopping event processor thread')
+                    return
                 if not self.__pending_reset:
                     self.__condition.wait()
                 self.__pending_reset = False
@@ -1335,6 +1340,12 @@ class MarathonEventProcessor(object):
                         e.errno, e.strerror))
                 except:
                     print("Unexpected error:", sys.exc_info()[0])
+
+    def stop(self):
+        self.__condition.acquire()
+        self.__stop = True
+        self.__condition.notify()
+        self.__condition.release()
 
     def reset_from_tasks(self):
         self.__condition.acquire()
@@ -1418,23 +1429,26 @@ def run_server(marathon, listen_addr, callback_url, config_file, groups,
                                        groups,
                                        bind_http_https,
                                        ssl_certs)
-    marathon.add_subscriber(callback_url)
+    try:
+        marathon.add_subscriber(callback_url)
 
-    # TODO(cmaloney): Switch to a sane http server
-    # TODO(cmaloney): Good exception catching, etc
-    def wsgi_app(env, start_response):
-        length = int(env['CONTENT_LENGTH'])
-        data = env['wsgi.input'].read(length)
-        processor.handle_event(json.loads(data.decode('utf-8')))
-        # TODO(cmaloney): Make this have a simple useful webui for debugging /
-        # monitoring
-        start_response('200 OK', [('Content-Type', 'text/html')])
+        # TODO(cmaloney): Switch to a sane http server
+        # TODO(cmaloney): Good exception catching, etc
+        def wsgi_app(env, start_response):
+            length = int(env['CONTENT_LENGTH'])
+            data = env['wsgi.input'].read(length)
+            processor.handle_event(json.loads(data.decode('utf-8')))
+            # TODO(cmaloney): Make this have a simple useful webui for
+            # debugging / monitoring
+            start_response('200 OK', [('Content-Type', 'text/html')])
 
-        return ["Got it\n".encode('utf-8')]
+            return ["Got it\n".encode('utf-8')]
 
-    listen_uri = parse.urlparse(listen_addr)
-    httpd = make_server(listen_uri.hostname, listen_uri.port, wsgi_app)
-    httpd.serve_forever()
+        listen_uri = parse.urlparse(listen_addr)
+        httpd = make_server(listen_uri.hostname, listen_uri.port, wsgi_app)
+        httpd.serve_forever()
+    finally:
+        processor.stop()
 
 
 def clear_callbacks(marathon, callback_url):
@@ -1449,25 +1463,29 @@ def process_sse_events(marathon, config_file, groups,
                                        groups,
                                        bind_http_https,
                                        ssl_certs)
-    events = marathon.get_event_stream()
-    for event in events:
-        try:
-            # logger.info("received event: {0}".format(event))
-            # marathon might also send empty messages as keepalive...
-            if (event.data.strip() != ''):
-                # marathon sometimes sends more than one json per event
-                # e.g. {}\r\n{}\r\n\r\n
-                for real_event_data in re.split(r'\r\n', event.data):
-                    data = json.loads(real_event_data)
-                    logger.info(
-                        "received event of type {0}".format(data['eventType']))
-                    processor.handle_event(data)
-            else:
-                logger.info("skipping empty message")
-        except:
-            print(event.data)
-            print("Unexpected error:", sys.exc_info()[0])
-            raise
+    try:
+        events = marathon.get_event_stream()
+        for event in events:
+            try:
+                # logger.info("received event: {0}".format(event))
+                # marathon might also send empty messages as keepalive...
+                if (event.data.strip() != ''):
+                    # marathon sometimes sends more than one json per event
+                    # e.g. {}\r\n{}\r\n\r\n
+                    for real_event_data in re.split(r'\r\n', event.data):
+                        data = json.loads(real_event_data)
+                        logger.info(
+                            "received event of type {0}"
+                            .format(data['eventType']))
+                        processor.handle_event(data)
+                else:
+                    logger.info("skipping empty message")
+            except:
+                print(event.data)
+                print("Unexpected error:", sys.exc_info()[0])
+                raise
+    finally:
+        processor.stop()
 
 
 if __name__ == '__main__':
