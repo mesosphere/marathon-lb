@@ -191,7 +191,7 @@ The full list of labels which can be specified are:
     Ex: HAPROXY_0_STICKY = true
 
   HAPROXY_{n}_REDIRECT_TO_HTTPS
-    Redirect HTTP traffic to HTTPS.
+    Redirect HTTP traffic to HTTPS. Requires at least a VHost be set.
     Ex: HAPROXY_0_REDIRECT_TO_HTTPS = true
 
   HAPROXY_{n}_SSL_CERT
@@ -277,6 +277,10 @@ own templates to the Docker image, or provide them at startup.
   HAPROXY_BACKEND_REDIRECT_HTTP_TO_HTTPS
     This template is used with backends where the
     HAPROXY_{n}_REDIRECT_TO_HTTPS label is defined.
+
+  HAPROXY_BACKEND_REDIRECT_HTTP_TO_HTTPS_WITH_PATH
+    Same as HAPROXY_BACKEND_REDIRECT_HTTP_TO_HTTPS,
+    but includes a path.
 
   HAPROXY_BACKEND_HTTP_OPTIONS
     Sets HTTP headers, for example X-Forwarded-For and X-Forwarded-Proto.
