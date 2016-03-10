@@ -53,10 +53,10 @@ option `template-url` to a tarball containing a directory `templates/`.
 See [comments in script](marathon_lb.py) on how to name those.
 
 ### Docker
-Synopsis: `docker run -e PORT=$portnumber mesosphere/marathon-lb event|poll ...`
+Synopsis: `docker run -e PORTS=$portnumber --net=host mesosphere/marathon-lb sse|event|poll ...`
 
-You must set `PORT` environment variable to allow haproxy bind to this port.
-Syntax: `docker run PORT=9090 mesosphere/marathon-lb sse [other args]`
+You must set `PORTS` environment variable to allow haproxy bind to this port.
+Syntax: `docker run -e PORTS=9090 mesosphere/marathon-lb sse [other args]`
 
 You can pass in your own certificates for the SSL frontend by setting
 the `HAPROXY_SSL_CERT` environment variable.
