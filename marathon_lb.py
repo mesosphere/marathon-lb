@@ -1610,7 +1610,9 @@ if __name__ == '__main__':
         finally:
             clear_callbacks(marathon, callback_url)
     elif args.sse:
+        backoff = 3
         while True:
+            stream_started = time.time()
             try:
                 process_sse_events(marathon,
                                    args.haproxy_config,
@@ -1620,7 +1622,13 @@ if __name__ == '__main__':
             except:
                 logger.exception("Caught exception")
                 logger.error("Reconnecting...")
-            time.sleep(random.random() * 3)
+                backoff = backoff * 1.5
+                if backoff > 300:
+                    backoff = 300
+            # Reset the backoff if it's been more than 10 minutes
+            if time.time() - stream_started > 600:
+                backoff = 3
+            time.sleep(random.random() * backoff)
     else:
         # Generate base config
         regenerate_config(get_apps(marathon), args.haproxy_config, args.group,
