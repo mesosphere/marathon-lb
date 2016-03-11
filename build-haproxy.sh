@@ -25,10 +25,11 @@ make -j4 \
   USE_LINUX_SPLICE=1 \
   USE_LINUX_TPROXY=1 \
   USE_OPENSSL=1 \
+  USE_DL=1 \
   USE_LUA=1 \
   LUA_LIB=/usr/local/lib/ \
   LUA_INC=/usr/local/include/ \
-  LDFLAGS="-lcrypt  -lssl -lcrypto -L/usr/local/lib/ -llua -lm -L/usr/lib -lpcreposix -lpcre -ldl"
+  LDFLAGS="-lcrypt  -lssl -lcrypto -L/usr/local/lib/ -llua -lm -L/usr/lib -lpcreposix -lpcre"
 make -j4 install LDFLAGS="-lcrypt  -lssl -lcrypto -L/usr/local/lib/ -llua -lm -L/usr/lib -lpcreposix -lpcre -ldl"
 
 # Clean up
