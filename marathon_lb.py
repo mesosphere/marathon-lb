@@ -1395,7 +1395,8 @@ class MarathonEventProcessor(object):
                     logger.info('stopping event processor thread')
                     return
                 if not self.__pending_reset:
-                    self.__condition.wait()
+                    if not self.__condition.wait(300):
+                        logger.info('condition wait expired')
                 self.__pending_reset = False
                 self.__condition.release()
 
