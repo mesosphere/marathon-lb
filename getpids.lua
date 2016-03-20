@@ -3,11 +3,10 @@
 -- the unix `pidof` command.
 -- :)
 
-function os.capture(cmd, raw)
+function os.capture(cmd)
   local f = assert(io.popen(cmd, 'r'))
   local s = assert(f:read('*a'))
   f:close()
-  if raw then return s end
   s = string.gsub(s, '^%s+', '')
   s = string.gsub(s, '%s+$', '')
   s = string.gsub(s, '[\n\r]+', ' ')
@@ -15,7 +14,7 @@ function os.capture(cmd, raw)
 end
 
 core.register_service("getpids", "http", function(applet)
-  response = os.capture("pidof haproxy", false)
+  local response = os.capture("pidof haproxy", false)
   applet:set_status(200)
   applet:add_header("content-length", string.len(response))
   applet:add_header("content-type", "text/plain")
