@@ -13,7 +13,7 @@ make -j4 install LUA_LIB_NAME=lua53
 
 # Build HAProxy
 cd /usr/src
-wget http://www.haproxy.org/download/1.6/src/haproxy-1.6.3.tar.gz
+wget http://www.haproxy.org/download/1.6/src/haproxy-1.6.4.tar.gz
 tar xf haproxy-*.tar.gz
 cd haproxy-*
 make -j4 \
