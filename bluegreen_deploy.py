@@ -125,7 +125,7 @@ def find_tasks_to_kill(tasks, hostports):
     return list(tasks_to_kill)
 
 
-def check_if_tasks_drained(args, app, existing_app):
+def check_if_tasks_drained(args, app, existing_app, step_started_at):
     time.sleep(args.step_delay)
     url = args.marathon + "/v2/apps" + existing_app['id']
     response = requests.get(url, auth=get_marathon_auth_params(args))
@@ -165,19 +165,21 @@ def check_if_tasks_drained(args, app, existing_app):
             response = requests.get(nexturl + "/_haproxy_getpids")
             response.raise_for_status()
             pids = response.text.split()
-            if len(pids) > 1:
+            if len(pids) > 1 and time.time() - step_started_at < args.max_wait:
                 # HAProxy has not finished reloading
                 logger.info("Waiting for {} pids on {}"
                             .format(len(pids), nexturl))
                 return check_if_tasks_drained(args,
                                               app,
-                                              existing_app)
+                                              existing_app,
+                                              step_started_at)
         except requests.exceptions.RequestException as e:
             logger.exception("Caught exception when retrieving HAProxy"
                              " stats from " + nexturl)
             return check_if_tasks_drained(args,
                                           app,
-                                          existing_app)
+                                          existing_app,
+                                          step_started_at)
 
     backends = []
     f = StringIO(csv_data)
@@ -206,7 +208,8 @@ def check_if_tasks_drained(args, app, existing_app):
         # HAProxy hasn't updated yet, try again
         return check_if_tasks_drained(args,
                                       app,
-                                      existing_app)
+                                      existing_app,
+                                      step_started_at)
 
     up_backends = \
         [b for b in backends if b[hmap['status']] == 'UP']
@@ -214,7 +217,8 @@ def check_if_tasks_drained(args, app, existing_app):
         # Wait until we're in a healthy state
         return check_if_tasks_drained(args,
                                       app,
-                                      existing_app)
+                                      existing_app,
+                                      step_started_at)
 
     # Double check that current draining backends are finished serving requests
     draining_backends = \
@@ -224,7 +228,8 @@ def check_if_tasks_drained(args, app, existing_app):
         # No backends have started draining yet
         return check_if_tasks_drained(args,
                                       app,
-                                      existing_app)
+                                      existing_app,
+                                      step_started_at)
 
     for backend in draining_backends:
         # Verify that the backends have no sessions or pending connections.
@@ -233,7 +238,8 @@ def check_if_tasks_drained(args, app, existing_app):
             # Backends are not yet drained.
             return check_if_tasks_drained(args,
                                           app,
-                                          existing_app)
+                                          existing_app,
+                                          step_started_at)
 
     # If we made it here, all the backends are drained and we can start
     # slaughtering tasks, with prejudice
@@ -283,7 +289,8 @@ def check_if_tasks_drained(args, app, existing_app):
 
         return check_if_tasks_drained(args,
                                       app,
-                                      existing_app)
+                                      existing_app,
+                                      time.time())
     return False
 
 
@@ -298,7 +305,8 @@ def start_deployment(args, app, existing_app, resuming):
     if existing_app is not None:
         return check_if_tasks_drained(args,
                                       app,
-                                      existing_app)
+                                      existing_app,
+                                      time.time())
     return False
 
 
@@ -411,7 +419,8 @@ def get_arg_parser():
                         action="store_true"
                         )
     parser.add_argument("--step-delay", "-s",
-                        help="Delay between each successive deployment step",
+                        help="Delay (in seconds) between each successive"
+                        " deployment step",
                         type=int, default=5
                         )
     parser.add_argument("--initial-instances", "-i",
@@ -421,6 +430,11 @@ def get_arg_parser():
     parser.add_argument("--resume", "-r",
                         help="Resume from a previous deployment",
                         action="store_true"
+                        )
+    parser.add_argument("--max-wait", "-w",
+                        help="Maximum amount of time (in seconds) to wait"
+                        " for HAProxy to drain connections",
+                        type=int, default=300
                         )
     parser = set_logging_args(parser)
     parser = set_marathon_auth_args(parser)
