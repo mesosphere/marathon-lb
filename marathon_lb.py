@@ -48,7 +48,6 @@ from shutil import move
 from tempfile import mkstemp
 from textwrap import dedent
 from wsgiref.simple_server import make_server
-from sseclient import SSEClient
 from six.moves.urllib import parse
 from itertools import cycle
 from common import *
@@ -650,7 +649,26 @@ class Marathon(object):
         url = self.host+"/v2/events"
         logger.info(
             "SSE Active, trying fetch events from from {0}".format(url))
-        return SSEClient(url, auth=self.__auth)
+
+        headers = {
+            'Cache-Control': 'no-cache',
+            'Accept': 'text/event-stream'
+        }
+
+        resp = requests.get(url, stream=True,
+                            headers=headers, auth=self.__auth)
+
+        class Event(object):
+            def __init__(self, data):
+                self.data = data
+
+        for line in resp.iter_lines():
+            if line.strip() != '':
+                for real_event_data in re.split(r'\r\n',
+                                                line.decode('utf-8')):
+                    if real_event_data[:6] == "data: ":
+                        event = Event(data=real_event_data[6:])
+                        yield event
 
     @property
     def host(self):
@@ -1622,10 +1640,10 @@ if __name__ == '__main__':
                                    args.ssl_certs)
             except:
                 logger.exception("Caught exception")
-                logger.error("Reconnecting...")
                 backoff = backoff * 1.5
                 if backoff > 300:
                     backoff = 300
+                logger.error("Reconnecting in {}s...", backoff)
             # Reset the backoff if it's been more than 10 minutes
             if time.time() - stream_started > 600:
                 backoff = 3
