@@ -17,6 +17,7 @@ class TestMarathonUpdateHaproxy(unittest.TestCase):
   server-state-file global
   server-state-base /var/state/haproxy/
   lua-load /marathon-lb/getpids.lua
+  lua-load /marathon-lb/getconfig.lua
 defaults
   load-server-state-from-file global
   log               global
@@ -42,6 +43,8 @@ listen stats
   monitor-uri /_haproxy_health_check
   acl getpid path /_haproxy_getpids
   http-request use-service lua.getpids if getpid
+  acl getconfig path /_haproxy_getconfig
+  http-request use-service lua.getconfig if getconfig
 '''
 
     def test_config_no_apps(self):
