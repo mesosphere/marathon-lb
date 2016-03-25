@@ -257,8 +257,8 @@ backend nginx_10000
 frontend marathon_http_in
   bind *:80
   mode http
-  acl host_test_example_com hdr(host) -i test.example.com
-  use_backend nginx_10000 if host_test_example_com
+  acl host_test_example_com_nginx hdr(host) -i test.example.com
+  use_backend nginx_10000 if host_test_example_com_nginx
 
 frontend marathon_http_appid_in
   bind *:9091
@@ -316,9 +316,9 @@ backend nginx_10000
 frontend marathon_http_in
   bind *:80
   mode http
-  acl host_test_example_com hdr(host) -i test.example.com
-  acl host_test_example_com hdr(host) -i test
-  use_backend nginx_10000 if host_test_example_com
+  acl host_test_example_com_nginx hdr(host) -i test.example.com
+  acl host_test_example_com_nginx hdr(host) -i test
+  use_backend nginx_10000 if host_test_example_com_nginx
 
 frontend marathon_http_appid_in
   bind *:9091
@@ -378,8 +378,8 @@ backend nginx_10000
 frontend marathon_http_in
   bind *:80
   mode http
-  acl host_test_example_com hdr(host) -i test.example.com
-  redirect scheme https code 301 if !{ ssl_fc } host_test_example_com
+  acl host_test_example_com_nginx hdr(host) -i test.example.com
+  redirect scheme https code 301 if !{ ssl_fc } host_test_example_com_nginx
 
 frontend marathon_http_appid_in
   bind *:9091
@@ -438,9 +438,9 @@ backend nginx_10000
 frontend marathon_http_in
   bind *:80
   mode http
-  acl host_test_example_com hdr(host) -i test.example.com
-  acl host_test_example_com hdr(host) -i test
-  redirect scheme https code 301 if !{ ssl_fc } host_test_example_com
+  acl host_test_example_com_nginx hdr(host) -i test.example.com
+  acl host_test_example_com_nginx hdr(host) -i test
+  redirect scheme https code 301 if !{ ssl_fc } host_test_example_com_nginx
 
 frontend marathon_http_appid_in
   bind *:9091
@@ -500,9 +500,9 @@ backend nginx_10000
 frontend marathon_http_in
   bind *:80
   mode http
-  acl host_test_example_com hdr(host) -i test.example.com
+  acl host_test_example_com_nginx hdr(host) -i test.example.com
   acl path_nginx_10000 path_beg /some/path
-  use_backend nginx_10000 if host_test_example_com path_nginx_10000
+  use_backend nginx_10000 if host_test_example_com_nginx path_nginx_10000
 
 frontend marathon_http_appid_in
   bind *:9091
@@ -563,9 +563,9 @@ frontend marathon_http_in
   bind *:80
   mode http
   acl path_nginx_10000 path_beg /some/path
-  acl host_test_example_com hdr(host) -i test.example.com
-  acl host_test_example_com hdr(host) -i test
-  use_backend nginx_10000 if host_test_example_com path_nginx_10000
+  acl host_test_example_com_nginx hdr(host) -i test.example.com
+  acl host_test_example_com_nginx hdr(host) -i test
+  use_backend nginx_10000 if host_test_example_com_nginx path_nginx_10000
 
 frontend marathon_http_appid_in
   bind *:9091
@@ -628,9 +628,9 @@ backend nginx_10000
 frontend marathon_http_in
   bind *:80
   mode http
-  acl host_test_example_com hdr(host) -i test.example.com
+  acl host_test_example_com_nginx hdr(host) -i test.example.com
   acl path_nginx_10000 path_beg /some/path
-  redirect scheme https code 301 if !{ ssl_fc } host_test_example_com\
+  redirect scheme https code 301 if !{ ssl_fc } host_test_example_com_nginx\
  path_nginx_10000
 
 frontend marathon_http_appid_in
@@ -693,9 +693,9 @@ frontend marathon_http_in
   bind *:80
   mode http
   acl path_nginx_10000 path_beg /some/path
-  acl host_test_example_com hdr(host) -i test.example.com
-  acl host_test_example_com hdr(host) -i test
-  redirect scheme https code 301 if !{ ssl_fc } host_test_example_com\
+  acl host_test_example_com_nginx hdr(host) -i test.example.com
+  acl host_test_example_com_nginx hdr(host) -i test
+  redirect scheme https code 301 if !{ ssl_fc } host_test_example_com_nginx\
  path_nginx_10000
 
 frontend marathon_http_appid_in
@@ -925,8 +925,8 @@ backend nginx_10000
 frontend marathon_http_in
   bind *:80
   mode http
-  acl host_test_example_com hdr(host) -i test.example.com
-  use_backend nginx_10000 if host_test_example_com
+  acl host_test_example_com_nginx hdr(host) -i test.example.com
+  use_backend nginx_10000 if host_test_example_com_nginx
 
 frontend marathon_http_appid_in
   bind *:9091
