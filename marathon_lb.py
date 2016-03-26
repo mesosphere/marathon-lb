@@ -80,7 +80,7 @@ class ConfigTemplater(object):
       maxconn 50000
       tune.ssl.default-dh-param 2048
       ssl-default-bind-options no-sslv3 no-tls-tickets force-tlsv12
-      ssl-default-bind-ciphers AES128+EECDH:AES128+EDH
+      ssl-default-bind-ciphers EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH
       stats socket /var/run/haproxy/socket
       server-state-file global
       server-state-base /var/state/haproxy/
