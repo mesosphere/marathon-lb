@@ -974,7 +974,8 @@ def generateHttpVhostAcl(templater, app, backend):
         logger.debug(
             "vhost label specifies multiple hosts: %s", app.hostname)
         vhosts = app.hostname.split(',')
-        acl_name = re.sub(r'[^a-zA-Z0-9\-]', '_', vhosts[0])
+        acl_name = re.sub(r'[^a-zA-Z0-9\-]', '_', vhosts[0]) + \
+            '_' + app.appId[1:].replace('/', '_')
 
         if app.path:
             # Set the path ACL if it exists
@@ -1059,7 +1060,8 @@ def generateHttpVhostAcl(templater, app, backend):
         # A single hostname in the VHOST label
         logger.debug(
             "adding virtual host for app with hostname %s", app.hostname)
-        acl_name = re.sub(r'[^a-zA-Z0-9\-]', '_', app.hostname)
+        acl_name = re.sub(r'[^a-zA-Z0-9\-]', '_', app.hostname) + \
+            '_' + app.appId[1:].replace('/', '_')
 
         if app.path:
             if app.redirectHttpToHttps:
