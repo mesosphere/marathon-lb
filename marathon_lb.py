@@ -690,7 +690,7 @@ class Marathon(object):
     def get_event_stream(self):
         url = self.host+"/v2/events"
         logger.info(
-            "SSE Active, trying fetch events from from {0}".format(url))
+            "SSE Active, trying fetch events from {0}".format(url))
 
         headers = {
             'Cache-Control': 'no-cache',
