@@ -11,8 +11,30 @@ class TestMarathonUpdateHaproxy(unittest.TestCase):
   log /dev/log local1 notice
   maxconn 50000
   tune.ssl.default-dh-param 2048
-  ssl-default-bind-options no-sslv3 no-tls-tickets force-tlsv12
-  ssl-default-bind-ciphers EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH
+  ssl-default-bind-ciphers ECDHE-ECDSA-CHACHA20-POLY1305:\
+ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:\
+ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:\
+ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:\
+DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:\
+ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:\
+ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:\
+DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:\
+DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:\
+EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:\
+AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS
+  ssl-default-bind-options no-sslv3 no-tls-tickets
+  ssl-default-server-ciphers ECDHE-ECDSA-CHACHA20-POLY1305:\
+ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:\
+ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:\
+ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:\
+DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:\
+ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:\
+ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:\
+DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:\
+DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:\
+EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:\
+AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS
+  ssl-default-server-options no-sslv3 no-tls-tickets
   stats socket /var/run/haproxy/socket
   server-state-file global
   server-state-base /var/state/haproxy/
@@ -68,6 +90,7 @@ frontend marathon_http_appid_in
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
   mode http
+  rspadd  Strict-Transport-Security:\ max-age=15768000
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -92,6 +115,7 @@ frontend marathon_http_appid_in
 frontend marathon_https_in
   bind *:443 ssl crt /etc/haproxy/mysite.com.pem
   mode http
+  rspadd  Strict-Transport-Security:\ max-age=15768000
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -117,7 +141,9 @@ frontend marathon_https_in
 '''
         expected += "  bind *:443 ssl crt /etc/haproxy/mysite1.com.pem " \
                     "crt /etc/haproxy/mysite2.com.pem"
-        expected += "\n  mode http\n"
+        expected += "\n  mode http"
+        expected += "\n  rspadd  Strict-Transport-Security:\ max-age=15768000"
+        expected += "\n"
         self.assertMultiLineEqual(config, expected)
 
     def test_config_simple_app(self):
@@ -158,6 +184,7 @@ frontend marathon_http_appid_in
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
   mode http
+  rspadd  Strict-Transport-Security:\ max-age=15768000
 
 frontend nginx_10000
   bind *:10000
@@ -215,6 +242,7 @@ frontend marathon_http_appid_in
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
   mode http
+  rspadd  Strict-Transport-Security:\ max-age=15768000
 
 frontend nginx_10000
   bind *:10000
@@ -269,6 +297,7 @@ frontend marathon_http_appid_in
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
   mode http
+  rspadd  Strict-Transport-Security:\ max-age=15768000
   use_backend nginx_10000 if { ssl_fc_sni test.example.com }
 
 frontend nginx_10000
@@ -329,6 +358,7 @@ frontend marathon_http_appid_in
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
   mode http
+  rspadd  Strict-Transport-Security:\ max-age=15768000
   use_backend nginx_10000 if { ssl_fc_sni test.example.com }
   use_backend nginx_10000 if { ssl_fc_sni test }
 
@@ -390,6 +420,7 @@ frontend marathon_http_appid_in
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
   mode http
+  rspadd  Strict-Transport-Security:\ max-age=15768000
   use_backend nginx_10000 if { ssl_fc_sni test.example.com }
 
 frontend nginx_10000
@@ -451,6 +482,7 @@ frontend marathon_http_appid_in
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
   mode http
+  rspadd  Strict-Transport-Security:\ max-age=15768000
   use_backend nginx_10000 if { ssl_fc_sni test.example.com }
   use_backend nginx_10000 if { ssl_fc_sni test }
 
@@ -513,6 +545,7 @@ frontend marathon_http_appid_in
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
   mode http
+  rspadd  Strict-Transport-Security:\ max-age=15768000
   acl path_nginx_10000 path_beg /some/path
   use_backend nginx_10000 if { ssl_fc_sni test.example.com } path_nginx_10000
 
@@ -576,6 +609,7 @@ frontend marathon_http_appid_in
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
   mode http
+  rspadd  Strict-Transport-Security:\ max-age=15768000
   acl path_nginx_10000 path_beg /some/path
   use_backend nginx_10000 if { ssl_fc_sni test.example.com } ''' + \
                                       '''path_nginx_10000
@@ -642,6 +676,7 @@ frontend marathon_http_appid_in
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
   mode http
+  rspadd  Strict-Transport-Security:\ max-age=15768000
   acl path_nginx_10000 path_beg /some/path
   use_backend nginx_10000 if { ssl_fc_sni test.example.com } path_nginx_10000
 
@@ -707,6 +742,7 @@ frontend marathon_http_appid_in
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
   mode http
+  rspadd  Strict-Transport-Security:\ max-age=15768000
   acl path_nginx_10000 path_beg /some/path
   use_backend nginx_10000 if { ssl_fc_sni test.example.com } ''' + \
                                       '''path_nginx_10000
@@ -767,6 +803,7 @@ frontend marathon_http_appid_in
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
   mode http
+  rspadd  Strict-Transport-Security:\ max-age=15768000
 
 frontend nginx_10000
   bind *:10000
@@ -820,6 +857,7 @@ frontend marathon_http_appid_in
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
   mode http
+  rspadd  Strict-Transport-Security:\ max-age=15768000
 
 frontend nginx_10000
   bind *:10000
@@ -879,6 +917,7 @@ frontend marathon_http_appid_in
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
   mode http
+  rspadd  Strict-Transport-Security:\ max-age=15768000
 
 frontend nginx_10000
   bind *:10000
@@ -937,6 +976,7 @@ frontend marathon_http_appid_in
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
   mode http
+  rspadd  Strict-Transport-Security:\ max-age=15768000
   use_backend nginx_10000 if { ssl_fc_sni test.example.com }
 
 frontend nginx_10000
@@ -983,6 +1023,7 @@ frontend marathon_http_appid_in
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
   mode http
+  rspadd  Strict-Transport-Security:\ max-age=15768000
 
 frontend nginx_10000
   bind *:10000
@@ -1035,6 +1076,7 @@ frontend marathon_http_appid_in
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
   mode http
+  rspadd  Strict-Transport-Security:\ max-age=15768000
 
 frontend nginx_10000
   bind *:10000
@@ -1077,6 +1119,7 @@ frontend marathon_http_appid_in
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
   mode http
+  rspadd  Strict-Transport-Security:\ max-age=15768000
 
 frontend nginx_10001
   bind *:10001
