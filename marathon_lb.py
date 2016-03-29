@@ -154,7 +154,6 @@ AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS
     frontend marathon_https_in
       bind *:443 ssl {sslCerts}
       mode http
-      rspadd  Strict-Transport-Security:\ max-age=15768000
     ''')
 
     HAPROXY_FRONTEND_HEAD = dedent('''
@@ -176,6 +175,10 @@ AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS
     HAPROXY_BACKEND_REDIRECT_HTTP_TO_HTTPS_WITH_PATH = '''\
   redirect scheme https code 301 if !{{ ssl_fc }} host_{cleanedUpHostname}\
  path_{backend}
+'''
+
+    HAPROXY_BACKEND_HSTS_OPTIONS = '''\
+  rspadd  Strict-Transport-Security:\ max-age=15768000
 '''
 
     HAPROXY_HTTP_FRONTEND_ACL = '''\
@@ -271,6 +274,7 @@ AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS
             'HAPROXY_FRONTEND_HEAD',
             'HAPROXY_BACKEND_REDIRECT_HTTP_TO_HTTPS',
             'HAPROXY_BACKEND_REDIRECT_HTTP_TO_HTTPS_WITH_PATH',
+            'HAPROXY_BACKEND_HSTS_OPTIONS',
             'HAPROXY_BACKEND_HEAD',
             'HAPROXY_HTTP_FRONTEND_ACL',
             'HAPROXY_HTTP_FRONTEND_ACL_ONLY',
@@ -337,6 +341,11 @@ AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS
             return app.\
                 labels['HAPROXY_{0}_BACKEND_REDIRECT_HTTP_TO_HTTPS_WITH_PATH']
         return self.HAPROXY_BACKEND_REDIRECT_HTTP_TO_HTTPS_WITH_PATH
+
+    def haproxy_backend_hsts_options(self, app):
+        if 'HAPROXY_{0}_BACKEND_HSTS_OPTIONS' in app.labels:
+            return app.labels['HAPROXY_{0}_BACKEND_HSTS_OPTIONS']
+        return self.HAPROXY_BACKEND_HSTS_OPTIONS
 
     def haproxy_backend_head(self, app):
         if 'HAPROXY_{0}_BACKEND_HEAD' in app.labels:
@@ -470,6 +479,10 @@ def set_redirect_http_to_https(x, k, v):
     x.redirectHttpToHttps = string_to_bool(v)
 
 
+def set_use_hsts(x, k, v):
+    x.useHsts = string_to_bool(v)
+
+
 def set_sslCert(x, k, v):
     x.sslCert = v
 
@@ -508,6 +521,7 @@ label_keys = {
     'HAPROXY_{0}_PATH': set_path,
     'HAPROXY_{0}_STICKY': set_sticky,
     'HAPROXY_{0}_REDIRECT_TO_HTTPS': set_redirect_http_to_https,
+    'HAPROXY_{0}_USE_HSTS': set_use_hsts,
     'HAPROXY_{0}_SSL_CERT': set_sslCert,
     'HAPROXY_{0}_BIND_OPTIONS': set_bindOptions,
     'HAPROXY_{0}_BIND_ADDR': set_bindAddr,
@@ -521,6 +535,7 @@ label_keys = {
     'HAPROXY_{0}_HTTPS_FRONTEND_ACL': set_label,
     'HAPROXY_{0}_HTTP_FRONTEND_APPID_ACL': set_label,
     'HAPROXY_{0}_BACKEND_HTTP_OPTIONS': set_label,
+    'HAPROXY_{0}_BACKEND_HSTS_OPTIONS': set_label,
     'HAPROXY_{0}_BACKEND_TCP_HEALTHCHECK_OPTIONS': set_label,
     'HAPROXY_{0}_BACKEND_HTTP_HEALTHCHECK_OPTIONS': set_label,
     'HAPROXY_{0}_BACKEND_STICKY_OPTIONS': set_label,
@@ -558,6 +573,7 @@ class MarathonService(object):
         self.path = None
         self.sticky = False
         self.redirectHttpToHttps = False
+        self.useHsts = False
         self.sslCert = None
         self.bindOptions = None
         self.bindAddr = '*'
@@ -819,6 +835,8 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
             )
 
         if app.mode == 'http':
+            if app.useHsts:
+                backends += templater.haproxy_backend_hsts_options(app)
             backends += templater.haproxy_backend_http_options(app)
 
         if app.healthCheck:
