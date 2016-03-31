@@ -1361,7 +1361,7 @@ def get_apps(marathon):
                 marathon_app.app['labels']['HAPROXY_GROUP'].split(',')
         marathon_apps.append(marathon_app)
 
-        service_ports = app['ports']
+        service_ports = app.get('ports', [])
         for i in range(len(service_ports)):
             servicePort = service_ports[i]
             service = MarathonService(
@@ -1482,7 +1482,7 @@ class MarathonEventProcessor(object):
                     logger.error("Connection error({0}): {1}".format(
                         e.errno, e.strerror))
                 except:
-                    print("Unexpected error:", sys.exc_info()[0])
+                    logger.exception("Unexpected error!")
 
     def stop(self):
         self.__condition.acquire()
