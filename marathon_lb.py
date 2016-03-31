@@ -247,6 +247,23 @@ AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS
 {otherOptions}
 '''
 
+    HAPROXY_HTTP_BACKEND_PROXYPASS = '''\
+  http-request set-header Host {hostname}
+  reqirep  "^([^ :]*)\ {proxypath}(.*)" "\\1\ /\\2"
+'''
+
+    HAPROXY_HTTP_BACKEND_REVPROXY = '''\
+  acl hdr_location res.hdr(Location) -m found
+  rspirep "^Location: (https?://{hostname}(:[0-9]+)?)?(/.*)" "Location: \
+  {rootpath} if hdr_location"
+'''
+
+    HAPROXY_HTTP_BACKEND_REDIR = '''\
+  acl is_root path -i /
+  acl is_domain hdr(host) -i {hostname}
+  redirect code 301 location {redirpath} if is_domain is_root
+'''
+
     HAPROXY_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS = '''\
   check inter {healthCheckIntervalSeconds}s fall {healthCheckFalls}\
 {healthCheckPortOptions}
@@ -290,6 +307,9 @@ AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS
             'HAPROXY_BACKEND_TCP_HEALTHCHECK_OPTIONS',
             'HAPROXY_BACKEND_STICKY_OPTIONS',
             'HAPROXY_BACKEND_SERVER_OPTIONS',
+            'HAPROXY_HTTP_BACKEND_PROXYPASS',
+            'HAPROXY_HTTP_BACKEND_REVPROXY',
+            'HAPROXY_HTTP_BACKEND_REDIR',
             'HAPROXY_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS',
             'HAPROXY_BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS',
             'HAPROXY_FRONTEND_BACKEND_GLUE',
@@ -428,6 +448,21 @@ AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS
             return app.labels['HAPROXY_{0}_BACKEND_SERVER_OPTIONS']
         return self.HAPROXY_BACKEND_SERVER_OPTIONS
 
+    def haproxy_http_backend_proxypass(self, app):
+        if 'HAPROXY_{0}_HTTP_BACKEND_PROXYPASS' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTP_BACKEND_PROXYPASS']
+        return self.HAPROXY_HTTP_BACKEND_PROXYPASS
+
+    def haproxy_http_backend_revproxy(self, app):
+        if 'HAPROXY_{0}_HTTP_BACKEND_REVPROXY' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTP_BACKEND_REVPROXY']
+        return self.HAPROXY_HTTP_BACKEND_REVPROXY
+
+    def haproxy_http_backend_redir(self, app):
+        if 'HAPROXY_{0}_HTTP_BACKEND_REDIR' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTP_BACKEND_REDIR']
+        return self.HAPROXY_HTTP_BACKEND_REDIR
+
     def haproxy_backend_server_http_healthcheck_options(self, app):
         if 'HAPROXY_{0}_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS' in \
                 app.labels:
@@ -514,6 +549,14 @@ def set_label(x, k, v):
 def set_group(x, k, v):
     x.haproxy_groups = v.split(',')
 
+def set_proxypath(x, k, v):
+    x.proxypath = v
+
+def set_revproxypath(x, k, v):
+    x.revproxypath = v
+
+def set_redirpath(x, k, v):
+    x.redirpath = v
 
 label_keys = {
     'HAPROXY_{0}_VHOST': set_hostname,
@@ -543,6 +586,9 @@ label_keys = {
     'HAPROXY_{0}_BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS': set_label,
     'HAPROXY_{0}_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS': set_label,
     'HAPROXY_{0}_BACKEND_SERVER_OPTIONS': set_label,
+    'HAPROXY_{0}_HTTP_BACKEND_PROXYPASS': set_proxypath,
+    'HAPROXY_{0}_HTTP_BACKEND_REVPROXY': set_revproxypath,
+    'HAPROXY_{0}_HTTP_BACKEND_REDIR': set_redirpath
 }
 
 logger = logging.getLogger('marathon_lb')
@@ -569,6 +615,9 @@ class MarathonService(object):
         self.servicePort = servicePort
         self.backends = set()
         self.hostname = None
+        self.proxypath = ''
+        self.revproxypath = ''
+        self.redirpath = ''
         self.haproxy_groups = frozenset()
         self.path = None
         self.sticky = False
@@ -835,9 +884,25 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
             )
 
         if app.mode == 'http':
-            if app.useHsts:
-                backends += templater.haproxy_backend_hsts_options(app)
             backends += templater.haproxy_backend_http_options(app)
+            backend_http_backend_proxypass = templater.haproxy_http_backend_proxypass(app)
+            if app.proxypath != '' :
+                backends += backend_http_backend_proxypass.format(
+                    hostname=app.hostname,
+                    proxypath=app.proxypath
+                )
+            backend_http_backend_revproxy = templater.haproxy_http_backend_revproxy(app)
+            if app.revproxypath != '' :
+                backends += backend_http_backend_revproxy.format(
+                    hostname=app.hostname,
+                    rootpath=app.revproxypath
+                )
+            backend_http_backend_redir = templater.haproxy_http_backend_redir(app)
+            if app.redirpath != '' :
+                backends += backend_http_backend_redir.format(
+                    hostname=app.hostname,
+                    redirpath=app.redirpath
+                )
 
         if app.healthCheck:
             health_check_options = None

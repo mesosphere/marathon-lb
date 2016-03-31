@@ -245,6 +245,18 @@ The full list of labels which can be specified are:
   HAPROXY_{n}_BALANCE
     Set the load balancing algorithm to be used in a backend. The default is roundrobin.
     Ex: HAPROXY_0_BALANCE = 'leastconn'
+    
+  HAPROXY_{0}_HTTP_BACKEND_PROXYPASS
+    Set the location to use for mapping local server URLs to remote servers + URL.
+    Ex: HAPROXY_0_HTTP_BACKEND_PROXYPASS = '/path/to/redirect'
+
+  HAPROXY_{0}_HTTP_BACKEND_REVPROXY
+    Set the URL in HTTP response headers sent from a reverse proxied server. It only updates Location, Content-Location and URL.
+    Ex: HAPROXY_0_HTTP_BACKEND_REVPROXY = '/my/content'
+    
+  HAPROXY_{0}_HTTP_BACKEND_REDIR
+    Set the path to redirect the root of the domain to
+    Ex: HAPROXY_0_HTTP_BACKEND_REDIR = '/my/content'
 ```
 
 ### Templates
@@ -424,6 +436,16 @@ own templates to the Docker image, or provide them at startup.
 
   HAPROXY_FRONTEND_BACKEND_GLUE
     This option glues the backend to the frontend.
+    
+  HAPROXY_HTTP_BACKEND_PROXYPASS 
+    This option enable proxypass features in apache to work
+
+  
+  HAPROXY_HTTP_BACKEND_REVPROXY
+    This option enables reverse proxy option as use in apache to work
+  
+  HAPROXY_HTTP_BACKEND_REDIR 
+    This option enables a simple redirection of the root URL to another location.
 ```
 #### Overridable templates
 
