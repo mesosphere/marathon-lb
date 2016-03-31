@@ -1361,7 +1361,7 @@ def get_apps(marathon):
                 marathon_app.app['labels']['HAPROXY_GROUP'].split(',')
         marathon_apps.append(marathon_app)
 
-        service_ports = app.get('ports', [])
+        service_ports = app['ports']
         for i in range(len(service_ports)):
             servicePort = service_ports[i]
             service = MarathonService(
@@ -1395,7 +1395,7 @@ def get_apps(marathon):
                 if not alive:
                     continue
 
-            task_ports = task['ports']
+            task_ports = task.get('ports', [])
             draining = False
             if 'draining' in task:
                 draining = task['draining']
