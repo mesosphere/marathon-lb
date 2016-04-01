@@ -549,14 +549,18 @@ def set_label(x, k, v):
 def set_group(x, k, v):
     x.haproxy_groups = v.split(',')
 
+
 def set_proxypath(x, k, v):
     x.proxypath = v
+
 
 def set_revproxypath(x, k, v):
     x.revproxypath = v
 
+
 def set_redirpath(x, k, v):
     x.redirpath = v
+
 
 label_keys = {
     'HAPROXY_{0}_VHOST': set_hostname,
@@ -885,20 +889,23 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
 
         if app.mode == 'http':
             backends += templater.haproxy_backend_http_options(app)
-            backend_http_backend_proxypass = templater.haproxy_http_backend_proxypass(app)
-            if app.proxypath != '' :
+            backend_http_backend_proxypass = templater \
+                .haproxy_http_backend_proxypass(app)
+            if app.proxypath != '':
                 backends += backend_http_backend_proxypass.format(
                     hostname=app.hostname,
                     proxypath=app.proxypath
                 )
-            backend_http_backend_revproxy = templater.haproxy_http_backend_revproxy(app)
-            if app.revproxypath != '' :
+            backend_http_backend_revproxy = templater \
+                .haproxy_http_backend_revproxy(app)
+            if app.revproxypath != '':
                 backends += backend_http_backend_revproxy.format(
                     hostname=app.hostname,
                     rootpath=app.revproxypath
                 )
-            backend_http_backend_redir = templater.haproxy_http_backend_redir(app)
-            if app.redirpath != '' :
+            backend_http_backend_redir = templater \
+                .haproxy_http_backend_redir(app)
+            if app.redirpath != '':
                 backends += backend_http_backend_redir.format(
                     hostname=app.hostname,
                     redirpath=app.redirpath
