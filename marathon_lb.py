@@ -1395,7 +1395,7 @@ def get_apps(marathon):
                 if not alive:
                     continue
 
-            task_ports = task['ports']
+            task_ports = task.get('ports', [])
             draining = False
             if 'draining' in task:
                 draining = task['draining']
@@ -1482,7 +1482,7 @@ class MarathonEventProcessor(object):
                     logger.error("Connection error({0}): {1}".format(
                         e.errno, e.strerror))
                 except:
-                    print("Unexpected error:", sys.exc_info()[0])
+                    logger.exception("Unexpected error!")
 
     def stop(self):
         self.__condition.acquire()
