@@ -481,7 +481,7 @@ The deployment method is described [in this Marathon document](https://mesospher
 
 
 - Specify the `HAPROXY_DEPLOYMENT_GROUP` and `HAPROXY_DEPLOYMENT_ALT_PORT` labels in your app template
-  - `HAPROXY_DEPLOYMENT_GROUP`: This label uniquely identifies a set of apps belonging to a blue/green deployment, and will be used as the app name in the HAProxy configuration
+  - `HAPROXY_DEPLOYMENT_GROUP`: This label uniquely identifies a pair of apps belonging to a blue/green deployment, and will be used as the app name in the HAProxy configuration
   - `HAPROXY_DEPLOYMENT_ALT_PORT`: An alternate service port is required because Marathon requires service ports to be unique across all apps
 - Only use 1 service port: multiple ports are not yet implemented
 - Use the provided `bluegreen_deploy.py` script to orchestrate the deploy: the script will make API calls to Marathon, and use the HAProxy stats endpoint to gracefully terminate instances
