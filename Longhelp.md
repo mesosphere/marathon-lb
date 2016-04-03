@@ -1,0 +1,800 @@
+# marathon-lb
+### Overview
+The marathon-lb is a service discovery and load balancing tool
+for Marathon based on HAProxy. It reads the Marathon task information
+and dynamically generates HAProxy configuration details.
+
+To gather the task information, marathon-lb needs to know where
+to find Marathon. The service configuration details are stored in labels.
+
+Every service port in Marathon can be configured independently.
+
+### Configuration
+Service configuration lives in Marathon via labels.
+Marathon-lb just needs to know where to find Marathon.
+To run in listening mode you must also specify the address + port at
+which marathon-lb can be reached by Marathon.
+
+### Command Line Usage
+
+```
+usage: marathon_lb.py [-h] [--longhelp] [--marathon MARATHON [MARATHON ...]]
+                      [--listening LISTENING] [--callback-url CALLBACK_URL]
+                      [--haproxy-config HAPROXY_CONFIG] [--group GROUP]
+                      [--command COMMAND] [--sse] [--health-check]
+                      [--dont-bind-http-https] [--ssl-certs SSL_CERTS]
+                      [--skip-validation] [--dry]
+                      [--syslog-socket SYSLOG_SOCKET]
+                      [--log-format LOG_FORMAT]
+                      [--marathon-auth-credential-file MARATHON_AUTH_CREDENTIAL_FILE]
+                      [--auth-credentials AUTH_CREDENTIALS]
+
+Marathon HAProxy Load Balancer
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --longhelp            Print out configuration details (default: False)
+  --marathon MARATHON [MARATHON ...], -m MARATHON [MARATHON ...]
+                        [required] Marathon endpoint, eg. -m
+                        http://marathon1:8080 -m http://marathon2:8080
+                        (default: None)
+  --listening LISTENING, -l LISTENING
+                        The address this script listens on for marathon events
+                        (e.g., http://0.0.0.0:8080) (default: None)
+  --callback-url CALLBACK_URL, -u CALLBACK_URL
+                        The HTTP address that Marathon can call this script
+                        back at (http://lb1:8080) (default: None)
+  --haproxy-config HAPROXY_CONFIG
+                        Location of haproxy configuration (default:
+                        /etc/haproxy/haproxy.cfg)
+  --group GROUP         [required] Only generate config for apps which list
+                        the specified names. Use '*' to match all groups
+                        (default: [])
+  --command COMMAND, -c COMMAND
+                        If set, run this command to reload haproxy. (default:
+                        None)
+  --sse, -s             Use Server Sent Events instead of HTTP Callbacks
+                        (default: False)
+  --health-check, -H    If set, respect Marathon's health check statuses
+                        before adding the app instance into the backend pool.
+                        (default: False)
+  --dont-bind-http-https
+                        Don't bind to HTTP and HTTPS frontends. (default:
+                        False)
+  --ssl-certs SSL_CERTS
+                        List of SSL certificates separated by commafor
+                        frontend marathon_https_inEx:
+                        /etc/ssl/site1.co.pem,/etc/ssl/site2.co.pem (default:
+                        /etc/ssl/mesosphere.com.pem)
+  --skip-validation     Skip haproxy config file validation (default: False)
+  --dry, -d             Only print configuration to console (default: False)
+  --syslog-socket SYSLOG_SOCKET
+                        Socket to write syslog messages to. Use '/dev/null' to
+                        disable logging to syslog (default: /var/run/syslog)
+  --log-format LOG_FORMAT
+                        Set log message format (default: %(name)s:
+                        %(message)s)
+  --marathon-auth-credential-file MARATHON_AUTH_CREDENTIAL_FILE
+                        Path to file containing a user/pass for the Marathon
+                        HTTP API in the format of 'user:pass'. (default: None)
+  --auth-credentials AUTH_CREDENTIALS
+                        user/pass for the Marathon HTTP API in the format of
+                        'user:pass'. (default: None)
+```
+## Templates
+
+The following is a list of the available HAProxy templates.
+Some templates are global-only (such as `HAPROXY_HEAD`), but most may
+be overridden on a per service port basis using the
+`HAPROXY_{n}_...` syntax.
+
+## `BACKEND_HEAD`
+  *Overridable*
+
+May be specified as `HAPROXY_BACKEND_HEAD` template or with label `HAPROXY_{n}_BACKEND_HEAD`.
+
+Defines the type of load balancing, roundrobin by default,
+and connection mode, TCP or HTTP.
+
+
+**Default template for `BACKEND_HEAD`:**
+```
+
+backend {backend}
+  balance {balance}
+  mode {mode}
+
+```
+## `BACKEND_HSTS_OPTIONS`
+  *Overridable*
+
+May be specified as `HAPROXY_BACKEND_HSTS_OPTIONS` template or with label `HAPROXY_{n}_BACKEND_HSTS_OPTIONS`.
+
+This template is used for the backend where the
+`HAPROXY_{n}_USE_HSTS` label is set to true.
+
+
+**Default template for `BACKEND_HSTS_OPTIONS`:**
+```
+  rspadd  Strict-Transport-Security:\ max-age=15768000
+
+```
+## `BACKEND_HTTP_HEALTHCHECK_OPTIONS`
+  *Overridable*
+
+May be specified as `HAPROXY_BACKEND_HTTP_HEALTHCHECK_OPTIONS` template or with label `HAPROXY_{n}_BACKEND_HTTP_HEALTHCHECK_OPTIONS`.
+
+Sets HTTP health check options, for example timeout check and httpchk GET.
+Parameters of the first health check for this service are exposed as:
+  * healthCheckPortIndex
+  * healthCheckPort
+  * healthCheckProtocol
+  * healthCheckPath
+  * healthCheckTimeoutSeconds
+  * healthCheckIntervalSeconds
+  * healthCheckIgnoreHttp1xx
+  * healthCheckGracePeriodSeconds
+  * healthCheckMaxConsecutiveFailures
+  * healthCheckFalls is set to healthCheckMaxConsecutiveFailures + 1
+  * healthCheckPortOptions is set to " port {healthCheckPort}"
+
+Defaults to empty string.
+
+Example:
+```
+  option  httpchk GET {healthCheckPath}
+  timeout check {healthCheckTimeoutSeconds}s
+```
+  
+
+**Default template for `BACKEND_HTTP_HEALTHCHECK_OPTIONS`:**
+```
+  option  httpchk GET {healthCheckPath}
+  timeout check {healthCheckTimeoutSeconds}s
+
+```
+## `BACKEND_HTTP_OPTIONS`
+  *Overridable*
+
+May be specified as `HAPROXY_BACKEND_HTTP_OPTIONS` template or with label `HAPROXY_{n}_BACKEND_HTTP_OPTIONS`.
+
+Sets HTTP headers, for example X-Forwarded-For and X-Forwarded-Proto.
+
+
+**Default template for `BACKEND_HTTP_OPTIONS`:**
+```
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+
+```
+## `BACKEND_REDIRECT_HTTP_TO_HTTPS`
+  *Overridable*
+
+May be specified as `HAPROXY_BACKEND_REDIRECT_HTTP_TO_HTTPS` template or with label `HAPROXY_{n}_BACKEND_REDIRECT_HTTP_TO_HTTPS`.
+
+This template is used with backends where the
+`HAPROXY_{n}_REDIRECT_TO_HTTPS` label is set to true
+
+
+**Default template for `BACKEND_REDIRECT_HTTP_TO_HTTPS`:**
+```
+  redirect scheme https code 301 if !{{ ssl_fc }} host_{cleanedUpHostname}
+
+```
+## `BACKEND_REDIRECT_HTTP_TO_HTTPS_WITH_PATH`
+  *Overridable*
+
+May be specified as `HAPROXY_BACKEND_REDIRECT_HTTP_TO_HTTPS_WITH_PATH` template or with label `HAPROXY_{n}_BACKEND_REDIRECT_HTTP_TO_HTTPS_WITH_PATH`.
+
+Same as `HAPROXY_BACKEND_REDIRECT_HTTP_TO_HTTPS`,
+but includes a path.
+
+
+**Default template for `BACKEND_REDIRECT_HTTP_TO_HTTPS_WITH_PATH`:**
+```
+  redirect scheme https code 301 if !{{ ssl_fc }} host_{cleanedUpHostname} path_{backend}
+
+```
+## `BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS`
+  *Overridable*
+
+May be specified as `HAPROXY_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS` template or with label `HAPROXY_{n}_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS`.
+
+Sets HTTP health check options for a single server, e.g. check inter.
+Parameters of the first health check for this service are exposed as:
+  * healthCheckPortIndex
+  * healthCheckPort
+  * healthCheckProtocol
+  * healthCheckPath
+  * healthCheckTimeoutSeconds
+  * healthCheckIntervalSeconds
+  * healthCheckIgnoreHttp1xx
+  * healthCheckGracePeriodSeconds
+  * healthCheckMaxConsecutiveFailures
+  * healthCheckFalls is set to healthCheckMaxConsecutiveFailures + 1
+  * healthCheckPortOptions is set to " port {healthCheckPort}"
+
+Defaults to empty string.
+
+Example:
+```
+  check inter {healthCheckIntervalSeconds}s fall {healthCheckFalls}
+```
+  
+
+**Default template for `BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS`:**
+```
+  check inter {healthCheckIntervalSeconds}s fall {healthCheckFalls}{healthCheckPortOptions}
+
+```
+## `BACKEND_SERVER_OPTIONS`
+  *Overridable*
+
+May be specified as `HAPROXY_BACKEND_SERVER_OPTIONS` template or with label `HAPROXY_{n}_BACKEND_SERVER_OPTIONS`.
+
+The options for each server added to a backend.
+    
+
+**Default template for `BACKEND_SERVER_OPTIONS`:**
+```
+  server {serverName} {host_ipv4}:{port}{cookieOptions}{healthCheckOptions}{otherOptions}
+
+```
+## `BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS`
+  *Overridable*
+
+May be specified as `HAPROXY_BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS` template or with label `HAPROXY_{n}_BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS`.
+
+Sets TCP health check options for a single server, e.g. check inter.
+Parameters of the first health check for this service are exposed as:
+  * healthCheckPortIndex
+  * healthCheckPort
+  * healthCheckProtocol
+  * healthCheckTimeoutSeconds
+  * healthCheckIntervalSeconds
+  * healthCheckGracePeriodSeconds
+  * healthCheckMaxConsecutiveFailures
+  * healthCheckFalls is set to healthCheckMaxConsecutiveFailures + 1
+  * healthCheckPortOptions is set to " port {healthCheckPort}"
+
+Defaults to empty string.
+
+Example:
+```
+  check inter {healthCheckIntervalSeconds}s fall {healthCheckFalls}
+```
+  
+
+**Default template for `BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS`:**
+```
+  check inter {healthCheckIntervalSeconds}s fall {healthCheckFalls}{healthCheckPortOptions}
+
+```
+## `BACKEND_STICKY_OPTIONS`
+  *Overridable*
+
+May be specified as `HAPROXY_BACKEND_STICKY_OPTIONS` template or with label `HAPROXY_{n}_BACKEND_STICKY_OPTIONS`.
+
+Sets a cookie for services where `HAPROXY_{n}_STICKY` is true.
+    
+
+**Default template for `BACKEND_STICKY_OPTIONS`:**
+```
+  cookie mesosphere_server_id insert indirect nocache
+
+```
+## `BACKEND_TCP_HEALTHCHECK_OPTIONS`
+  *Overridable*
+
+May be specified as `HAPROXY_BACKEND_TCP_HEALTHCHECK_OPTIONS` template or with label `HAPROXY_{n}_BACKEND_TCP_HEALTHCHECK_OPTIONS`.
+
+Sets TCP health check options, for example timeout check.
+Parameters of the first health check for this service are exposed as:
+  * healthCheckPortIndex
+  * healthCheckPort
+  * healthCheckProtocol
+  * healthCheckTimeoutSeconds
+  * healthCheckIntervalSeconds
+  * healthCheckGracePeriodSeconds
+  * healthCheckMaxConsecutiveFailures
+  * healthCheckFalls is set to healthCheckMaxConsecutiveFailures + 1
+  * healthCheckPortOptions is set to " port {healthCheckPort}"
+
+Defaults to empty string.
+
+Example:
+```
+  timeout check {healthCheckTimeoutSeconds}s
+```
+  
+
+**Default template for `BACKEND_TCP_HEALTHCHECK_OPTIONS`:**
+```
+
+```
+## `FRONTEND_BACKEND_GLUE`
+  *Overridable*
+
+May be specified as `HAPROXY_FRONTEND_BACKEND_GLUE` template or with label `HAPROXY_{n}_FRONTEND_BACKEND_GLUE`.
+
+This option glues the backend to the frontend.
+    
+
+**Default template for `FRONTEND_BACKEND_GLUE`:**
+```
+  use_backend {backend}
+
+```
+## `FRONTEND_HEAD`
+  *Overridable*
+
+May be specified as `HAPROXY_FRONTEND_HEAD` template or with label `HAPROXY_{n}_FRONTEND_HEAD`.
+
+Defines the address and port to bind to for this frontend.
+
+
+**Default template for `FRONTEND_HEAD`:**
+```
+
+frontend {backend}
+  bind {bindAddr}:{servicePort}{sslCert}{bindOptions}
+  mode {mode}
+
+```
+## `HEAD`
+  *Global*
+
+May be specified as `HAPROXY_HEAD` template.
+
+The head of the HAProxy config. This contains global settings
+and defaults.
+
+
+**Default template for `HEAD`:**
+```
+global
+  daemon
+  log /dev/log local0
+  log /dev/log local1 notice
+  maxconn 50000
+  tune.ssl.default-dh-param 2048
+  ssl-default-bind-ciphers ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS
+  ssl-default-bind-options no-sslv3 no-tls-tickets
+  ssl-default-server-ciphers ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS
+  ssl-default-server-options no-sslv3 no-tls-tickets
+  stats socket /var/run/haproxy/socket
+  server-state-file global
+  server-state-base /var/state/haproxy/
+  lua-load /marathon-lb/getpids.lua
+  lua-load /marathon-lb/getconfig.lua
+defaults
+  load-server-state-from-file global
+  log               global
+  retries                   3
+  backlog               10000
+  maxconn               10000
+  timeout connect          3s
+  timeout client          30s
+  timeout server          30s
+  timeout tunnel        3600s
+  timeout http-keep-alive  1s
+  timeout http-request    15s
+  timeout queue           30s
+  timeout tarpit          60s
+  option            redispatch
+  option            http-server-close
+  option            dontlognull
+listen stats
+  bind 0.0.0.0:9090
+  balance
+  mode http
+  stats enable
+  monitor-uri /_haproxy_health_check
+  acl getpid path /_haproxy_getpids
+  http-request use-service lua.getpids if getpid
+  acl getconfig path /_haproxy_getconfig
+  http-request use-service lua.getconfig if getconfig
+
+```
+## `HTTPS_FRONTEND_ACL`
+  *Overridable*
+
+May be specified as `HAPROXY_HTTPS_FRONTEND_ACL` template or with label `HAPROXY_{n}_HTTPS_FRONTEND_ACL`.
+
+The ACL that performs the SNI based hostname matching
+for the `HAPROXY_HTTPS_FRONTEND_HEAD` template.
+
+
+**Default template for `HTTPS_FRONTEND_ACL`:**
+```
+  use_backend {backend} if {{ ssl_fc_sni {hostname} }}
+
+```
+## `HTTPS_FRONTEND_ACL_ONLY_WITH_PATH`
+  *Overridable*
+
+May be specified as `HAPROXY_HTTPS_FRONTEND_ACL_ONLY_WITH_PATH` template or with label `HAPROXY_{n}_HTTPS_FRONTEND_ACL_ONLY_WITH_PATH`.
+
+Same as HTTP_FRONTEND_ACL_ONLY_WITH_PATH, but for HTTPS.
+
+
+**Default template for `HTTPS_FRONTEND_ACL_ONLY_WITH_PATH`:**
+```
+  acl path_{backend} path_beg {path}
+
+```
+## `HTTPS_FRONTEND_ACL_WITH_PATH`
+  *Overridable*
+
+May be specified as `HAPROXY_HTTPS_FRONTEND_ACL_WITH_PATH` template or with label `HAPROXY_{n}_HTTPS_FRONTEND_ACL_WITH_PATH`.
+
+The ACL that performs the SNI based hostname matching with path
+for the `HAPROXY_HTTPS_FRONTEND_HEAD` template.
+
+
+**Default template for `HTTPS_FRONTEND_ACL_WITH_PATH`:**
+```
+  use_backend {backend} if {{ ssl_fc_sni {hostname} }} path_{backend}
+
+```
+## `HTTPS_FRONTEND_HEAD`
+  *Global*
+
+May be specified as `HAPROXY_HTTPS_FRONTEND_HEAD` template.
+
+An HTTPS frontend for encrypted connections that binds to port *:443 by
+default and gathers all virtual hosts as defined by the
+`HAPROXY_{n}_VHOST` label. You must modify this file to
+include your certificate.
+
+
+**Default template for `HTTPS_FRONTEND_HEAD`:**
+```
+
+frontend marathon_https_in
+  bind *:443 ssl {sslCerts}
+  mode http
+
+```
+## `HTTP_FRONTEND_ACL`
+  *Overridable*
+
+May be specified as `HAPROXY_HTTP_FRONTEND_ACL` template or with label `HAPROXY_{n}_HTTP_FRONTEND_ACL`.
+
+The ACL that glues a backend to the corresponding virtual host
+of the `HAPROXY_HTTP_FRONTEND_HEAD`
+
+
+**Default template for `HTTP_FRONTEND_ACL`:**
+```
+  acl host_{cleanedUpHostname} hdr(host) -i {hostname}
+  use_backend {backend} if host_{cleanedUpHostname}
+
+```
+## `HTTP_FRONTEND_ACL_ONLY`
+  *Overridable*
+
+May be specified as `HAPROXY_HTTP_FRONTEND_ACL_ONLY` template or with label `HAPROXY_{n}_HTTP_FRONTEND_ACL_ONLY`.
+
+Define the ACL matching a particular hostname, but unlike
+`HAPROXY_HTTP_FRONTEND_ACL`, only do the ACL portion. Does not glue
+the ACL to the backend. This is useful only in the case of multiple
+vhosts routing to the same backend.
+
+
+**Default template for `HTTP_FRONTEND_ACL_ONLY`:**
+```
+  acl host_{cleanedUpHostname} hdr(host) -i {hostname}
+
+```
+## `HTTP_FRONTEND_ACL_ONLY_WITH_PATH`
+  *Overridable*
+
+May be specified as `HAPROXY_HTTP_FRONTEND_ACL_ONLY_WITH_PATH` template or with label `HAPROXY_{n}_HTTP_FRONTEND_ACL_ONLY_WITH_PATH`.
+
+Define the ACL matching a particular hostname with path, but unlike
+`HAPROXY_HTTP_FRONTEND_ACL_WITH_PATH`, only do the ACL portion. Does not glue
+the ACL to the backend. This is useful only in the case of multiple
+vhosts routing to the same backend
+
+
+**Default template for `HTTP_FRONTEND_ACL_ONLY_WITH_PATH`:**
+```
+  acl path_{backend} path_beg {path}
+
+```
+## `HTTP_FRONTEND_ACL_WITH_PATH`
+  *Overridable*
+
+May be specified as `HAPROXY_HTTP_FRONTEND_ACL_WITH_PATH` template or with label `HAPROXY_{n}_HTTP_FRONTEND_ACL_WITH_PATH`.
+
+The ACL that glues a backend to the corresponding virtual host with path
+of the `HAPROXY_HTTP_FRONTEND_HEAD`.
+
+
+**Default template for `HTTP_FRONTEND_ACL_WITH_PATH`:**
+```
+  acl host_{cleanedUpHostname} hdr(host) -i {hostname}
+  acl path_{backend} path_beg {path}
+  use_backend {backend} if host_{cleanedUpHostname} path_{backend}
+
+```
+## `HTTP_FRONTEND_APPID_ACL`
+  *Overridable*
+
+May be specified as `HAPROXY_HTTP_FRONTEND_APPID_ACL` template or with label `HAPROXY_{n}_HTTP_FRONTEND_APPID_ACL`.
+
+The ACL that glues a backend to the corresponding app
+of the `HAPROXY_HTTP_FRONTEND_APPID_HEAD`.
+
+
+**Default template for `HTTP_FRONTEND_APPID_ACL`:**
+```
+  acl app_{cleanedUpAppId} hdr(x-marathon-app-id) -i {appId}
+  use_backend {backend} if app_{cleanedUpAppId}
+
+```
+## `HTTP_FRONTEND_APPID_HEAD`
+  *Global*
+
+May be specified as `HAPROXY_HTTP_FRONTEND_APPID_HEAD` template.
+
+An HTTP frontend that binds to port *:9091 by default and gathers
+all apps in HTTP mode.
+To use this frontend to forward to your app, configure the app with
+`HAPROXY_0_MODE=http` then you can access it via a call to the :9091
+with the header "X-Marathon-App-Id" set to the Marathon AppId.
+Note multiple HTTP ports being exposed by the same marathon app are not
+supported. Only the first HTTP port is available via this frontend.
+
+
+**Default template for `HTTP_FRONTEND_APPID_HEAD`:**
+```
+
+frontend marathon_http_appid_in
+  bind *:9091
+  mode http
+
+```
+## `HTTP_FRONTEND_HEAD`
+  *Global*
+
+May be specified as `HAPROXY_HTTP_FRONTEND_HEAD` template.
+
+An HTTP frontend that binds to port *:80 by default and gathers
+all virtual hosts as defined by the `HAPROXY_{n}_VHOST` label.
+
+
+**Default template for `HTTP_FRONTEND_HEAD`:**
+```
+
+frontend marathon_http_in
+  bind *:80
+  mode http
+
+```
+## `HTTP_FRONTEND_ROUTING_ONLY`
+  *Overridable*
+
+May be specified as `HAPROXY_HTTP_FRONTEND_ROUTING_ONLY` template or with label `HAPROXY_{n}_HTTP_FRONTEND_ROUTING_ONLY`.
+
+This is the counterpart to `HAPROXY_HTTP_FRONTEND_ACL_ONLY` which
+glues the acl name to the appropriate backend.
+
+
+**Default template for `HTTP_FRONTEND_ROUTING_ONLY`:**
+```
+  use_backend {backend} if host_{cleanedUpHostname}
+
+```
+## `HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH`
+  *Overridable*
+
+May be specified as `HAPROXY_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH` template or with label `HAPROXY_{n}_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH`.
+
+This is the counterpart to `HAPROXY_HTTP_FRONTEND_ACL_ONLY_WITH_PATH` which
+glues the acl names to the appropriate backend
+
+
+**Default template for `HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH`:**
+```
+  use_backend {backend} if host_{cleanedUpHostname} path_{backend}
+
+```
+## Other Labels
+These labels may be used to configure other app settings.
+
+## `VHOST`
+  *per service port*
+
+May be specified as `HAPROXY_{n}_VHOST`.
+
+The Marathon HTTP Virtual Host proxy hostname(s) to gather.
+
+Ex: `HAPROXY_0_VHOST = 'marathon.mesosphere.com'`
+
+Ex: `HAPROXY_0_VHOST = 'marathon.mesosphere.com,marathon'`
+                    
+
+## `GROUP`
+  *per service port*
+
+May be specified as `HAPROXY_{n}_GROUP` or `HAPROXY_GROUP`.
+
+HAProxy group per service. This helps us have different HAProxy groups
+per service port. This overrides `HAPROXY_GROUP` for the particular service.
+If you have both external and internal services running on same set of
+instances on different ports, you can use this feature to add them to
+different haproxy configs.
+
+Ex: `HAPROXY_0_GROUP = 'external'`
+
+Ex: `HAPROXY_1_GROUP = 'internal'`
+
+Now if you run marathon_lb with --group external, it just adds the
+service on `HAPROXY_0_PORT` (or first service port incase `HAPROXY_0_HOST`
+is not configured) to haproxy config and similarly if you run it with
+--group internal, it adds service on `HAPROXY_1_PORT` to haproxy config.
+If the configuration is a combination of `HAPROXY_GROUP` and
+`HAPROXY_{n}_GROUP`, the more specific definition takes precedence.
+
+Ex: `HAPROXY_0_GROUP = 'external'`
+
+Ex: `HAPROXY_GROUP   = 'internal'`
+
+Considering the above example where the configuration is hybrid,
+a service running on `HAPROXY_0_PORT` is associated with just 'external'
+HAProxy group and not 'internal' group. And since there is no HAProxy
+group mentioned for second service (`HAPROXY_1_GROUP` not defined)
+it falls back to default `HAPROXY_GROUP` and gets associated with
+'internal' group.
+
+Load balancers with the group '*' will collect all groups.
+    
+
+## `DEPLOYMENT_GROUP`
+  *per app*
+
+May be specified as `HAPROXY_DEPLOYMENT_GROUP`.
+
+Deployment group to which this app belongs.
+                    
+
+## `DEPLOYMENT_ALT_PORT`
+  *per app*
+
+May be specified as `HAPROXY_DEPLOYMENT_ALT_PORT`.
+
+Alternate service port to be used during a blue/green deployment.
+                    
+
+## `DEPLOYMENT_COLOUR`
+  *per app*
+
+May be specified as `HAPROXY_DEPLOYMENT_COLOUR`.
+
+Blue/green deployment colour. Used by the bluegreen_deploy.py script
+to determine the state of a deploy. You generally do not need to modify
+this unless you implement your own deployment orchestrator.
+                    
+
+## `DEPLOYMENT_STARTED_AT`
+  *per app*
+
+May be specified as `HAPROXY_DEPLOYMENT_STARTED_AT`.
+
+The time at which a deployment started. You generally do not need
+to modify this unless you implement your own deployment orchestrator.
+                    
+
+## `DEPLOYMENT_TARGET_INSTANCES`
+  *per app*
+
+May be specified as `HAPROXY_DEPLOYMENT_TARGET_INSTANCES`.
+
+The target number of app instances to seek during deployment. You
+generally do not need to modify this unless you implement your
+own deployment orchestrator.
+                    
+
+## `PATH`
+  *per service port*
+
+May be specified as `HAPROXY_{n}_PATH`.
+
+                    
+
+## `STICKY`
+  *per service port*
+
+May be specified as `HAPROXY_{n}_STICKY`.
+
+Enable sticky request routing for the service.
+
+Ex: `HAPROXY_0_STICKY = true`
+                    
+
+## `REDIRECT_TO_HTTPS`
+  *per service port*
+
+May be specified as `HAPROXY_{n}_REDIRECT_TO_HTTPS`.
+
+Redirect HTTP traffic to HTTPS. Requires at least a VHost be set.
+
+Ex: `HAPROXY_0_REDIRECT_TO_HTTPS = true`
+                    
+
+## `USE_HSTS`
+  *per service port*
+
+May be specified as `HAPROXY_{n}_USE_HSTS`.
+
+Enable the HSTS response header for HTTP clients which support it.
+
+Ex: `HAPROXY_0_USE_HSTS = true`
+                    
+
+## `SSL_CERT`
+  *per service port*
+
+May be specified as `HAPROXY_{n}_SSL_CERT`.
+
+Enable the given SSL certificate for TLS/SSL traffic.
+
+Ex: `HAPROXY_0_SSL_CERT = '/etc/ssl/certs/marathon.mesosphere.com'`
+                    
+
+## `BIND_OPTIONS`
+  *per service port*
+
+May be specified as `HAPROXY_{n}_BIND_OPTIONS`.
+
+Set additional bind options
+
+Ex: `HAPROXY_0_BIND_OPTIONS = 'ciphers AES128+EECDH:AES128+EDH force-tlsv12 no-sslv3'`
+                    
+
+## `BIND_ADDR`
+  *per service port*
+
+May be specified as `HAPROXY_{n}_BIND_ADDR`.
+
+Bind to the specific address for the service.
+
+Ex: `HAPROXY_0_BIND_ADDR = '10.0.0.42'`
+                    
+
+## `PORT`
+  *per service port*
+
+May be specified as `HAPROXY_{n}_PORT`.
+
+Bind to the specific port for the service.
+This overrides the servicePort which has to be unique.
+
+Ex: `HAPROXY_0_PORT = 80`
+                    
+
+## `MODE`
+  *per service port*
+
+May be specified as `HAPROXY_{n}_MODE`.
+
+Set the connection mode to either TCP or HTTP. The default is TCP.
+
+Ex: `HAPROXY_0_MODE = 'http'`
+                    
+
+## `BALANCE`
+  *per service port*
+
+May be specified as `HAPROXY_{n}_BALANCE`.
+
+Set the load balancing algorithm to be used in a backend. The default is
+roundrobin.
+
+Ex: `HAPROXY_0_BALANCE = 'leastconn'`
+                    
+
+
