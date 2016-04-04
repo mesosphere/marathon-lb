@@ -487,10 +487,12 @@ HAPROXY_{n}_HTTP_FRONTEND_APPID_ACL
 HAPROXY_{n}_HTTPS_FRONTEND_ACL
 HAPROXY_{n}_HTTPS_FRONTEND_ACL_WITH_PATH
 HAPROXY_{n}_BACKEND_HTTP_OPTIONS
+HAPROXY_{n}_BACKEND_HSTS_OPTIONS
 HAPROXY_{n}_BACKEND_HTTP_HEALTHCHECK_OPTIONS
 HAPROXY_{n}_BACKEND_TCP_HEALTHCHECK_OPTIONS
 HAPROXY_{n}_BACKEND_STICKY_OPTIONS
 HAPROXY_{n}_BACKEND_SERVER_OPTIONS
+HAPROXY_{n}_BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS
 HAPROXY_{n}_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS
 HAPROXY_{n}_FRONTEND_BACKEND_GLUE
 ```
@@ -503,11 +505,12 @@ The deployment method is described [in this Marathon document](https://mesospher
 
 
 - Specify the `HAPROXY_DEPLOYMENT_GROUP` and `HAPROXY_DEPLOYMENT_ALT_PORT` labels in your app template
-  - `HAPROXY_DEPLOYMENT_GROUP`: This label uniquely identifies a set of apps belonging to a blue/green deployment, and will be used as the app name in the HAProxy configuration
+  - `HAPROXY_DEPLOYMENT_GROUP`: This label uniquely identifies a pair of apps belonging to a blue/green deployment, and will be used as the app name in the HAProxy configuration
   - `HAPROXY_DEPLOYMENT_ALT_PORT`: An alternate service port is required because Marathon requires service ports to be unique across all apps
 - Only use 1 service port: multiple ports are not yet implemented
 - Use the provided `bluegreen_deploy.py` script to orchestrate the deploy: the script will make API calls to Marathon, and use the HAProxy stats endpoint to gracefully terminate instances
 - The marathon-lb container must be run in privileged mode (to execute `iptables` commands) due to the issues outlined in the excellent blog post by the [Yelp engineering team found here](http://engineeringblog.yelp.com/2015/04/true-zero-downtime-haproxy-reloads.html)
+- If you have long-lived TCP connections using the same HAProxy instances, it may cause the deploy to take longer than necessary. The script will wait up to 5 minutes (by default) for connections to drain from HAProxy between steps, but any long-lived TCP connections will cause old instances of HAProxy to stick around.
 
 An example minimal configuration for a [test instance of nginx is included here](tests/1-nginx.json). You might execute a deployment from a CI tool like Jenkins with:
 

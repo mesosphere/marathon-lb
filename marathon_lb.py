@@ -579,20 +579,27 @@ label_keys = {
     'HAPROXY_{0}_BACKEND_REDIRECT_HTTP_TO_HTTPS': set_label,
     'HAPROXY_{0}_BACKEND_HEAD': set_label,
     'HAPROXY_{0}_HTTP_FRONTEND_ACL': set_label,
-    'HAPROXY_{0}_HTTPS_FRONTEND_ACL': set_label,
+    'HAPROXY_{0}_HTTP_FRONTEND_ACL_ONLY': set_label,
+    'HAPROXY_{0}_HTTP_FRONTEND_ROUTING_ONLY': set_label,
+    'HAPROXY_{0}_HTTP_FRONTEND_ACL_WITH_PATH': set_label,
+    'HAPROXY_{0}_HTTP_FRONTEND_ACL_ONLY_WITH_PATH': set_label,
+    'HAPROXY_{0}_HTTPS_FRONTEND_ACL_ONLY_WITH_PATH': set_label,
+    'HAPROXY_{0}_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH': set_label,
     'HAPROXY_{0}_HTTP_FRONTEND_APPID_ACL': set_label,
+    'HAPROXY_{0}_HTTPS_FRONTEND_ACL': set_label,
+    'HAPROXY_{0}_HTTPS_FRONTEND_ACL_WITH_PATH': set_label,
     'HAPROXY_{0}_BACKEND_HTTP_OPTIONS': set_label,
     'HAPROXY_{0}_BACKEND_HSTS_OPTIONS': set_label,
-    'HAPROXY_{0}_BACKEND_TCP_HEALTHCHECK_OPTIONS': set_label,
     'HAPROXY_{0}_BACKEND_HTTP_HEALTHCHECK_OPTIONS': set_label,
+    'HAPROXY_{0}_BACKEND_TCP_HEALTHCHECK_OPTIONS': set_label,
     'HAPROXY_{0}_BACKEND_STICKY_OPTIONS': set_label,
-    'HAPROXY_{0}_FRONTEND_BACKEND_GLUE': set_label,
+    'HAPROXY_{0}_BACKEND_SERVER_OPTIONS': set_label,
     'HAPROXY_{0}_BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS': set_label,
     'HAPROXY_{0}_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS': set_label,
-    'HAPROXY_{0}_BACKEND_SERVER_OPTIONS': set_label,
     'HAPROXY_{0}_HTTP_BACKEND_PROXYPASS': set_proxypath,
     'HAPROXY_{0}_HTTP_BACKEND_REVPROXY': set_revproxypath,
     'HAPROXY_{0}_HTTP_BACKEND_REDIR': set_redirpath
+    'HAPROXY_{0}_FRONTEND_BACKEND_GLUE': set_label,
 }
 
 logger = logging.getLogger('marathon_lb')
@@ -1467,7 +1474,7 @@ def get_apps(marathon):
                 if not alive:
                     continue
 
-            task_ports = task['ports']
+            task_ports = task.get('ports', [])
             draining = False
             if 'draining' in task:
                 draining = task['draining']
@@ -1554,7 +1561,7 @@ class MarathonEventProcessor(object):
                     logger.error("Connection error({0}): {1}".format(
                         e.errno, e.strerror))
                 except:
-                    print("Unexpected error:", sys.exc_info()[0])
+                    logger.exception("Unexpected error!")
 
     def stop(self):
         self.__condition.acquire()
