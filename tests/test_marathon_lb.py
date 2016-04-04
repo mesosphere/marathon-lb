@@ -5,8 +5,6 @@ import marathon_lb
 
 class TestMarathonUpdateHaproxy(unittest.TestCase):
 
-    maxDiff = None
-
     def setUp(self):
         self.base_config = '''global
   daemon
