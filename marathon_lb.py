@@ -598,8 +598,8 @@ label_keys = {
     'HAPROXY_{0}_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS': set_label,
     'HAPROXY_{0}_HTTP_BACKEND_PROXYPASS': set_proxypath,
     'HAPROXY_{0}_HTTP_BACKEND_REVPROXY': set_revproxypath,
-    'HAPROXY_{0}_HTTP_BACKEND_REDIR': set_redirpath
-    'HAPROXY_{0}_FRONTEND_BACKEND_GLUE': set_label,
+    'HAPROXY_{0}_HTTP_BACKEND_REDIR': set_redirpath,
+    'HAPROXY_{0}_FRONTEND_BACKEND_GLUE': set_label
 }
 
 logger = logging.getLogger('marathon_lb')
