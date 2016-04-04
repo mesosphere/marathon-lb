@@ -80,7 +80,7 @@ fi
 
 while true; do
   /marathon-lb/marathon_lb.py \
-    --syslog-socket /dev/null \
+    --syslog-socket $SYSLOG_SOCKET \
     --haproxy-config /marathon-lb/haproxy.cfg \
     -c "sv reload $HAPROXY_SERVICE" \
     $ARGS "$@" &
