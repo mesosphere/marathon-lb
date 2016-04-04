@@ -4,6 +4,9 @@ import marathon_lb
 
 
 class TestMarathonUpdateHaproxy(unittest.TestCase):
+
+    maxDiff = None
+
     def setUp(self):
         self.base_config = '''global
   daemon
@@ -809,7 +812,6 @@ frontend nginx_10000
 backend nginx_10000
   balance roundrobin
   mode http
-  rspadd  Strict-Transport-Security:\ max-age=15768000
   option forwardfor
   http-request set-header X-Forwarded-Port %[dst_port]
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
@@ -1177,5 +1179,163 @@ backend nginx_10001
   balance roundrobin
   mode tcp
   server 1_1_1_1_1025 1.1.1.1:1025
+'''
+        self.assertMultiLineEqual(config, expected)
+
+    def test_config_simple_app_proxypass(self):
+        apps = dict()
+        groups = ['external']
+        bind_http_https = True
+        ssl_certs = ""
+        templater = marathon_lb.ConfigTemplater()
+
+        healthCheck = {}
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app.groups = ['external']
+        app.hostname = 'test.example.com'
+        app.proxypath = '/test/'
+        app.add_backend("1.1.1.1", 1024, False)
+        apps = [app]
+
+        config = marathon_lb.config(apps, groups, bind_http_https,
+                                    ssl_certs, templater)
+        expected = self.base_config + '''
+frontend marathon_http_in
+  bind *:80
+  mode http
+  acl host_test_example_com_nginx hdr(host) -i test.example.com
+  use_backend nginx_10000 if host_test_example_com_nginx
+
+frontend marathon_http_appid_in
+  bind *:9091
+  mode http
+  acl app__nginx hdr(x-marathon-app-id) -i /nginx
+  use_backend nginx_10000 if app__nginx
+
+frontend marathon_https_in
+  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  mode http
+  use_backend nginx_10000 if { ssl_fc_sni test.example.com }
+
+frontend nginx_10000
+  bind *:10000
+  mode http
+  use_backend nginx_10000
+
+backend nginx_10000
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  http-request set-header Host test.example.com
+  reqirep  "^([^ :]*)\ /test/(.*)" "\\1\ /\\2"
+  server 1_1_1_1_1024 1.1.1.1:1024
+'''
+        self.assertMultiLineEqual(config, expected)
+
+    def test_config_simple_app_revproxy(self):
+        apps = dict()
+        groups = ['external']
+        bind_http_https = True
+        ssl_certs = ""
+        templater = marathon_lb.ConfigTemplater()
+
+        healthCheck = {}
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app.groups = ['external']
+        app.hostname = 'test.example.com'
+        app.revproxypath = '/test'
+        app.add_backend("1.1.1.1", 1024, False)
+        apps = [app]
+
+        config = marathon_lb.config(apps, groups, bind_http_https,
+                                    ssl_certs, templater)
+        expected = self.base_config + '''
+frontend marathon_http_in
+  bind *:80
+  mode http
+  acl host_test_example_com_nginx hdr(host) -i test.example.com
+  use_backend nginx_10000 if host_test_example_com_nginx
+
+frontend marathon_http_appid_in
+  bind *:9091
+  mode http
+  acl app__nginx hdr(x-marathon-app-id) -i /nginx
+  use_backend nginx_10000 if app__nginx
+
+frontend marathon_https_in
+  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  mode http
+  use_backend nginx_10000 if { ssl_fc_sni test.example.com }
+
+frontend nginx_10000
+  bind *:10000
+  mode http
+  use_backend nginx_10000
+
+backend nginx_10000
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  acl hdr_location res.hdr(Location) -m found
+  rspirep "^Location: (https?://test.example.com(:[0-9]+)?)?(/.*)" "Location: \
+  /test if hdr_location"
+  server 1_1_1_1_1024 1.1.1.1:1024
+'''
+        self.assertMultiLineEqual(config, expected)
+
+    def test_config_simple_app_revproxy(self):
+        apps = dict()
+        groups = ['external']
+        bind_http_https = True
+        ssl_certs = ""
+        templater = marathon_lb.ConfigTemplater()
+
+        healthCheck = {}
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app.groups = ['external']
+        app.hostname = 'test.example.com'
+        app.redirpath = '/test'
+        app.add_backend("1.1.1.1", 1024, False)
+        apps = [app]
+
+        config = marathon_lb.config(apps, groups, bind_http_https,
+                                    ssl_certs, templater)
+        expected = self.base_config + '''
+frontend marathon_http_in
+  bind *:80
+  mode http
+  acl host_test_example_com_nginx hdr(host) -i test.example.com
+  use_backend nginx_10000 if host_test_example_com_nginx
+
+frontend marathon_http_appid_in
+  bind *:9091
+  mode http
+  acl app__nginx hdr(x-marathon-app-id) -i /nginx
+  use_backend nginx_10000 if app__nginx
+
+frontend marathon_https_in
+  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  mode http
+  use_backend nginx_10000 if { ssl_fc_sni test.example.com }
+
+frontend nginx_10000
+  bind *:10000
+  mode http
+  use_backend nginx_10000
+
+backend nginx_10000
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  acl is_root path -i /
+  acl is_domain hdr(host) -i test.example.com
+  redirect code 301 location /test if is_domain is_root
+  server 1_1_1_1_1024 1.1.1.1:1024
 '''
         self.assertMultiLineEqual(config, expected)
