@@ -1,6 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
+SYSLOG_SOCKET=${SYSLOG_SOCKET:-/dev/null}
+
 HAPROXY_SERVICE="/marathon-lb/service/haproxy"
 mkdir -p $HAPROXY_SERVICE/env
 
