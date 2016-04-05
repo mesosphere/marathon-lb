@@ -37,7 +37,7 @@ You can access the HAProxy statistics via `:9090/haproxy?stats`, and you can
 retrieve the current HAProxy config from the `:9090/_haproxy_getconfig` endpoint.
 
 ## Deployment
-The package is currently available [from the multiverse](https://github.com/mesosphere/multiverse).
+The package is currently available [from the universe](https://github.com/mesosphere/universe).
 To deploy the marathon-lb on the public slaves in your DCOS cluster,
 simply run:
 
