@@ -16,6 +16,7 @@ Marathon-lb is a tool for managing HAProxy, by consuming [Marathon's](https://gi
 
  * [Using marathon-lb](https://docs.mesosphere.com/administration/service-discovery/service-discovery-and-load-balancing-with-marathon-lb/service-discovery-and-load-balancing/)
  * [Advanced features of marathon-lb](https://docs.mesosphere.com/administration/service-discovery/service-discovery-and-load-balancing-with-marathon-lb/advanced-features-of-marathon-lb/)
+ * [Securing your service with TLS/SSL (blog post)](https://mesosphere.com/blog/2016/04/06/lets-encrypt-dcos/)
 
 ## Architecture
 The marathon-lb script `marathon_lb.py` connects to the marathon API
@@ -138,6 +139,18 @@ You can skip the configuration file validation (via calling HAProxy service) pro
 ``` console
 $ ./marathon_lb.py --marathon http://localhost:8080 --group external --skip-validation
 ```
+
+### API endpoints
+
+Marathon-lb exposes a few endpoints on port 9090 (by default). They are:
+
+| Endpoint                      | Description                                                                                                                                                                                                                                                                                                               |
+|-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `:9090/haproxy?stats`         | HAProxy stats endpoint. This produces an HTML page which can be viewed in your browser, providing various statistics about the current HAProxy instance.                                                                                                                                                                  |
+| `:9090/haproxy?stats;csv`     | This is a CSV version of the stats above, which can be consumed by other tools. For example, it's used in the [`bluegreen_deploy.py`](bluegreen_deploy.py) script.                                                                                                                                                        |
+| `:9090/_haproxy_health_check` | HAProxy health check endpoint. Returns `200 OK` if HAProxy is healthy.                                                                                                                                                                                                                                                    |
+| `:9090/_haproxy_getconfig`    | Returns the HAProxy config file as it was when HAProxy was started. Implemented in [`getconfig.lua`](getconfig.lua).                                                                                                                                                                                                      |
+| `:9090/_haproxy_getpids`      | Returns the PIDs for all HAProxy instances within the current process namespace. This literally returns `$(pidof haproxy)`. Implemented in [`getpids.lua`](getpids.lua). This is also used by the [`bluegreen_deploy.py`](bluegreen_deploy.py) script to determine if connections have finished draining during a deploy. |
 
 
 ## HAProxy configuration
