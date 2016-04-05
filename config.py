@@ -1081,6 +1081,8 @@ labels.append(Label(name='FRONTEND_BACKEND_GLUE',
                     func=set_label,
                     description=''))
 
+labels.sort(key=lambda l: l.name)
+
 label_keys = {}
 for label in labels:
     if not label.func:

@@ -631,16 +631,80 @@ Ex: `HAPROXY_0_HTTP_BACKEND_REDIR = '/path/to/resource/'`
 ## Other Labels
 These labels may be used to configure other app settings.
 
-## `HAPROXY_{n}_VHOST`
+## `HAPROXY_{n}_BALANCE`
   *per service port*
 
-Specified as `HAPROXY_{n}_VHOST`.
+Specified as `HAPROXY_{n}_BALANCE`.
 
-The Marathon HTTP Virtual Host proxy hostname(s) to gather.
+Set the load balancing algorithm to be used in a backend. The default is
+roundrobin.
 
-Ex: `HAPROXY_0_VHOST = 'marathon.mesosphere.com'`
+Ex: `HAPROXY_0_BALANCE = 'leastconn'`
+                    
 
-Ex: `HAPROXY_0_VHOST = 'marathon.mesosphere.com,marathon'`
+## `HAPROXY_{n}_BIND_ADDR`
+  *per service port*
+
+Specified as `HAPROXY_{n}_BIND_ADDR`.
+
+Bind to the specific address for the service.
+
+Ex: `HAPROXY_0_BIND_ADDR = '10.0.0.42'`
+                    
+
+## `HAPROXY_{n}_BIND_OPTIONS`
+  *per service port*
+
+Specified as `HAPROXY_{n}_BIND_OPTIONS`.
+
+Set additional bind options
+
+Ex: `HAPROXY_0_BIND_OPTIONS = 'ciphers AES128+EECDH:AES128+EDH force-tlsv12 no-sslv3'`
+                    
+
+## `HAPROXY_DEPLOYMENT_ALT_PORT`
+  *per app*
+
+Specified as `HAPROXY_DEPLOYMENT_ALT_PORT`.
+
+Alternate service port to be used during a blue/green deployment.
+                    
+
+## `HAPROXY_DEPLOYMENT_COLOUR`
+  *per app*
+
+Specified as `HAPROXY_DEPLOYMENT_COLOUR`.
+
+Blue/green deployment colour. Used by the bluegreen_deploy.py script
+to determine the state of a deploy. You generally do not need to modify
+this unless you implement your own deployment orchestrator.
+                    
+
+## `HAPROXY_DEPLOYMENT_GROUP`
+  *per app*
+
+Specified as `HAPROXY_DEPLOYMENT_GROUP`.
+
+Deployment group to which this app belongs.
+                    
+
+## `HAPROXY_DEPLOYMENT_STARTED_AT`
+  *per app*
+
+Specified as `HAPROXY_DEPLOYMENT_STARTED_AT`.
+
+The time at which a deployment started. You generally do not need
+to modify this unless you implement your own deployment orchestrator.
+                    
+
+## `HAPROXY_DEPLOYMENT_TARGET_INSTANCES`
+  *per app*
+
+Specified as `HAPROXY_DEPLOYMENT_TARGET_INSTANCES`.
+
+The target number of app instances to seek during deployment. You
+generally do not need to modify this unless you implement your
+own deployment orchestrator.
                     
 
 ## `HAPROXY_{n}_GROUP`
@@ -679,49 +743,14 @@ it falls back to default `HAPROXY_GROUP` and gets associated with
 Load balancers with the group '*' will collect all groups.
     
 
-## `HAPROXY_DEPLOYMENT_GROUP`
-  *per app*
+## `HAPROXY_{n}_MODE`
+  *per service port*
 
-Specified as `HAPROXY_DEPLOYMENT_GROUP`.
+Specified as `HAPROXY_{n}_MODE`.
 
-Deployment group to which this app belongs.
-                    
+Set the connection mode to either TCP or HTTP. The default is TCP.
 
-## `HAPROXY_DEPLOYMENT_ALT_PORT`
-  *per app*
-
-Specified as `HAPROXY_DEPLOYMENT_ALT_PORT`.
-
-Alternate service port to be used during a blue/green deployment.
-                    
-
-## `HAPROXY_DEPLOYMENT_COLOUR`
-  *per app*
-
-Specified as `HAPROXY_DEPLOYMENT_COLOUR`.
-
-Blue/green deployment colour. Used by the bluegreen_deploy.py script
-to determine the state of a deploy. You generally do not need to modify
-this unless you implement your own deployment orchestrator.
-                    
-
-## `HAPROXY_DEPLOYMENT_STARTED_AT`
-  *per app*
-
-Specified as `HAPROXY_DEPLOYMENT_STARTED_AT`.
-
-The time at which a deployment started. You generally do not need
-to modify this unless you implement your own deployment orchestrator.
-                    
-
-## `HAPROXY_DEPLOYMENT_TARGET_INSTANCES`
-  *per app*
-
-Specified as `HAPROXY_DEPLOYMENT_TARGET_INSTANCES`.
-
-The target number of app instances to seek during deployment. You
-generally do not need to modify this unless you implement your
-own deployment orchestrator.
+Ex: `HAPROXY_0_MODE = 'http'`
                     
 
 ## `HAPROXY_{n}_PATH`
@@ -729,66 +758,6 @@ own deployment orchestrator.
 
 Specified as `HAPROXY_{n}_PATH`.
 
-                    
-
-## `HAPROXY_{n}_STICKY`
-  *per service port*
-
-Specified as `HAPROXY_{n}_STICKY`.
-
-Enable sticky request routing for the service.
-
-Ex: `HAPROXY_0_STICKY = true`
-                    
-
-## `HAPROXY_{n}_REDIRECT_TO_HTTPS`
-  *per service port*
-
-Specified as `HAPROXY_{n}_REDIRECT_TO_HTTPS`.
-
-Redirect HTTP traffic to HTTPS. Requires at least a VHost be set.
-
-Ex: `HAPROXY_0_REDIRECT_TO_HTTPS = true`
-                    
-
-## `HAPROXY_{n}_USE_HSTS`
-  *per service port*
-
-Specified as `HAPROXY_{n}_USE_HSTS`.
-
-Enable the HSTS response header for HTTP clients which support it.
-
-Ex: `HAPROXY_0_USE_HSTS = true`
-                    
-
-## `HAPROXY_{n}_SSL_CERT`
-  *per service port*
-
-Specified as `HAPROXY_{n}_SSL_CERT`.
-
-Enable the given SSL certificate for TLS/SSL traffic.
-
-Ex: `HAPROXY_0_SSL_CERT = '/etc/ssl/certs/marathon.mesosphere.com'`
-                    
-
-## `HAPROXY_{n}_BIND_OPTIONS`
-  *per service port*
-
-Specified as `HAPROXY_{n}_BIND_OPTIONS`.
-
-Set additional bind options
-
-Ex: `HAPROXY_0_BIND_OPTIONS = 'ciphers AES128+EECDH:AES128+EDH force-tlsv12 no-sslv3'`
-                    
-
-## `HAPROXY_{n}_BIND_ADDR`
-  *per service port*
-
-Specified as `HAPROXY_{n}_BIND_ADDR`.
-
-Bind to the specific address for the service.
-
-Ex: `HAPROXY_0_BIND_ADDR = '10.0.0.42'`
                     
 
 ## `HAPROXY_{n}_PORT`
@@ -802,25 +771,56 @@ This overrides the servicePort which has to be unique.
 Ex: `HAPROXY_0_PORT = 80`
                     
 
-## `HAPROXY_{n}_MODE`
+## `HAPROXY_{n}_REDIRECT_TO_HTTPS`
   *per service port*
 
-Specified as `HAPROXY_{n}_MODE`.
+Specified as `HAPROXY_{n}_REDIRECT_TO_HTTPS`.
 
-Set the connection mode to either TCP or HTTP. The default is TCP.
+Redirect HTTP traffic to HTTPS. Requires at least a VHost be set.
 
-Ex: `HAPROXY_0_MODE = 'http'`
+Ex: `HAPROXY_0_REDIRECT_TO_HTTPS = true`
                     
 
-## `HAPROXY_{n}_BALANCE`
+## `HAPROXY_{n}_SSL_CERT`
   *per service port*
 
-Specified as `HAPROXY_{n}_BALANCE`.
+Specified as `HAPROXY_{n}_SSL_CERT`.
 
-Set the load balancing algorithm to be used in a backend. The default is
-roundrobin.
+Enable the given SSL certificate for TLS/SSL traffic.
 
-Ex: `HAPROXY_0_BALANCE = 'leastconn'`
+Ex: `HAPROXY_0_SSL_CERT = '/etc/ssl/certs/marathon.mesosphere.com'`
+                    
+
+## `HAPROXY_{n}_STICKY`
+  *per service port*
+
+Specified as `HAPROXY_{n}_STICKY`.
+
+Enable sticky request routing for the service.
+
+Ex: `HAPROXY_0_STICKY = true`
+                    
+
+## `HAPROXY_{n}_USE_HSTS`
+  *per service port*
+
+Specified as `HAPROXY_{n}_USE_HSTS`.
+
+Enable the HSTS response header for HTTP clients which support it.
+
+Ex: `HAPROXY_0_USE_HSTS = true`
+                    
+
+## `HAPROXY_{n}_VHOST`
+  *per service port*
+
+Specified as `HAPROXY_{n}_VHOST`.
+
+The Marathon HTTP Virtual Host proxy hostname(s) to gather.
+
+Ex: `HAPROXY_0_VHOST = 'marathon.mesosphere.com'`
+
+Ex: `HAPROXY_0_VHOST = 'marathon.mesosphere.com,marathon'`
                     
 
 
