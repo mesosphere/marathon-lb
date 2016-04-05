@@ -503,14 +503,14 @@ be overridden on a per service port basis using the
 
 '''
         desc_template = '''\
-## `{name}`
+## `{full_name}`
   *{overridable}*
 
-May be specified as {specifiedAs}.
+Specified as {specifiedAs}.
 
 {description}
 
-**Default template for `{name}`:**
+**Default template for `{full_name}`:**
 ```
 {default}```
 '''
@@ -520,7 +520,7 @@ May be specified as {specifiedAs}.
             if t.overridable:
                 spec += " or with label `HAPROXY_{n}_" + t.name + "`"
             descriptions += desc_template.format(
-                name=t.name,
+                full_name=t.full_name,
                 specifiedAs=spec,
                 overridable="Overridable" if t.overridable else "Global",
                 description=t.description,
@@ -533,10 +533,10 @@ These labels may be used to configure other app settings.
 
 '''
         desc_template = '''\
-## `{name}`
+## `{full_name}`
   *{perServicePort}*
 
-May be specified as {specifiedAs}.
+Specified as {specifiedAs}.
 
 {description}
 
@@ -552,7 +552,7 @@ May be specified as {specifiedAs}.
                 else:
                     spec = "`HAPROXY_" + label.name + "`"
                 descriptions += desc_template.format(
-                    name=label.name,
+                    full_name=label.full_name.replace('_{0}_', '_{n}_'),
                     specifiedAs=spec,
                     perServicePort="per service port" if label.perServicePort
                     else "per app",
