@@ -510,10 +510,9 @@ May be specified as {specifiedAs}.
 
 {description}
 
-#### Default template for `{name}`:
+**Default template for `{name}`:**
 ```
-{default}
-```
+{default}```
 '''
         for tname in sorted(self.t.keys()):
             t = self.t[tname]

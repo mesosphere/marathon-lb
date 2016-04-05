@@ -103,7 +103,6 @@ and connection mode, TCP or HTTP.
 backend {backend}
   balance {balance}
   mode {mode}
-
 ```
 ## `BACKEND_HSTS_OPTIONS`
   *Overridable*
@@ -117,7 +116,6 @@ This template is used for the backend where the
 **Default template for `BACKEND_HSTS_OPTIONS`:**
 ```
   rspadd  Strict-Transport-Security:\ max-age=15768000
-
 ```
 ## `BACKEND_HTTP_HEALTHCHECK_OPTIONS`
   *Overridable*
@@ -136,7 +134,7 @@ Parameters of the first health check for this service are exposed as:
   * healthCheckGracePeriodSeconds
   * healthCheckMaxConsecutiveFailures
   * healthCheckFalls is set to healthCheckMaxConsecutiveFailures + 1
-  * healthCheckPortOptions is set to " port {healthCheckPort}"
+  * healthCheckPortOptions is set to ` port {healthCheckPort}`
 
 Defaults to empty string.
 
@@ -151,7 +149,6 @@ Example:
 ```
   option  httpchk GET {healthCheckPath}
   timeout check {healthCheckTimeoutSeconds}s
-
 ```
 ## `BACKEND_HTTP_OPTIONS`
   *Overridable*
@@ -166,7 +163,6 @@ Sets HTTP headers, for example X-Forwarded-For and X-Forwarded-Proto.
   option forwardfor
   http-request set-header X-Forwarded-Port %[dst_port]
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
-
 ```
 ## `BACKEND_REDIRECT_HTTP_TO_HTTPS`
   *Overridable*
@@ -180,7 +176,6 @@ This template is used with backends where the
 **Default template for `BACKEND_REDIRECT_HTTP_TO_HTTPS`:**
 ```
   redirect scheme https code 301 if !{{ ssl_fc }} host_{cleanedUpHostname}
-
 ```
 ## `BACKEND_REDIRECT_HTTP_TO_HTTPS_WITH_PATH`
   *Overridable*
@@ -194,7 +189,6 @@ but includes a path.
 **Default template for `BACKEND_REDIRECT_HTTP_TO_HTTPS_WITH_PATH`:**
 ```
   redirect scheme https code 301 if !{{ ssl_fc }} host_{cleanedUpHostname} path_{backend}
-
 ```
 ## `BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS`
   *Overridable*
@@ -213,7 +207,7 @@ Parameters of the first health check for this service are exposed as:
   * healthCheckGracePeriodSeconds
   * healthCheckMaxConsecutiveFailures
   * healthCheckFalls is set to healthCheckMaxConsecutiveFailures + 1
-  * healthCheckPortOptions is set to " port {healthCheckPort}"
+  * healthCheckPortOptions is set to ` port {healthCheckPort}`
 
 Defaults to empty string.
 
@@ -226,7 +220,6 @@ Example:
 **Default template for `BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS`:**
 ```
   check inter {healthCheckIntervalSeconds}s fall {healthCheckFalls}{healthCheckPortOptions}
-
 ```
 ## `BACKEND_SERVER_OPTIONS`
   *Overridable*
@@ -239,7 +232,6 @@ The options for each server added to a backend.
 **Default template for `BACKEND_SERVER_OPTIONS`:**
 ```
   server {serverName} {host_ipv4}:{port}{cookieOptions}{healthCheckOptions}{otherOptions}
-
 ```
 ## `BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS`
   *Overridable*
@@ -256,7 +248,7 @@ Parameters of the first health check for this service are exposed as:
   * healthCheckGracePeriodSeconds
   * healthCheckMaxConsecutiveFailures
   * healthCheckFalls is set to healthCheckMaxConsecutiveFailures + 1
-  * healthCheckPortOptions is set to " port {healthCheckPort}"
+  * healthCheckPortOptions is set to ` port {healthCheckPort}`
 
 Defaults to empty string.
 
@@ -269,7 +261,6 @@ Example:
 **Default template for `BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS`:**
 ```
   check inter {healthCheckIntervalSeconds}s fall {healthCheckFalls}{healthCheckPortOptions}
-
 ```
 ## `BACKEND_STICKY_OPTIONS`
   *Overridable*
@@ -282,7 +273,6 @@ Sets a cookie for services where `HAPROXY_{n}_STICKY` is true.
 **Default template for `BACKEND_STICKY_OPTIONS`:**
 ```
   cookie mesosphere_server_id insert indirect nocache
-
 ```
 ## `BACKEND_TCP_HEALTHCHECK_OPTIONS`
   *Overridable*
@@ -299,7 +289,7 @@ Parameters of the first health check for this service are exposed as:
   * healthCheckGracePeriodSeconds
   * healthCheckMaxConsecutiveFailures
   * healthCheckFalls is set to healthCheckMaxConsecutiveFailures + 1
-  * healthCheckPortOptions is set to " port {healthCheckPort}"
+  * healthCheckPortOptions is set to ` port {healthCheckPort}`
 
 Defaults to empty string.
 
@@ -311,7 +301,6 @@ Example:
 
 **Default template for `BACKEND_TCP_HEALTHCHECK_OPTIONS`:**
 ```
-
 ```
 ## `FRONTEND_BACKEND_GLUE`
   *Overridable*
@@ -324,7 +313,6 @@ This option glues the backend to the frontend.
 **Default template for `FRONTEND_BACKEND_GLUE`:**
 ```
   use_backend {backend}
-
 ```
 ## `FRONTEND_HEAD`
   *Overridable*
@@ -340,7 +328,6 @@ Defines the address and port to bind to for this frontend.
 frontend {backend}
   bind {bindAddr}:{servicePort}{sslCert}{bindOptions}
   mode {mode}
-
 ```
 ## `HEAD`
   *Global*
@@ -395,7 +382,6 @@ listen stats
   http-request use-service lua.getpids if getpid
   acl getconfig path /_haproxy_getconfig
   http-request use-service lua.getconfig if getconfig
-
 ```
 ## `HTTPS_FRONTEND_ACL`
   *Overridable*
@@ -409,7 +395,6 @@ for the `HAPROXY_HTTPS_FRONTEND_HEAD` template.
 **Default template for `HTTPS_FRONTEND_ACL`:**
 ```
   use_backend {backend} if {{ ssl_fc_sni {hostname} }}
-
 ```
 ## `HTTPS_FRONTEND_ACL_ONLY_WITH_PATH`
   *Overridable*
@@ -422,7 +407,6 @@ Same as HTTP_FRONTEND_ACL_ONLY_WITH_PATH, but for HTTPS.
 **Default template for `HTTPS_FRONTEND_ACL_ONLY_WITH_PATH`:**
 ```
   acl path_{backend} path_beg {path}
-
 ```
 ## `HTTPS_FRONTEND_ACL_WITH_PATH`
   *Overridable*
@@ -436,7 +420,6 @@ for the `HAPROXY_HTTPS_FRONTEND_HEAD` template.
 **Default template for `HTTPS_FRONTEND_ACL_WITH_PATH`:**
 ```
   use_backend {backend} if {{ ssl_fc_sni {hostname} }} path_{backend}
-
 ```
 ## `HTTPS_FRONTEND_HEAD`
   *Global*
@@ -455,7 +438,6 @@ include your certificate.
 frontend marathon_https_in
   bind *:443 ssl {sslCerts}
   mode http
-
 ```
 ## `HTTP_FRONTEND_ACL`
   *Overridable*
@@ -470,7 +452,6 @@ of the `HAPROXY_HTTP_FRONTEND_HEAD`
 ```
   acl host_{cleanedUpHostname} hdr(host) -i {hostname}
   use_backend {backend} if host_{cleanedUpHostname}
-
 ```
 ## `HTTP_FRONTEND_ACL_ONLY`
   *Overridable*
@@ -486,7 +467,6 @@ vhosts routing to the same backend.
 **Default template for `HTTP_FRONTEND_ACL_ONLY`:**
 ```
   acl host_{cleanedUpHostname} hdr(host) -i {hostname}
-
 ```
 ## `HTTP_FRONTEND_ACL_ONLY_WITH_PATH`
   *Overridable*
@@ -502,7 +482,6 @@ vhosts routing to the same backend
 **Default template for `HTTP_FRONTEND_ACL_ONLY_WITH_PATH`:**
 ```
   acl path_{backend} path_beg {path}
-
 ```
 ## `HTTP_FRONTEND_ACL_WITH_PATH`
   *Overridable*
@@ -518,7 +497,6 @@ of the `HAPROXY_HTTP_FRONTEND_HEAD`.
   acl host_{cleanedUpHostname} hdr(host) -i {hostname}
   acl path_{backend} path_beg {path}
   use_backend {backend} if host_{cleanedUpHostname} path_{backend}
-
 ```
 ## `HTTP_FRONTEND_APPID_ACL`
   *Overridable*
@@ -533,7 +511,6 @@ of the `HAPROXY_HTTP_FRONTEND_APPID_HEAD`.
 ```
   acl app_{cleanedUpAppId} hdr(x-marathon-app-id) -i {appId}
   use_backend {backend} if app_{cleanedUpAppId}
-
 ```
 ## `HTTP_FRONTEND_APPID_HEAD`
   *Global*
@@ -555,7 +532,6 @@ supported. Only the first HTTP port is available via this frontend.
 frontend marathon_http_appid_in
   bind *:9091
   mode http
-
 ```
 ## `HTTP_FRONTEND_HEAD`
   *Global*
@@ -572,7 +548,6 @@ all virtual hosts as defined by the `HAPROXY_{n}_VHOST` label.
 frontend marathon_http_in
   bind *:80
   mode http
-
 ```
 ## `HTTP_FRONTEND_ROUTING_ONLY`
   *Overridable*
@@ -586,7 +561,6 @@ glues the acl name to the appropriate backend.
 **Default template for `HTTP_FRONTEND_ROUTING_ONLY`:**
 ```
   use_backend {backend} if host_{cleanedUpHostname}
-
 ```
 ## `HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH`
   *Overridable*
@@ -600,7 +574,6 @@ glues the acl names to the appropriate backend
 **Default template for `HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH`:**
 ```
   use_backend {backend} if host_{cleanedUpHostname} path_{backend}
-
 ```
 ## Other Labels
 These labels may be used to configure other app settings.
