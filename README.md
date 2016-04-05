@@ -12,6 +12,11 @@ Marathon-lb is a tool for managing HAProxy, by consuming [Marathon's](https://gi
  * Automated Docker image builds ([mesosphere/marathon-lb](https://hub.docker.com/r/mesosphere/marathon-lb))
  * Global HAProxy templates which can be supplied at launch
 
+### Getting started
+
+ * [SD & LB with DCOS and marathon-lb: Part 1](https://mesosphere.com/blog/2015/12/04/dcos-marathon-lb/)
+ * [SD & LB with DCOS and marathon-lb: Part 2](https://mesosphere.com/blog/2015/12/13/service-discovery-and-load-balancing-with-dcos-and-marathon-lb-part-2/)
+
 ## Architecture
 The marathon-lb script `marathon_lb.py` connects to the marathon API
 to retrieve all running apps, generates a HAProxy config and reloads HAProxy.
