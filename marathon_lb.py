@@ -72,6 +72,9 @@ class MarathonService(object):
         self.servicePort = servicePort
         self.backends = set()
         self.hostname = None
+        self.proxypath = None
+        self.revproxypath = None
+        self.redirpath = None
         self.haproxy_groups = frozenset()
         self.path = None
         self.sticky = False
@@ -341,6 +344,27 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
             if app.useHsts:
                 backends += templater.haproxy_backend_hsts_options(app)
             backends += templater.haproxy_backend_http_options(app)
+            backend_http_backend_proxypass = templater \
+                .haproxy_http_backend_proxypass(app)
+            if app.proxypath:
+                backends += backend_http_backend_proxypass.format(
+                    hostname=app.hostname,
+                    proxypath=app.proxypath
+                )
+            backend_http_backend_revproxy = templater \
+                .haproxy_http_backend_revproxy(app)
+            if app.revproxypath:
+                backends += backend_http_backend_revproxy.format(
+                    hostname=app.hostname,
+                    rootpath=app.revproxypath
+                )
+            backend_http_backend_redir = templater \
+                .haproxy_http_backend_redir(app)
+            if app.redirpath:
+                backends += backend_http_backend_redir.format(
+                    hostname=app.hostname,
+                    redirpath=app.redirpath
+                )
 
         if app.healthCheck:
             health_check_options = None

@@ -329,6 +329,45 @@ Sets HTTP headers, for example X-Forwarded-For and X-Forwarded-Proto.
 '''))
 
         self.add_template(
+            ConfigTemplate(name='HTTP_BACKEND_PROXYPASS',
+                           value='''\
+  http-request set-header Host {hostname}
+  reqirep  "^([^ :]*)\ {proxypath}(.*)" "\\1\ /\\2"
+''',
+                           overridable=True,
+                           description='''\
+Set the location to use for mapping local server URLs to remote servers + URL.
+Ex: HAPROXY_0_HTTP_BACKEND_PROXYPASS = '/path/to/redirect
+'''))
+
+        self.add_template(
+            ConfigTemplate(name='HTTP_BACKEND_REVPROXY',
+                           value='''\
+  acl hdr_location res.hdr(Location) -m found
+  rspirep "^Location: (https?://{hostname}(:[0-9]+)?)?(/.*)" "Location: \
+  {rootpath} if hdr_location"
+''',
+                           overridable=True,
+                           description='''\
+Set the URL in HTTP response headers sent from a reverse proxied server. \
+It only updates Location, Content-Location and URL.
+Ex: HAPROXY_0_HTTP_BACKEND_REVPROXY = '/my/content'
+'''))
+
+        self.add_template(
+            ConfigTemplate(name='HTTP_BACKEND_REDIR',
+                           value='''\
+  acl is_root path -i /
+  acl is_domain hdr(host) -i {hostname}
+  redirect code 301 location {redirpath} if is_domain is_root
+''',
+                           overridable=True,
+                           description='''\
+Set the path to redirect the root of the domain to
+Ex: HAPROXY_0_HTTP_BACKEND_REDIR = '/my/content'
+'''))
+
+        self.add_template(
             ConfigTemplate(name='BACKEND_HTTP_HEALTHCHECK_OPTIONS',
                            value='''\
   option  httpchk GET {healthCheckPath}
@@ -679,6 +718,21 @@ Specified as {specifiedAs}.
             return app.labels['HAPROXY_{0}_BACKEND_SERVER_OPTIONS']
         return self.t['BACKEND_SERVER_OPTIONS'].value
 
+    def haproxy_http_backend_proxypass(self, app):
+        if 'HAPROXY_{0}_HTTP_BACKEND_PROXYPASS' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTP_BACKEND_PROXYPASS']
+        return self.t['HTTP_BACKEND_PROXYPASS'].value
+
+    def haproxy_http_backend_revproxy(self, app):
+        if 'HAPROXY_{0}_HTTP_BACKEND_REVPROXY' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTP_BACKEND_REVPROXY']
+        return self.t['HTTP_BACKEND_REVPROXY'].value
+
+    def haproxy_http_backend_redir(self, app):
+        if 'HAPROXY_{0}_HTTP_BACKEND_REDIR' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTP_BACKEND_REDIR']
+        return self.t['HTTP_BACKEND_REDIR'].value
+
     def haproxy_backend_server_http_healthcheck_options(self, app):
         if 'HAPROXY_{0}_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS' in \
                 app.labels:
@@ -764,6 +818,18 @@ def set_label(x, k, v):
 
 def set_group(x, k, v):
     x.haproxy_groups = v.split(',')
+
+
+def set_proxypath(x, k, v):
+    x.proxypath = v
+
+
+def set_revproxypath(x, k, v):
+    x.revproxypath = v
+
+
+def set_redirpath(x, k, v):
+    x.redirpath = v
 
 
 class Label:
@@ -925,6 +991,29 @@ roundrobin.
 
 Ex: `HAPROXY_0_BALANCE = 'leastconn'`
                     '''))
+
+labels.append(Label(name='HTTP_BACKEND_PROXYPASS',
+                    func=set_proxypath,
+                    description='''\
+Set the location to use for mapping local server URLs to remote servers + URL.
+Ex: `HAPROXY_0_HTTP_BACKEND_PROXYPASS = '/path/to/redirect`
+                    '''))
+
+labels.append(Label(name='HTTP_BACKEND_REVPROXY',
+                    func=set_revproxypath,
+                    description='''\
+Set the URL in HTTP response headers sent from a reverse proxied server. \
+It only updates Location, Content-Location and URL.
+Ex: `HAPROXY_0_HTTP_BACKEND_REVPROXY = '/my/content'`
+                    '''))
+
+labels.append(Label(name='HTTP_BACKEND_REDIR',
+                    func=set_redirpath,
+                    description='''\
+Set the path to redirect the root of the domain to
+Ex: `HAPROXY_0_HTTP_BACKEND_REDIR = '/my/content'`
+                    '''))
+
 labels.append(Label(name='FRONTEND_HEAD',
                     func=set_label,
                     description=''))

@@ -575,6 +575,59 @@ glues the acl names to the appropriate backend
 ```
   use_backend {backend} if host_{cleanedUpHostname} path_{backend}
 ```
+
+**Default template for `HAPROXY_HTTP_BACKEND_PROXYPASS`:**
+```
+
+  http-request set-header Host {hostname}
+  reqirep  "^([^ :]*)\ {proxypath}(.*)" "\\1\ /\\2"
+```
+## `HAPROXY_HTTP_FRONTEND_HEAD`
+  *Global*
+
+Specified as `HAPROXY_HTTP_BACKEND_PROXYPASS` template.
+
+HTTP backend options for mapping local server URLs to remote servers + URL.
+Defined per app using the `HAPROXY_{0}_HTTP_BACKEND_PROXYPASS` label.
+
+Ex: `HAPROXY_0_HTTP_BACKEND_PROXYPASS = '/path/to/resource'`
+
+
+**Default template for `HAPROXY_HTTP_BACKEND_REVPROXY`:**
+```
+
+  acl hdr_location res.hdr(Location) -m found
+  rspirep "^Location: (https?://{hostname}(:[0-9]+)?)?(/.*)" "Location: \
+  {rootpath} if hdr_location"
+```
+## `HAPROXY_HTTP_BACKEND_REVPROXY`
+  *Global*
+
+Specified as `HAPROXY_HTTP_BACKEND_REVPROXY` template.
+
+HTTP option to set response headers sent from a reverse proxied server. \
+It only updates Location, Content-Location and URL.
+Defined per app using the `HAPROXY_{0}_HTTP_BACKEND_REVPROXY` label.
+
+Ex: `HAPROXY_0_HTTP_BACKEND_REVPROXY = '/path/to/resource/'`
+
+**Default template for `HTTP_BACKEND_REDIR`:**
+```
+
+  acl is_root path -i /
+  acl is_domain hdr(host) -i {hostname}
+  redirect code 301 location {redirpath} if is_domain is_root
+```
+## `HAPROXY_HTTP_BACKEND_REDIR`
+  *Global*
+
+Specified as `HAPROXY_HTTP_BACKEND_REDIR` template.
+
+HTTP backend options to set the path to redirect the root of the domain to
+Defined per app using the `HAPROXY_{0}_HTTP_BACKEND_REDIR` label.
+
+Ex: `HAPROXY_0_HTTP_BACKEND_REDIR = '/path/to/resource/'`
+
 ## Other Labels
 These labels may be used to configure other app settings.
 
