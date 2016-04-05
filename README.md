@@ -14,8 +14,8 @@ Marathon-lb is a tool for managing HAProxy, by consuming [Marathon's](https://gi
 
 ### Getting started
 
- * [SD & LB with DCOS and marathon-lb: Part 1](https://mesosphere.com/blog/2015/12/04/dcos-marathon-lb/)
- * [SD & LB with DCOS and marathon-lb: Part 2](https://mesosphere.com/blog/2015/12/13/service-discovery-and-load-balancing-with-dcos-and-marathon-lb-part-2/)
+ * [Using marathon-lb](https://docs.mesosphere.com/administration/service-discovery/service-discovery-and-load-balancing-with-marathon-lb/service-discovery-and-load-balancing/)
+ * [Advanced features of marathon-lb](https://docs.mesosphere.com/administration/service-discovery/service-discovery-and-load-balancing-with-marathon-lb/advanced-features-of-marathon-lb/)
 
 ## Architecture
 The marathon-lb script `marathon_lb.py` connects to the marathon API
@@ -43,7 +43,7 @@ retrieve the current HAProxy config from the `:9090/_haproxy_getconfig` endpoint
 
 ## Deployment
 The package is currently available [from the universe](https://github.com/mesosphere/universe).
-To deploy the marathon-lb on the public slaves in your DCOS cluster,
+To deploy marathon-lb on the public slaves in your DCOS cluster,
 simply run:
 
 ```
