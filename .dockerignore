@@ -1,4 +1,6 @@
 .git
 tests
+hooks
+scripts
 .*
 Dockerfile

@@ -1,0 +1,13 @@
+#!/bin/bash
+set -o errexit -o nounset -o pipefail
+
+echo "RUNNING PRE-COMMIT";
+
+GIT_HOOKS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )";
+REPO_DIR=$GIT_HOOKS_DIR/../..
+SCRIPTS_DIR=$REPO_DIR/scripts
+
+$SCRIPTS_DIR/build-docs.sh
+
+# Fail if there are unstaged changes
+git diff --exit-code
