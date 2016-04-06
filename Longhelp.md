@@ -342,6 +342,19 @@ frontend {backend}
   bind {bindAddr}:{servicePort}{sslCert}{bindOptions}
   mode {mode}
 ```
+
+## `HAPROXY_USERLIST_HEAD`
+  *Overridable*
+
+Specified as `HAPROXY_USERLIST_HEAD` template or with label `HAPROXY_{n}_USERLIST_HEAD`.
+
+Defines the userlist for basic http auth to for this frontend.
+
+
+**Default template for `HAPROXY_USERLIST_HEAD`:**
+```
+userlist user_{backend}   user {user} password {passwd}
+```
 ## `HAPROXY_HEAD`
   *Global*
 
@@ -409,6 +422,21 @@ for the `HAPROXY_HTTPS_FRONTEND_HEAD` template.
 ```
   use_backend {backend} if {{ ssl_fc_sni {hostname} }}
 ```
+## `HAPROXY_HTTPS_FRONTEND_ACL_WITH_AUTH`
+  *Overridable*
+
+Specified as `HAPROXY_HTTPS_FRONTEND_ACL_WITH_AUTH` template or with label `HAPROXY_{n}_HTTPS_FRONTEND_ACL_WITH_AUTH`.
+
+The ACLs that performs the SNI based hostname matching and the HTTP basic auth for the `HAPROXY_HTTPS_FRONTEND_HEAD` template.
+
+
+**Default template for `HAPROXY_HTTPS_FRONTEND_ACL_WITH_AUTH`:**
+```
+  acl auth_{cleanedUpHostname} http_auth(user_{backend})
+  http-request auth realm "{realm}" if {{ ssl_fc_sni {hostname} }} !auth_{cleanedUpHostname}
+  use_backend {backend} if {{ ssl_fc_sni {hostname} }}
+```
+
 ## `HAPROXY_HTTPS_FRONTEND_ACL_ONLY_WITH_PATH`
   *Overridable*
 
@@ -575,6 +603,22 @@ of the `HAPROXY_HTTP_FRONTEND_HEAD`
 **Default template for `HAPROXY_HTTP_FRONTEND_ACL`:**
 ```
   acl host_{cleanedUpHostname} hdr(host) -i {hostname}
+  use_backend {backend} if host_{cleanedUpHostname}
+```
+## `HAPROXY_HTTP_FRONTEND_ACL_WITH_AUTH`
+  *Overridable*
+
+Specified as `HAPROXY_HTTP_FRONTEND_ACL_WITH_AUTH` template or with label `HAPROXY_{n}_HTTP_FRONTEND_ACL_WITH_AUTH`.
+
+The ACL that glues a backend to the corresponding virtual host
+of the `HAPROXY_HTTP_FRONTEND_HEAD` and HTTP basic auth
+
+
+**Default template for `HAPROXY_HTTP_FRONTEND_ACL_WITH_AUTH`:**
+```
+  acl host_{cleanedUpHostname} hdr(host) -i {hostname}
+  acl auth_{cleanedUpHostname} http_auth(user_{backend})
+  http-request auth realm "{realm}" if host_{cleanedUpHostname} !auth_{cleanedUpHostname}
   use_backend {backend} if host_{cleanedUpHostname}
 ```
 ## `HAPROXY_HTTP_FRONTEND_ACL_ONLY`
