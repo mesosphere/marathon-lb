@@ -77,6 +77,9 @@ class MarathonService(object):
         self.redirpath = None
         self.haproxy_groups = frozenset()
         self.path = None
+        self.authRealm = None
+        self.authUser = None
+        self.authPasswd = None
         self.sticky = False
         self.redirectHttpToHttps = False
         self.useHsts = False
@@ -268,6 +271,7 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
             sslCerts=" ".join(map(lambda cert: "crt " + cert, _ssl_certs))
         )
 
+    userlists = str()
     frontends = str()
     backends = str()
     http_appid_frontends = templater.haproxy_http_frontend_appid_head
@@ -295,6 +299,14 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
         # otherwise recent versions of haproxy refuse to start
         if app.hostname:
             app.mode = 'http'
+
+        if app.authUser:
+            userlist_head = templater.haproxy_userlist_head(app)
+            userlists += userlist_head.format(
+                backend=backend,
+                user=app.authUser,
+                passwd=app.authPasswd
+            )
 
         frontend_head = templater.haproxy_frontend_head(app)
         frontends += frontend_head.format(
@@ -467,6 +479,7 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
                                "ignoring this backend",
                                backendServer.host)
 
+    config += userlists
     if bind_http_https:
         config += http_frontends
     config += http_appid_frontends
@@ -697,21 +710,40 @@ def generateHttpVhostAcl(templater, app, backend):
                 )
                 staging_http_frontends += frontend
             else:
-                http_frontend_acl = templater.haproxy_http_frontend_acl(app)
-                staging_http_frontends += http_frontend_acl.format(
-                    cleanedUpHostname=acl_name,
-                    hostname=app.hostname,
-                    appId=app.appId,
-                    backend=backend
-                )
-            https_frontend_acl = templater.haproxy_https_frontend_acl(app)
-            staging_https_frontends += https_frontend_acl.format(
-                cleanedUpHostname=acl_name,
-                hostname=app.hostname,
-                appId=app.appId,
-                backend=backend
-            )
-
+                if app.authRealm:
+                  http_frontend_acl = templater.haproxy_http_frontend_acl_with_auth(app)
+                  staging_http_frontends += http_frontend_acl.format(
+                      cleanedUpHostname=acl_name,
+                      hostname=app.hostname,
+                      appId=app.appId,
+                      realm=app.authRealm,
+                      backend=backend
+                  )
+                else:
+                  http_frontend_acl = templater.haproxy_http_frontend_acl(app)
+                  staging_http_frontends += http_frontend_acl.format(
+                      cleanedUpHostname=acl_name,
+                      hostname=app.hostname,
+                      appId=app.appId,
+                      backend=backend
+                  )
+            if app.authRealm:
+              https_frontend_acl = templater.haproxy_https_frontend_acl_with_auth(app)
+              staging_https_frontends += https_frontend_acl.format(
+                  cleanedUpHostname=acl_name,
+                  hostname=app.hostname,
+                  appId=app.appId,
+                  realm=app.authRealm,
+                  backend=backend
+              )
+            else:
+              https_frontend_acl = templater.haproxy_https_frontend_acl(app)
+              staging_https_frontends += https_frontend_acl.format(
+                  cleanedUpHostname=acl_name,
+                  hostname=app.hostname,
+                  appId=app.appId,
+                  backend=backend
+              )
     return (staging_http_frontends, staging_https_frontends)
 
 

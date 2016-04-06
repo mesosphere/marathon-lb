@@ -94,6 +94,17 @@ and defaults.
 '''))
 
         self.add_template(
+            ConfigTemplate(name='HAPROXY_USERLIST_HEAD',
+                           value='''
+userlist user_{backend}
+      user {user} password {passwd}
+''',
+                           overridable=True,
+                           description='''\
+The userlist for basic HTTP auth.
+'''))
+
+        self.add_template(
             ConfigTemplate(name='HTTP_FRONTEND_HEAD',
                            value='''
 frontend marathon_http_in
@@ -212,6 +223,20 @@ of the `HAPROXY_HTTP_FRONTEND_HEAD`
 '''))
 
         self.add_template(
+            ConfigTemplate(name='HTTP_FRONTEND_ACL_WITH_AUTH',
+                           value='''\
+  acl host_{cleanedUpHostname} hdr(host) -i {hostname}
+  acl auth_{cleanedUpHostname} http_auth(user_{backend})
+  http-request auth realm "{realm}" if host_{cleanedUpHostname} !auth_{cleanedUpHostname}
+  use_backend {backend} if host_{cleanedUpHostname}
+''',
+                           overridable=True,
+                           description='''\
+The ACL that glues a backend to the corresponding virtual host
+of the `HAPROXY_HTTP_FRONTEND_HEAD` thru HTTP basic auth.
+'''))
+
+        self.add_template(
             ConfigTemplate(name='HTTP_FRONTEND_ACL_ONLY',
                            value='''\
   acl host_{cleanedUpHostname} hdr(host) -i {hostname}
@@ -303,6 +328,19 @@ of the `HAPROXY_HTTP_FRONTEND_APPID_HEAD`.
                            description='''\
 The ACL that performs the SNI based hostname matching
 for the `HAPROXY_HTTPS_FRONTEND_HEAD` template.
+'''))
+
+        self.add_template(
+            ConfigTemplate(name='HTTPS_FRONTEND_ACL_WITH_AUTH',
+                           value='''\
+  acl auth_{cleanedUpHostname} http_auth(user_{backend})
+  http-request auth realm "{realm}" if {{ ssl_fc_sni {hostname} }} !auth_{cleanedUpHostname}
+  use_backend {backend} if {{ ssl_fc_sni {hostname} }}
+''',
+                           overridable=True,
+                           description='''\
+The ACL that glues a backend to the corresponding virtual host
+of the `HAPROXY_HTTPS_FRONTEND_HEAD` thru HTTP basic auth.
 '''))
 
         self.add_template(
@@ -615,6 +653,21 @@ Specified as {specifiedAs}.
     def haproxy_https_frontend_head(self):
         return self.t['HTTPS_FRONTEND_HEAD'].value
 
+    def haproxy_userlist_head(self, app):
+        if 'HAPROXY_{0}_USERLIST_HEAD' in app.labels:
+            return app.labels['HAPROXY_{0}_USERLIST_HEAD']
+        return self.t['HAPROXY_USERLIST_HEAD'].value
+
+    def haproxy_http_frontend_acl_with_auth(self, app):
+        if 'HAPROXY_{0}_HTTP_FRONTEND_ACL_WITH_AUTH' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTP_FRONTEND_ACL_WITH_AUTH']
+        return self.t['HAPROXY_HTTP_FRONTEND_ACL_WITH_AUTH'].value
+
+    def haproxy_https_frontend_acl_with_auth(self, app):
+        if 'HAPROXY_{0}_HTTPS_FRONTEND_ACL_WITH_AUTH' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTPS_FRONTEND_ACL_WITH_AUTH']
+        return self.t['HAPROXY_HTTPS_FRONTEND_ACL_WITH_AUTH'].value
+
     def haproxy_frontend_head(self, app):
         if 'FRONTEND_HEAD' in app.labels:
             return app.labels['HAPROXY_{0}_FRONTEND_HEAD']
@@ -783,6 +836,8 @@ def set_sticky(x, k, v):
 def set_redirect_http_to_https(x, k, v):
     x.redirectHttpToHttps = string_to_bool(v)
 
+def set_auth(x, k, v):
+    x.authRealm, x.authUser, x.authPasswd = v.split(':')
 
 def set_use_hsts(x, k, v):
     x.useHsts = string_to_bool(v)
@@ -925,6 +980,12 @@ labels.append(Label(name='PATH',
                     func=set_path,
                     description='''\
                     '''))
+labels.append(Label(name='AUTH',
+                    func=set_auth,
+                    description='''\
+The http basic auth definition.
+Format : "realm:username:encryptedpassword".
+                    '''))
 labels.append(Label(name='STICKY',
                     func=set_sticky,
                     description='''\
@@ -1015,6 +1076,9 @@ Ex: `HAPROXY_0_HTTP_BACKEND_REDIR = '/my/content'`
                     '''))
 
 labels.append(Label(name='FRONTEND_HEAD',
+                    func=set_label,
+                    description=''))
+labels.append(Label(name='USERLIST_HEAD',
                     func=set_label,
                     description=''))
 labels.append(Label(name='BACKEND_REDIRECT_HTTP_TO_HTTPS',
