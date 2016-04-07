@@ -47,6 +47,7 @@ import dateutil.parser
 import math
 import threading
 import random
+import hashlib
 
 logger = logging.getLogger('marathon_lb')
 
@@ -425,6 +426,8 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
             serverName = re.sub(
                 r'[^a-zA-Z0-9\-]', '_',
                 backendServer.host + '_' + str(backendServer.port))
+            shortHashedServerName = hashlib.sha1(serverName.encode()) \
+                .hexdigest()[:10]
 
             healthCheckOptions = None
             if app.healthCheck:
@@ -469,7 +472,7 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
                     port=backendServer.port,
                     serverName=serverName,
                     cookieOptions=' check cookie ' +
-                    serverName if app.sticky else '',
+                    shortHashedServerName if app.sticky else '',
                     healthCheckOptions=healthCheckOptions
                     if healthCheckOptions else '',
                     otherOptions=' disabled' if backendServer.draining else ''
