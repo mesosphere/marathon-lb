@@ -1,0 +1,189 @@
+import unittest
+import utils
+from mock import Mock, patch
+from utils import ServicePortAssigner
+
+
+class TestUtils(unittest.TestCase):
+
+    def test_get_task_ip_and_ports_ip_per_task(self):
+        app = {
+            "ipAddress": {
+                "discovery": {
+                    "ports": [{"number": 123}, {"number": 234}]
+                }
+            },
+        }
+        task = {
+            "id": "testtaskid",
+            "ipAddresses": [{"ipAddress": "1.2.3.4"}]
+        }
+
+        result = utils.get_task_ip_and_ports(app, task)
+        expected = ("1.2.3.4", [123, 234])
+
+        self.assertEquals(result, expected)
+
+    def test_get_task_ip_and_ports_ip_per_task_no_ip(self):
+        app = {
+            "ipAddress": {
+                "discovery": {
+                    "ports": [{"number": 123}, {"number": 234}]
+                }
+            },
+        }
+        task = {
+            "id": "testtaskid"
+        }
+
+        result = utils.get_task_ip_and_ports(app, task)
+        expected = (None, None)
+
+        self.assertEquals(result, expected)
+
+    def test_get_task_ip_and_ports_port_map(self):
+        app = {}
+        task = {
+            "id": "testtaskid",
+            "ports": [234, 345, 567],
+            "host": "agent1"
+        }
+
+        with patch("utils.resolve_ip", return_value="1.2.3.4"):
+            result = utils.get_task_ip_and_ports(app, task)
+            expected = ("1.2.3.4", [234, 345, 567])
+
+        self.assertEquals(result, expected)
+
+    def test_get_task_ip_and_ports_port_map_no_ip(self):
+        app = {}
+        task = {
+            "id": "testtaskid",
+            "ports": [234, 345, 567],
+            "host": "agent1"
+        }
+
+        with patch("utils.resolve_ip", return_value=None):
+            result = utils.get_task_ip_and_ports(app, task)
+            expected = (None, None)
+
+            self.assertEquals(result, expected)
+
+
+class TestServicePortAssigner(unittest.TestCase):
+
+    def setUp(self):
+        self.assigner = ServicePortAssigner()
+        self.assigner.set_ports(10000, 10020)
+
+    def test_not_ip_per_task(self):
+        """
+        Test a non-IP-per-task app returns the service ports defined in the
+        app data.
+        """
+        app = _get_app(ip_per_task=False, inc_service_ports=True)
+        self.assertEquals(self.assigner.get_service_ports(app),
+                          [100, 101, 102])
+
+    def test_ip_per_task_with_ports(self):
+        """
+        Test an IP-per-task app returns the service ports defined in the
+        app data.
+        """
+        app = _get_app(ip_per_task=True, inc_service_ports=True)
+        self.assertEquals(self.assigner.get_service_ports(app),
+                          [100, 101, 102])
+
+    def test_ip_per_task_no_clash(self):
+        """
+        Check that the same ports are assigned are assigned for task-per-IP
+        apps and are based on the number of host ports but not the actual
+        ports themselves.
+        """
+        # When assigning a single port for apps with index 1 and 2 there are
+        # no clashes.
+        app1 = _get_app(idx=1, num_ports=1, num_tasks=1)
+        app2 = _get_app(idx=2, num_ports=1, num_tasks=1)
+
+        # Store the ports assigned for app1 and app2
+        ports1 = self.assigner.get_service_ports(app1)
+        ports2 = self.assigner.get_service_ports(app2)
+
+        # Check we get returned the same ports.
+        self.assertEquals(ports2, self.assigner.get_service_ports(app2))
+        self.assertEquals(ports1, self.assigner.get_service_ports(app1))
+
+        # Now reset the assigner, and assign in a different order.  Check the
+        # ports are still the same.
+        self.assigner.reset()
+        self.assertEquals(ports2, self.assigner.get_service_ports(app2))
+        self.assertEquals(ports1, self.assigner.get_service_ports(app1))
+
+    def test_ip_per_task_clash(self):
+        """
+        Check that the same ports will not be assigned if there are clashes
+        and we assign in a different order.
+        """
+        # When assigning 5 ports for apps with index 1 and 3 there are
+        # clashes.
+        app1 = _get_app(idx=1, num_ports=5, num_tasks=1)
+        app2 = _get_app(idx=3, num_ports=5, num_tasks=1)
+
+        # Store the ports assigned for app1 and app2
+        ports1 = self.assigner.get_service_ports(app1)
+        ports2 = self.assigner.get_service_ports(app2)
+
+        # Check we get returned the same ports.
+        self.assertEquals(ports2, self.assigner.get_service_ports(app2))
+        self.assertEquals(ports1, self.assigner.get_service_ports(app1))
+
+        # Now reset the assigner, and assign in a different order.  Check the
+        # ports are not the same.
+        self.assigner.reset()
+        self.assertNotEquals(ports2, self.assigner.get_service_ports(app2))
+        self.assertNotEquals(ports1, self.assigner.get_service_ports(app1))
+
+    def test_ip_per_task_max_clash(self):
+        """
+        Check that ports are assigned by linear scan when we max out the
+        clashes.
+        """
+        app = _get_app(idx=1, num_ports=10, num_tasks=1)
+
+        # Mock out the hashlib functions so that all hashes return 0.
+        sha1 = Mock()
+        sha1.hexdigest.return_value = "0" * 64
+        with patch("hashlib.sha1", return_value=sha1):
+            ports = self.assigner.get_service_ports(app)
+        self.assertEquals(ports, list(range(10000, 10010)))
+
+
+def _get_app(idx=1, num_ports=3, num_tasks=1, ip_per_task=True,
+             inc_service_ports=False):
+    app = {
+        "id": "app-%d" % idx
+    }
+    if inc_service_ports:
+        app["ports"] = list(range(100, 100 + num_ports))
+    else:
+        app["ports"] = []
+
+    if ip_per_task:
+        app["ipAddress"] = {
+            "discovery": {
+                "ports": [
+                    {"number": port} for port in range(500, 500 + num_ports)
+                ]
+            }
+        }
+
+    app["tasks"] = [_get_task(idx*10, num_ports) for idx in range(num_tasks)]
+
+    return app
+
+
+def _get_task(idx, num_ports):
+    return {
+        "id": "task-%d" % idx,
+        "ipAddresses": [{"ipAddress": "1.2.3.4"}]
+    }

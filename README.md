@@ -44,6 +44,17 @@ the [templates section](Longhelp.md#templates)
 You can access the HAProxy statistics via `:9090/haproxy?stats`, and you can
 retrieve the current HAProxy config from the `:9090/_haproxy_getconfig` endpoint.
 
+Marathon LB supports load balancing for applications that use the Mesos IP-per-task
+feature, whereby each task is assigned unique, accessible, IP addresses.  For these
+tasks services are directly accessible via the configured discovery ports and there
+is no host port mapping.  Note, that due to limitations with Marathon (see 
+[mesosphere/marathon#3636](https://github.com/mesosphere/marathon/issues/3636)) 
+configured service ports are not exposed to Marathon LB for IP-per-task apps.  
+For these apps, where the service ports are missing from the Marathon app data,
+Marathon LB will automatically assign port values from a configurable range.  The range
+is configured using the `--min-serv-port-ip-per-task` and `--max-serv-port-ip-per-task`
+options.
+
 ## Deployment
 The package is currently available [from the universe](https://github.com/mesosphere/universe).
 To deploy marathon-lb on the public slaves in your DCOS cluster,

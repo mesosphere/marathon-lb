@@ -29,6 +29,7 @@ from itertools import cycle
 from common import *
 from config import *
 from lrucache import *
+from utils import *
 
 import argparse
 import json
@@ -41,7 +42,6 @@ import requests
 import shlex
 import subprocess
 import sys
-import socket
 import time
 import dateutil.parser
 import threading
@@ -50,6 +50,7 @@ import random
 import hashlib
 
 logger = logging.getLogger('marathon_lb')
+SERVICE_PORT_ASSIGNER = ServicePortAssigner()
 
 
 class MarathonBackend(object):
@@ -261,22 +262,6 @@ def has_group(groups, app_groups):
         return True
 
     return False
-
-ip_cache = dict()
-
-
-def resolve_ip(host):
-    cached_ip = ip_cache.get(host, None)
-    if cached_ip:
-        return cached_ip
-    else:
-        try:
-            logger.debug("trying to resolve ip address for host %s", host)
-            ip = socket.gethostbyname(host)
-            ip_cache[host] = ip
-            return ip
-        except socket.gaierror:
-            return None
 
 
 def config(apps, groups, bind_http_https, ssl_certs, templater):
@@ -946,55 +931,6 @@ def get_health_check(app, portIndex):
 healthCheckResultCache = LRUCache()
 
 
-def is_ip_per_task(app):
-    """
-    Return whether the application is using IP-per-task.
-    :param app:  The application to check.
-    :return:  True if using IP per task, False otherwise.
-    """
-    return app.get('ipAddress') is not None
-
-
-def get_task_ip_and_ports(app, task):
-    """
-    Return the IP address and list of ports used to access a task.  For a
-    task using IP-per-task, this is the IP address of the task, and the ports
-    exposed by the task services.  Otherwise, this is the IP address of the
-    host and the ports exposed by the host.
-    :param app: The application owning the task.
-    :param task: The task.
-    :return: Tuple of (ip address, [ports]).  Returns (None, None) if no IP
-    address could be resolved or found for the task.
-    """
-    # If the app ipAddress field is present and not None then this app is using
-    # IP per task.  The ipAddress may be an empty dictionary though, in which
-    # case there are no discovery ports.  At the moment, Mesos only supports a
-    # single IP address, so just take the first IP in the list.
-    if is_ip_per_task(app):
-        logger.debug("Using IP per container")
-        task_ip_addresses = task.get('ipAddresses')
-        if not task_ip_addresses:
-            logger.warning("Task %s does not yet have an ip address allocated",
-                           task['id'])
-            return None, None
-        task_ip = task_ip_addresses[0]['ipAddress']
-
-        discovery = app['ipAddress'].get('discovery', {})
-        task_ports = [int(port['number'])
-                      for port in discovery.get('ports', [])]
-    else:
-        logger.debug("Using host port mapping")
-        task_ports = task.get('ports', [])
-        task_ip = resolve_ip(task['host'])
-        if not task_ip:
-            logger.warning("Could not resolve ip for host %s, ignoring",
-                           task['host'])
-            return None, None
-
-    logger.debug("Returning: %r, %r", task_ip, task_ports)
-    return task_ip, task_ports
-
-
 def get_apps(marathon):
     apps = marathon.list()
     logger.debug("got apps %s", [app["id"] for app in apps])
@@ -1084,6 +1020,13 @@ def get_apps(marathon):
 
     processed_apps.extend(deployment_groups.values())
 
+    # Reset the service port assigner.  This forces the port assigner to
+    # re-assign ports for IP-per-task applications.  The upshot is that
+    # the service port for a particular app may change dynamically, but
+    # the service port will be deterministic and identical across all
+    # instances of the marathon-lb.
+    SERVICE_PORT_ASSIGNER.reset()
+
     for app in processed_apps:
         appId = app['id']
         if appId[1:] == os.environ.get("FRAMEWORK_NAME"):
@@ -1096,9 +1039,8 @@ def get_apps(marathon):
                 marathon_app.app['labels']['HAPROXY_GROUP'].split(',')
         marathon_apps.append(marathon_app)
 
-        service_ports = app['ports']
-        for i in range(len(service_ports)):
-            servicePort = service_ports[i]
+        service_ports = SERVICE_PORT_ASSIGNER.get_service_ports(app)
+        for i, servicePort in enumerate(service_ports):
             service = MarathonService(
                         appId, servicePort, get_health_check(app, i))
 
@@ -1305,6 +1247,14 @@ def get_arg_parser():
     parser.add_argument("--dry", "-d",
                         help="Only print configuration to console",
                         action="store_true")
+    parser.add_argument("--min-serv-port-ip-per-task",
+                        help="Minimum port number to use when auto-assigning "
+                             "service ports for IP-per-task applications",
+                        type=int, default=10050)
+    parser.add_argument("--max-serv-port-ip-per-task",
+                        help="Maximum port number to use when auto-assigning "
+                             "service ports for IP-per-task applications",
+                        type=int, default=10100)
     parser = set_logging_args(parser)
     parser = set_marathon_auth_args(parser)
     return parser
@@ -1397,9 +1347,20 @@ if __name__ == '__main__':
         if args.sse and args.listening:
             arg_parser.error(
                 'cannot use --listening and --sse at the same time')
+        if bool(args.min_serv_port_ip_per_task) != \
+           bool(args.max_serv_port_ip_per_task):
+            arg_parser.error(
+                'either specify both --min-serv-port-ip-per-task '
+                'and --max-serv-port-ip-per-task or neither (set both to zero '
+                'to disable auto assignment)')
         if len(args.group) == 0:
             arg_parser.error('argument --group is required: please' +
                              'specify at least one group name')
+
+    # Configure the service port assigner if min/max ports have been specified.
+    if args.min_serv_port_ip_per_task and args.max_serv_port_ip_per_task:
+        SERVICE_PORT_ASSIGNER.set_ports(int(args.min_serv_port_ip_per_task),
+                                        int(args.max_serv_port_ip_per_task))
 
     # Set request retries
     s = requests.Session()
