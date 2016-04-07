@@ -1,3 +1,4 @@
 .idea
 templates/
 __pycache__
+*.pyc
