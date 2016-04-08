@@ -28,6 +28,7 @@ from six.moves.urllib import parse
 from itertools import cycle
 from common import *
 from config import *
+from lrucache import *
 
 import argparse
 import json
@@ -814,6 +815,8 @@ def get_health_check(app, portIndex):
             return check
     return None
 
+healthCheckResultCache = LRUCache()
+
 
 def is_ip_per_task(app):
     """
@@ -990,14 +993,18 @@ def get_apps(marathon):
 
             if marathon.health_check() and 'healthChecks' in app and \
                len(app['healthChecks']) > 0:
-                if 'healthCheckResults' not in task:
-                    continue
                 alive = True
-                for result in task['healthCheckResults']:
-                    if not result['alive']:
-                        alive = False
-                if not alive:
-                    continue
+                if 'healthCheckResults' not in task:
+                    # use previously cached result, if it exists
+                    if not healthCheckResultCache.get(task['id'], False):
+                        continue
+                else:
+                    for result in task['healthCheckResults']:
+                        if not result['alive']:
+                            alive = False
+                    healthCheckResultCache.set(task['id'], alive)
+                    if not alive:
+                        continue
 
             task_ip, task_ports = get_task_ip_and_ports(app, task)
             if not task_ip:
@@ -1150,6 +1157,12 @@ def get_arg_parser():
                         "statuses before adding the app instance into "
                         "the backend pool.",
                         action="store_true")
+    parser.add_argument("--lru-cache-capacity",
+                        help="Health check result LRU cache size (in number "
+                        "of items). This should be at least as large as the "
+                        "number of tasks exposed via marathon-lb.",
+                        type=int, default=1000
+                        )
     parser.add_argument("--dont-bind-http-https",
                         help="Don't bind to HTTP and HTTPS frontends.",
                         action="store_true")
@@ -1267,6 +1280,10 @@ if __name__ == '__main__':
 
     # Setup logging
     setup_logging(logger, args.syslog_socket, args.log_format)
+
+    # initialize health check LRU cache
+    if args.health_check:
+        healthCheckResultCache = LRUCache(args.lru_cache_capacity)
 
     # Marathon API connector
     marathon = Marathon(args.marathon,

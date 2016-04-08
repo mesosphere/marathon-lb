@@ -22,6 +22,7 @@ usage: marathon_lb.py [-h] [--longhelp] [--marathon MARATHON [MARATHON ...]]
                       [--listening LISTENING] [--callback-url CALLBACK_URL]
                       [--haproxy-config HAPROXY_CONFIG] [--group GROUP]
                       [--command COMMAND] [--sse] [--health-check]
+                      [--lru-cache-capacity LRU_CACHE_CAPACITY]
                       [--dont-bind-http-https] [--ssl-certs SSL_CERTS]
                       [--skip-validation] [--dry]
                       [--syslog-socket SYSLOG_SOCKET]
@@ -58,6 +59,10 @@ optional arguments:
   --health-check, -H    If set, respect Marathon's health check statuses
                         before adding the app instance into the backend pool.
                         (default: False)
+  --lru-cache-capacity LRU_CACHE_CAPACITY
+                        Health check result LRU cache size (in number of
+                        items). This should be at least as large as the number
+                        of tasks exposed via marathon-lb. (default: 1000)
   --dont-bind-http-https
                         Don't bind to HTTP and HTTPS frontends. (default:
                         False)
