@@ -18,6 +18,8 @@ Marathon-lb is a tool for managing HAProxy, by consuming [Marathon's](https://gi
  * [Advanced features of marathon-lb](https://docs.mesosphere.com/administration/service-discovery/service-discovery-and-load-balancing-with-marathon-lb/advanced-features-of-marathon-lb/)
  * [Securing your service with TLS/SSL (blog post)](https://mesosphere.com/blog/2016/04/06/lets-encrypt-dcos/)
 
+Take a look at [the marathon-lb wiki](https://github.com/mesosphere/marathon-lb/wiki) for example usage, templates, and more.
+
 ## Architecture
 The marathon-lb script `marathon_lb.py` connects to the marathon API
 to retrieve all running apps, generates a HAProxy config and reloads HAProxy.
