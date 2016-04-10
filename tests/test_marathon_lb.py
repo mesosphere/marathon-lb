@@ -517,7 +517,7 @@ backend nginx_10000
         app.authRealm = "realm"
         app.authUser = "testuser"
         app.authPasswd = "testpasswd"
-        app.add_backend("1.1.1.1", 1024, False)
+        app.add_backend("agent1", "1.1.1.1", 1024, False)
         apps = [app]
 
         config = marathon_lb.config(apps, groups, bind_http_https,
@@ -562,7 +562,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server 1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -665,7 +665,7 @@ backend nginx_10000
         app.authRealm = "realm"
         app.authUser = "testuser"
         app.authPasswd = "testpasswd"
-        app.add_backend("1.1.1.1", 1024, False)
+        app.add_backend("agent1", "1.1.1.1", 1024, False)
         apps = [app]
 
         config = marathon_lb.config(apps, groups, bind_http_https,
@@ -712,7 +712,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server 1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
