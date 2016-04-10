@@ -413,6 +413,36 @@ Same as HTTP_FRONTEND_ACL_ONLY_WITH_PATH, but for HTTPS.
 ```
   acl path_{backend} path_beg {path}
 ```
+## `HAPROXY_HTTPS_FRONTEND_ACL_WITH_AUTH`
+  *Overridable*
+
+Specified as `HAPROXY_HTTPS_FRONTEND_ACL_WITH_AUTH` template or with label `HAPROXY_{n}_HTTPS_FRONTEND_ACL_WITH_AUTH`.
+
+The ACL that glues a backend to the corresponding virtual host
+of the `HAPROXY_HTTPS_FRONTEND_HEAD` thru HTTP basic auth.
+
+
+**Default template for `HAPROXY_HTTPS_FRONTEND_ACL_WITH_AUTH`:**
+```
+  acl auth_{cleanedUpHostname} http_auth(user_{backend})
+  http-request auth realm "{realm}" if {{ ssl_fc_sni {hostname} }} !auth_{cleanedUpHostname}
+  use_backend {backend} if {{ ssl_fc_sni {hostname} }}
+```
+## `HAPROXY_HTTPS_FRONTEND_ACL_WITH_AUTH_AND_PATH`
+  *Overridable*
+
+Specified as `HAPROXY_HTTPS_FRONTEND_ACL_WITH_AUTH_AND_PATH` template or with label `HAPROXY_{n}_HTTPS_FRONTEND_ACL_WITH_AUTH_AND_PATH`.
+
+The ACL that glues a backend to the corresponding virtual host with path
+of the `HAPROXY_HTTPS_FRONTEND_HEAD` thru HTTP basic auth.
+
+
+**Default template for `HAPROXY_HTTPS_FRONTEND_ACL_WITH_AUTH_AND_PATH`:**
+```
+  acl auth_{cleanedUpHostname} http_auth(user_{backend})
+  http-request auth realm "{realm}" if {{ ssl_fc_sni {hostname} }} path_{backend} !auth_{cleanedUpHostname}
+  use_backend {backend} if {{ ssl_fc_sni {hostname} }} path_{backend}
+```
 ## `HAPROXY_HTTPS_FRONTEND_ACL_WITH_PATH`
   *Overridable*
 
@@ -425,6 +455,30 @@ for the `HAPROXY_HTTPS_FRONTEND_HEAD` template.
 **Default template for `HAPROXY_HTTPS_FRONTEND_ACL_WITH_PATH`:**
 ```
   use_backend {backend} if {{ ssl_fc_sni {hostname} }} path_{backend}
+```
+## `HAPROXY_HTTPS_FRONTEND_AUTH_ACL_ONLY`
+  *Overridable*
+
+Specified as `HAPROXY_HTTPS_FRONTEND_AUTH_ACL_ONLY` template or with label `HAPROXY_{n}_HTTPS_FRONTEND_AUTH_ACL_ONLY`.
+
+The http auth ACL to the corresponding virtual host.
+
+
+**Default template for `HAPROXY_HTTPS_FRONTEND_AUTH_ACL_ONLY`:**
+```
+  acl auth_{cleanedUpHostname} http_auth(user_{backend})
+```
+## `HAPROXY_HTTPS_FRONTEND_AUTH_REQUEST_ONLY`
+  *Overridable*
+
+Specified as `HAPROXY_HTTPS_FRONTEND_AUTH_REQUEST_ONLY` template or with label `HAPROXY_{n}_HTTPS_FRONTEND_AUTH_REQUEST_ONLY`.
+
+The http auth request to the corresponding virtual host.
+
+
+**Default template for `HAPROXY_HTTPS_FRONTEND_AUTH_REQUEST_ONLY`:**
+```
+  http-request auth realm "{realm}" if {{ ssl_fc_sni {hostname} }} !auth_{cleanedUpHostname}
 ```
 ## `HAPROXY_HTTPS_FRONTEND_HEAD`
   *Global*
@@ -443,6 +497,20 @@ include your certificate.
 frontend marathon_https_in
   bind *:443 ssl {sslCerts}
   mode http
+```
+## `HAPROXY_HTTPS_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH`
+  *Overridable*
+
+Specified as `HAPROXY_HTTPS_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH` template or with label `HAPROXY_{n}_HTTPS_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH`.
+
+This is the counterpart to `HAPROXY_HTTP_FRONTEND_ACL_ONLY_WITH_PATH` which
+glues the acl names to the appropriate backend
+
+
+**Default template for `HAPROXY_HTTPS_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH`:**
+```
+  http-request auth realm "{realm}" if host_{cleanedUpHostname} path_{backend} !auth_{cleanedUpHostname}
+  use_backend {backend} if host_{cleanedUpHostname} path_{backend}
 ```
 ## `HAPROXY_HTTP_BACKEND_PROXYPASS`
   *Overridable*
@@ -531,6 +599,55 @@ vhosts routing to the same backend
 ```
   acl path_{backend} path_beg {path}
 ```
+## `HAPROXY_HTTP_FRONTEND_ACL_ONLY_WITH_PATH_AND_AUTH`
+  *Overridable*
+
+Specified as `HAPROXY_HTTP_FRONTEND_ACL_ONLY_WITH_PATH_AND_AUTH` template or with label `HAPROXY_{n}_HTTP_FRONTEND_ACL_ONLY_WITH_PATH_AND_AUTH`.
+
+Define the ACL matching a particular hostname with path and auth, but unlike
+`HAPROXY_HTTP_FRONTEND_ACL_WITH_PATH`, only do the ACL portion. Does not glue
+the ACL to the backend. This is useful only in the case of multiple
+vhosts routing to the same backend
+
+
+**Default template for `HAPROXY_HTTP_FRONTEND_ACL_ONLY_WITH_PATH_AND_AUTH`:**
+```
+  acl path_{backend} path_beg {path}
+  acl auth_{cleanedUpHostname} http_auth(user_{backend})
+```
+## `HAPROXY_HTTP_FRONTEND_ACL_WITH_AUTH`
+  *Overridable*
+
+Specified as `HAPROXY_HTTP_FRONTEND_ACL_WITH_AUTH` template or with label `HAPROXY_{n}_HTTP_FRONTEND_ACL_WITH_AUTH`.
+
+The ACL that glues a backend to the corresponding virtual host
+of the `HAPROXY_HTTP_FRONTEND_HEAD` thru HTTP basic auth.
+
+
+**Default template for `HAPROXY_HTTP_FRONTEND_ACL_WITH_AUTH`:**
+```
+  acl host_{cleanedUpHostname} hdr(host) -i {hostname}
+  acl auth_{cleanedUpHostname} http_auth(user_{backend})
+  http-request auth realm "{realm}" if host_{cleanedUpHostname} !auth_{cleanedUpHostname}
+  use_backend {backend} if host_{cleanedUpHostname}
+```
+## `HAPROXY_HTTP_FRONTEND_ACL_WITH_AUTH_AND_PATH`
+  *Overridable*
+
+Specified as `HAPROXY_HTTP_FRONTEND_ACL_WITH_AUTH_AND_PATH` template or with label `HAPROXY_{n}_HTTP_FRONTEND_ACL_WITH_AUTH_AND_PATH`.
+
+The ACL that glues a backend to the corresponding virtual host with path
+of the `HAPROXY_HTTP_FRONTEND_HEAD` thru HTTP basic auth.
+
+
+**Default template for `HAPROXY_HTTP_FRONTEND_ACL_WITH_AUTH_AND_PATH`:**
+```
+  acl host_{cleanedUpHostname} hdr(host) -i {hostname}
+  acl auth_{cleanedUpHostname} http_auth(user_{backend})
+  acl path_{backend} path_beg {path}
+  http-request auth realm "{realm}" if host_{cleanedUpHostname} path_{backend} !auth_{cleanedUpHostname}
+  use_backend {backend} if host_{cleanedUpHostname} path_{backend}
+```
 ## `HAPROXY_HTTP_FRONTEND_ACL_WITH_PATH`
   *Overridable*
 
@@ -610,6 +727,21 @@ glues the acl name to the appropriate backend.
 ```
   use_backend {backend} if host_{cleanedUpHostname}
 ```
+## `HAPROXY_HTTP_FRONTEND_ROUTING_ONLY_WITH_AUTH`
+  *Overridable*
+
+Specified as `HAPROXY_HTTP_FRONTEND_ROUTING_ONLY_WITH_AUTH` template or with label `HAPROXY_{n}_HTTP_FRONTEND_ROUTING_ONLY_WITH_AUTH`.
+
+This is the counterpart to `HAPROXY_HTTP_FRONTEND_ACL_ONLY` which
+glues the acl name to the appropriate backend, and add http basic auth.
+
+
+**Default template for `HAPROXY_HTTP_FRONTEND_ROUTING_ONLY_WITH_AUTH`:**
+```
+  acl auth_{cleanedUpHostname} http_auth(user_{backend})
+  http-request auth realm "{realm}" if host_{cleanedUpHostname} !auth_{cleanedUpHostname}
+  use_backend {backend} if host_{cleanedUpHostname}
+```
 ## `HAPROXY_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH`
   *Overridable*
 
@@ -623,8 +755,45 @@ glues the acl names to the appropriate backend
 ```
   use_backend {backend} if host_{cleanedUpHostname} path_{backend}
 ```
+## `HAPROXY_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH`
+  *Overridable*
+
+Specified as `HAPROXY_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH` template or with label `HAPROXY_{n}_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH`.
+
+This is the counterpart to `HAPROXY_HTTP_FRONTEND_ACL_ONLY_WITH_PATH` which
+glues the acl names to the appropriate backend
+
+
+**Default template for `HAPROXY_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH`:**
+```
+  http-request auth realm "{realm}" if host_{cleanedUpHostname} path_{backend} !auth_{cleanedUpHostname}
+  use_backend {backend} if host_{cleanedUpHostname} path_{backend}
+```
+## `HAPROXY_USERLIST_HEAD`
+  *Overridable*
+
+Specified as `HAPROXY_USERLIST_HEAD` template or with label `HAPROXY_{n}_USERLIST_HEAD`.
+
+The userlist for basic HTTP auth.
+
+
+**Default template for `HAPROXY_USERLIST_HEAD`:**
+```
+
+userlist user_{backend}
+  user {user} password {passwd}
+```
 ## Other Labels
 These labels may be used to configure other app settings.
+
+## `HAPROXY_{n}_AUTH`
+  *per service port*
+
+Specified as `HAPROXY_{n}_AUTH`.
+
+The http basic auth definition.
+
+Ex: `HAPROXY_0_AUTH = realm:username:encryptedpassword`
 
 ## `HAPROXY_{n}_BALANCE`
   *per service port*
@@ -737,6 +906,13 @@ it falls back to default `HAPROXY_GROUP` and gets associated with
 
 Load balancers with the group '*' will collect all groups.
     
+
+## `HAPROXY_{n}_HTTPS_FRONTEND_ACL_ONLY_WITH_PATH_AND_AUTH`
+  *per service port*
+
+Specified as `HAPROXY_{n}_HTTPS_FRONTEND_ACL_ONLY_WITH_PATH_AND_AUTH`.
+
+
 
 ## `HAPROXY_{n}_MODE`
   *per service port*

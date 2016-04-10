@@ -94,6 +94,17 @@ and defaults.
 '''))
 
         self.add_template(
+            ConfigTemplate(name='USERLIST_HEAD',
+                           value='''
+userlist user_{backend}
+  user {user} password {passwd}
+''',
+                           overridable=True,
+                           description='''\
+The userlist for basic HTTP auth.
+'''))
+
+        self.add_template(
             ConfigTemplate(name='HTTP_FRONTEND_HEAD',
                            value='''
 frontend marathon_http_in
@@ -212,6 +223,21 @@ of the `HAPROXY_HTTP_FRONTEND_HEAD`
 '''))
 
         self.add_template(
+            ConfigTemplate(name='HTTP_FRONTEND_ACL_WITH_AUTH',
+                           value='''\
+  acl host_{cleanedUpHostname} hdr(host) -i {hostname}
+  acl auth_{cleanedUpHostname} http_auth(user_{backend})
+  http-request auth realm "{realm}" if host_{cleanedUpHostname}\
+ !auth_{cleanedUpHostname}
+  use_backend {backend} if host_{cleanedUpHostname}
+''',
+                           overridable=True,
+                           description='''\
+The ACL that glues a backend to the corresponding virtual host
+of the `HAPROXY_HTTP_FRONTEND_HEAD` thru HTTP basic auth.
+'''))
+
+        self.add_template(
             ConfigTemplate(name='HTTP_FRONTEND_ACL_ONLY',
                            value='''\
   acl host_{cleanedUpHostname} hdr(host) -i {hostname}
@@ -236,6 +262,20 @@ glues the acl name to the appropriate backend.
 '''))
 
         self.add_template(
+            ConfigTemplate(name='HTTP_FRONTEND_ROUTING_ONLY_WITH_AUTH',
+                           value='''\
+  acl auth_{cleanedUpHostname} http_auth(user_{backend})
+  http-request auth realm "{realm}" if host_{cleanedUpHostname} \
+!auth_{cleanedUpHostname}
+  use_backend {backend} if host_{cleanedUpHostname}
+''',
+                           overridable=True,
+                           description='''\
+This is the counterpart to `HAPROXY_HTTP_FRONTEND_ACL_ONLY` which
+glues the acl name to the appropriate backend, and add http basic auth.
+'''))
+
+        self.add_template(
             ConfigTemplate(name='HTTP_FRONTEND_ACL_WITH_PATH',
                            value='''\
   acl host_{cleanedUpHostname} hdr(host) -i {hostname}
@@ -249,6 +289,22 @@ of the `HAPROXY_HTTP_FRONTEND_HEAD`.
 '''))
 
         self.add_template(
+            ConfigTemplate(name='HTTP_FRONTEND_ACL_WITH_AUTH_AND_PATH',
+                           value='''\
+  acl host_{cleanedUpHostname} hdr(host) -i {hostname}
+  acl auth_{cleanedUpHostname} http_auth(user_{backend})
+  acl path_{backend} path_beg {path}
+  http-request auth realm "{realm}" if host_{cleanedUpHostname} \
+path_{backend} !auth_{cleanedUpHostname}
+  use_backend {backend} if host_{cleanedUpHostname} path_{backend}
+''',
+                           overridable=True,
+                           description='''\
+The ACL that glues a backend to the corresponding virtual host with path
+of the `HAPROXY_HTTP_FRONTEND_HEAD` thru HTTP basic auth.
+'''))
+
+        self.add_template(
             ConfigTemplate(name='HTTP_FRONTEND_ACL_ONLY_WITH_PATH',
                            value='''\
   acl path_{backend} path_beg {path}
@@ -256,6 +312,20 @@ of the `HAPROXY_HTTP_FRONTEND_HEAD`.
                            overridable=True,
                            description='''\
 Define the ACL matching a particular hostname with path, but unlike
+`HAPROXY_HTTP_FRONTEND_ACL_WITH_PATH`, only do the ACL portion. Does not glue
+the ACL to the backend. This is useful only in the case of multiple
+vhosts routing to the same backend
+'''))
+
+        self.add_template(
+            ConfigTemplate(name='HTTP_FRONTEND_ACL_ONLY_WITH_PATH_AND_AUTH',
+                           value='''\
+  acl path_{backend} path_beg {path}
+  acl auth_{cleanedUpHostname} http_auth(user_{backend})
+''',
+                           overridable=True,
+                           description='''\
+Define the ACL matching a particular hostname with path and auth, but unlike
 `HAPROXY_HTTP_FRONTEND_ACL_WITH_PATH`, only do the ACL portion. Does not glue
 the ACL to the backend. This is useful only in the case of multiple
 vhosts routing to the same backend
@@ -283,6 +353,33 @@ glues the acl names to the appropriate backend
 '''))
 
         self.add_template(
+            ConfigTemplate(name='\
+HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH',
+                           value='''\
+  http-request auth realm "{realm}" if host_{cleanedUpHostname} \
+path_{backend} !auth_{cleanedUpHostname}
+  use_backend {backend} if host_{cleanedUpHostname} path_{backend}
+''',
+                           overridable=True,
+                           description='''\
+This is the counterpart to `HAPROXY_HTTP_FRONTEND_ACL_ONLY_WITH_PATH` which
+glues the acl names to the appropriate backend
+'''))
+
+        self.add_template(
+            ConfigTemplate(name='\
+HTTPS_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH',
+                           value='''\
+  http-request auth realm "{realm}" if host_{cleanedUpHostname} \
+path_{backend} !auth_{cleanedUpHostname}
+  use_backend {backend} if host_{cleanedUpHostname} path_{backend}
+''',
+                           overridable=True,
+                           description='''\
+This is the counterpart to `HAPROXY_HTTP_FRONTEND_ACL_ONLY_WITH_PATH` which
+glues the acl names to the appropriate backend
+'''))
+        self.add_template(
             ConfigTemplate(name='HTTP_FRONTEND_APPID_ACL',
                            value='''\
   acl app_{cleanedUpAppId} hdr(x-marathon-app-id) -i {appId}
@@ -306,6 +403,41 @@ for the `HAPROXY_HTTPS_FRONTEND_HEAD` template.
 '''))
 
         self.add_template(
+            ConfigTemplate(name='HTTPS_FRONTEND_ACL_WITH_AUTH',
+                           value='''\
+  acl auth_{cleanedUpHostname} http_auth(user_{backend})
+  http-request auth realm "{realm}" if {{ ssl_fc_sni {hostname} }} \
+!auth_{cleanedUpHostname}
+  use_backend {backend} if {{ ssl_fc_sni {hostname} }}
+''',
+                           overridable=True,
+                           description='''\
+The ACL that glues a backend to the corresponding virtual host
+of the `HAPROXY_HTTPS_FRONTEND_HEAD` thru HTTP basic auth.
+'''))
+
+        self.add_template(
+            ConfigTemplate(name='HTTPS_FRONTEND_AUTH_ACL_ONLY',
+                           value='''\
+  acl auth_{cleanedUpHostname} http_auth(user_{backend})
+''',
+                           overridable=True,
+                           description='''\
+The http auth ACL to the corresponding virtual host.
+'''))
+
+        self.add_template(
+            ConfigTemplate(name='HTTPS_FRONTEND_AUTH_REQUEST_ONLY',
+                           value='''\
+  http-request auth realm "{realm}" if {{ ssl_fc_sni {hostname} }} \
+!auth_{cleanedUpHostname}
+''',
+                           overridable=True,
+                           description='''\
+The http auth request to the corresponding virtual host.
+'''))
+
+        self.add_template(
             ConfigTemplate(name='HTTPS_FRONTEND_ACL_WITH_PATH',
                            value='''\
   use_backend {backend} if {{ ssl_fc_sni {hostname} }} path_{backend}
@@ -314,6 +446,20 @@ for the `HAPROXY_HTTPS_FRONTEND_HEAD` template.
                            description='''\
 The ACL that performs the SNI based hostname matching with path
 for the `HAPROXY_HTTPS_FRONTEND_HEAD` template.
+'''))
+
+        self.add_template(
+            ConfigTemplate(name='HTTPS_FRONTEND_ACL_WITH_AUTH_AND_PATH',
+                           value='''\
+  acl auth_{cleanedUpHostname} http_auth(user_{backend})
+  http-request auth realm "{realm}" if {{ ssl_fc_sni {hostname} }} \
+path_{backend} !auth_{cleanedUpHostname}
+  use_backend {backend} if {{ ssl_fc_sni {hostname} }} path_{backend}
+''',
+                           overridable=True,
+                           description='''\
+The ACL that glues a backend to the corresponding virtual host with path
+of the `HAPROXY_HTTPS_FRONTEND_HEAD` thru HTTP basic auth.
 '''))
 
         self.add_template(
@@ -615,6 +761,33 @@ Specified as {specifiedAs}.
     def haproxy_https_frontend_head(self):
         return self.t['HTTPS_FRONTEND_HEAD'].value
 
+    def haproxy_userlist_head(self, app):
+        if 'HAPROXY_{0}_USERLIST_HEAD' in app.labels:
+            return app.labels['HAPROXY_{0}_USERLIST_HEAD']
+        return self.t['USERLIST_HEAD'].value
+
+    def haproxy_http_frontend_acl_with_auth(self, app):
+        if 'HAPROXY_{0}_HTTP_FRONTEND_ACL_WITH_AUTH' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTP_FRONTEND_ACL_WITH_AUTH']
+        return self.t['HTTP_FRONTEND_ACL_WITH_AUTH'].value
+
+    def haproxy_https_frontend_acl_with_auth(self, app):
+        if 'HAPROXY_{0}_HTTPS_FRONTEND_ACL_WITH_AUTH' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTPS_FRONTEND_ACL_WITH_AUTH']
+        return self.t['HTTPS_FRONTEND_ACL_WITH_AUTH'].value
+
+    def haproxy_http_frontend_acl_with_auth_and_path(self, app):
+        if 'HAPROXY_{0}_HTTP_FRONTEND_ACL_WITH_AUTH_AND_PATH' in app.labels:
+            return \
+                app.labels['HAPROXY_{0}_HTTP_FRONTEND_ACL_WITH_AUTH_AND_PATH']
+        return self.t['HTTP_FRONTEND_ACL_WITH_AUTH_AND_PATH'].value
+
+    def haproxy_https_frontend_acl_with_auth_and_path(self, app):
+        if 'HAPROXY_{0}_HTTPS_FRONTEND_ACL_WITH_AUTH_AND_PATH' in app.labels:
+            return \
+                app.labels['HAPROXY_{0}_HTTPS_FRONTEND_ACL_WITH_AUTH_AND_PATH']
+        return self.t['HTTPS_FRONTEND_ACL_WITH_AUTH_AND_PATH'].value
+
     def haproxy_frontend_head(self, app):
         if 'FRONTEND_HEAD' in app.labels:
             return app.labels['HAPROXY_{0}_FRONTEND_HEAD']
@@ -657,6 +830,12 @@ Specified as {specifiedAs}.
             return app.labels['HAPROXY_{0}_HTTP_FRONTEND_ROUTING_ONLY']
         return self.t['HTTP_FRONTEND_ROUTING_ONLY'].value
 
+    def haproxy_http_frontend_routing_only_with_auth(self, app):
+        if 'HAPROXY_{0}_HTTP_FRONTEND_ROUTING_ONLY_WITH_AUTH' in app.labels:
+            return app.\
+                labels['HAPROXY_{0}_HTTP_FRONTEND_ROUTING_ONLY_WITH_AUTH']
+        return self.t['HTTP_FRONTEND_ROUTING_ONLY_WITH_AUTH'].value
+
     def haproxy_http_frontend_acl_with_path(self, app):
         if 'HAPROXY_{0}_HTTP_FRONTEND_ACL_WITH_PATH' in app.labels:
             return app.labels['HAPROXY_{0}_HTTP_FRONTEND_ACL_WITH_PATH']
@@ -666,6 +845,14 @@ Specified as {specifiedAs}.
         if 'HAPROXY_{0}_HTTP_FRONTEND_ACL_ONLY_WITH_PATH' in app.labels:
             return app.labels['HAPROXY_{0}_HTTP_FRONTEND_ACL_ONLY_WITH_PATH']
         return self.t['HTTP_FRONTEND_ACL_ONLY_WITH_PATH'].value
+
+    def haproxy_http_frontend_acl_only_with_path_and_auth(self, app):
+        if 'HAPROXY_{0}_HTTP_FRONTEND_ACL_ONLY_WITH_PATH_AND_AUTH'\
+         in app.labels:
+            return\
+             app.\
+             labels['HAPROXY_{0}_HTTP_FRONTEND_ACL_ONLY_WITH_PATH_AND_AUTH']
+        return self.t['HTTP_FRONTEND_ACL_ONLY_WITH_PATH_AND_AUTH'].value
 
     def haproxy_https_frontend_acl_only_with_path(self, app):
         if 'HAPROXY_{0}_HTTPS_FRONTEND_ACL_ONLY_WITH_PATH' in app.labels:
@@ -677,6 +864,15 @@ Specified as {specifiedAs}.
             return \
                 app.labels['HAPROXY_{0}_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH']
         return self.t['HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH'].value
+
+    def haproxy_http_frontend_routing_only_with_path_and_auth(self, app):
+        if 'HAPROXY_{0}_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH'\
+         in app.labels:
+            return\
+             app.\
+             labels[
+                'HAPROXY_{0}_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH']
+        return self.t['HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH'].value
 
     def haproxy_http_frontend_appid_acl(self, app):
         if 'HAPROXY_{0}_HTTP_FRONTEND_APPID_ACL' in app.labels:
@@ -784,6 +980,10 @@ def set_redirect_http_to_https(x, k, v):
     x.redirectHttpToHttps = string_to_bool(v)
 
 
+def set_auth(x, k, v):
+    x.authRealm, x.authUser, x.authPasswd = v.split(':')
+
+
 def set_use_hsts(x, k, v):
     x.useHsts = string_to_bool(v)
 
@@ -844,6 +1044,12 @@ class Label:
         self.description = description
 
 labels = []
+labels.append(Label(name='AUTH',
+                    func=set_auth,
+                    description='''\
+The http basic auth definition.
+
+Ex: `HAPROXY_0_AUTH = realm:username:encryptedpassword`'''))
 labels.append(Label(name='VHOST',
                     func=set_hostname,
                     description='''\
@@ -1017,6 +1223,9 @@ Ex: `HAPROXY_0_HTTP_BACKEND_REDIR = '/my/content'`
 labels.append(Label(name='FRONTEND_HEAD',
                     func=set_label,
                     description=''))
+labels.append(Label(name='USERLIST_HEAD',
+                    func=set_label,
+                    description=''))
 labels.append(Label(name='BACKEND_REDIRECT_HTTP_TO_HTTPS',
                     func=set_label,
                     description=''))
@@ -1032,16 +1241,28 @@ labels.append(Label(name='HTTP_FRONTEND_ACL_ONLY',
 labels.append(Label(name='HTTP_FRONTEND_ROUTING_ONLY',
                     func=set_label,
                     description=''))
+labels.append(Label(name='HTTP_FRONTEND_ACL_WITH_AUTH',
+                    func=set_label,
+                    description=''))
 labels.append(Label(name='HTTP_FRONTEND_ACL_WITH_PATH',
                     func=set_label,
                     description=''))
 labels.append(Label(name='HTTP_FRONTEND_ACL_ONLY_WITH_PATH',
                     func=set_label,
                     description=''))
+labels.append(Label(name='HTTP_FRONTEND_ACL_ONLY_WITH_PATH_AND_AUTH',
+                    func=set_label,
+                    description=''))
 labels.append(Label(name='HTTPS_FRONTEND_ACL_ONLY_WITH_PATH',
                     func=set_label,
                     description=''))
+labels.append(Label(name='HTTPS_FRONTEND_ACL_ONLY_WITH_PATH_AND_AUTH',
+                    func=set_label,
+                    description=''))
 labels.append(Label(name='HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH',
+                    func=set_label,
+                    description=''))
+labels.append(Label(name='HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH',
                     func=set_label,
                     description=''))
 labels.append(Label(name='HTTP_FRONTEND_APPID_ACL',
