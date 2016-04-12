@@ -929,6 +929,13 @@ Ex: `HAPROXY_0_MODE = 'http'`
 
 Specified as `HAPROXY_{n}_PATH`.
 
+The HTTP path to match, starting at the beginning. To specify multiple paths,
+pass a space separated list. The syntax matches that of the `path_beg` config
+option in HAProxy. To use the path routing, you must also define a VHost.
+
+Ex: `HAPROXY_0_PATH = '/v2/api/derp'`
+
+Ex: `HAPROXY_0_PATH = '-i /multiple /paths'`
                     
 
 ## `HAPROXY_{n}_PORT`
