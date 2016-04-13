@@ -3,6 +3,20 @@ exec 2>&1
 export PIDFILE="/tmp/haproxy.pid"
 exec 200<$0
 
+addFirewallRules() {
+  IFS=',' read -ra ADDR <<< "$PORTS"
+  for i in "${ADDR[@]}"; do
+    iptables -w -I INPUT -p tcp --dport $i --syn -j DROP
+  done
+}
+
+removeFirewallRules() {
+  IFS=',' read -ra ADDR <<< "$PORTS"
+  for i in "${ADDR[@]}"; do
+    iptables -w -D INPUT -p tcp --dport $i --syn -j DROP
+  done
+}
+
 reload() {
   echo "Reloading haproxy"
   if ! haproxy -c -f /marathon-lb/haproxy.cfg; then
@@ -15,10 +29,7 @@ reload() {
   fi
 
   # Begin to drop SYN packets with firewall rules
-  IFS=',' read -ra ADDR <<< "$PORTS"
-  for i in "${ADDR[@]}"; do
-    iptables -w -I INPUT -p tcp --dport $i --syn -j DROP
-  done
+  addFirewallRules
 
   # Wait to settle
   sleep 0.1
@@ -30,10 +41,7 @@ reload() {
   haproxy -p $PIDFILE -f /marathon-lb/haproxy.cfg -D -sf $(cat $PIDFILE)
 
   # Remove the firewall rules
-  IFS=',' read -ra ADDR <<< "$PORTS"
-  for i in "${ADDR[@]}"; do
-    iptables -w -D INPUT -p tcp --dport $i --syn -j DROP
-  done
+  removeFirewallRules
 
   # Need to wait 1s to prevent TCP SYN exponential backoff
   sleep 1
@@ -43,6 +51,7 @@ reload() {
 mkdir -p /var/state/haproxy
 mkdir -p /var/run/haproxy
 
+removeFirewallRules # do this first to be safe
 reload
 
 trap reload SIGHUP
