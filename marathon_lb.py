@@ -1041,6 +1041,10 @@ def get_apps(marathon):
 
         service_ports = SERVICE_PORT_ASSIGNER.get_service_ports(app)
         for i, servicePort in enumerate(service_ports):
+            if servicePort is None:
+                logger.warning("Skipping undefined service port")
+                continue
+
             service = MarathonService(
                         appId, servicePort, get_health_check(app, i))
 
@@ -1353,14 +1357,18 @@ if __name__ == '__main__':
                 'either specify both --min-serv-port-ip-per-task '
                 'and --max-serv-port-ip-per-task or neither (set both to zero '
                 'to disable auto assignment)')
+        if args.min_serv_port_ip_per_task > args.max_serv_port_ip_per_task:
+            arg_parser.error(
+                'cannot set --min-serv-port-ip-per-task to a higher value '
+                'than --max-serv-port-ip-per-task')
         if len(args.group) == 0:
             arg_parser.error('argument --group is required: please' +
                              'specify at least one group name')
 
     # Configure the service port assigner if min/max ports have been specified.
     if args.min_serv_port_ip_per_task and args.max_serv_port_ip_per_task:
-        SERVICE_PORT_ASSIGNER.set_ports(int(args.min_serv_port_ip_per_task),
-                                        int(args.max_serv_port_ip_per_task))
+        SERVICE_PORT_ASSIGNER.set_ports(args.min_serv_port_ip_per_task,
+                                        args.max_serv_port_ip_per_task)
 
     # Set request retries
     s = requests.Session()

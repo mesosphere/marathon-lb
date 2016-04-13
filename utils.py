@@ -47,8 +47,9 @@ class ServicePortAssigner(object):
     def _assign_new_service_port(self, app, task_port):
         assert self.can_assign
 
-        remaining_ports = self.max_ports - len(self.ports_by_app)
-        assert remaining_ports, "Service ports are exhausted"
+        if self.max_ports <= len(self.ports_by_app):
+            logger.warning("Service ports are exhausted")
+            return None
 
         # We don't want to be searching forever, so limit the number of times
         # we clash to the number of remaining ports.
@@ -69,7 +70,7 @@ class ServicePortAssigner(object):
 
         # We must have assigned a unique port by now since we know there were
         # some available.
-        assert port and port not in ports
+        assert port and port not in ports, port
 
         logger.debug("Assigned new port: %d", port)
         return port
@@ -88,21 +89,26 @@ class ServicePortAssigner(object):
         :param min_port: The minimum port value
         :param max_port: The maximum port value
         """
+        assert not self.ports_by_app
+        assert max_port >= min_port
         self.min_port = min_port
         self.max_port = max_port
         self.max_ports = max_port - min_port + 1
         self.can_assign = self.min_port and self.max_port
-        assert not self.ports_by_app
-        assert self.max_ports > 1
 
     def reset(self):
         """
         Reset the assigner so that ports are newly assigned.
-        :return:
         """
         self.ports_by_app = {}
 
     def get_service_ports(self, app):
+        """
+        Return a list of service ports for this app.
+        :param app: The application.
+        :return: The list of ports.    Note that if auto-assigning and ports
+        become exhausted, a port may be returned as None.
+        """
         ports = app['ports']
         if not ports and is_ip_per_task(app) and self.can_assign:
             logger.warning("Auto assigning service port for "

@@ -76,6 +76,16 @@ class TestServicePortAssigner(unittest.TestCase):
         self.assigner = ServicePortAssigner()
         self.assigner.set_ports(10000, 10020)
 
+    def test_no_assignment_ports_not_set(self):
+        """
+        Test that no assignments are made if the port values are not set.
+        """
+        assigner = ServicePortAssigner()
+        app = _get_app(idx=1, num_ports=3, num_tasks=1)
+
+        # No ports set
+        self.assertEquals(assigner.get_service_ports(app), [])
+
     def test_not_ip_per_task(self):
         """
         Test a non-IP-per-task app returns the service ports defined in the
@@ -157,16 +167,31 @@ class TestServicePortAssigner(unittest.TestCase):
             ports = self.assigner.get_service_ports(app)
         self.assertEquals(ports, list(range(10000, 10010)))
 
+    def test_ip_per_task_exhausted(self):
+        """
+        Check that ports are returned as None when the ports list is
+        exhausted.
+        """
+        # Create an app with 2 more discovery ports than we are able to
+        # allocate.  Check the last two ports are unassigned, and check all
+        # ports are allocated from the correct range.
+        app = _get_app(idx=1, num_ports=24, num_tasks=1)
+        ports = self.assigner.get_service_ports(app)
+        self.assertEquals(ports[-3:], [None] * 3)
+        self.assertEquals(sorted(ports[:-3]), list(range(10000, 10021)))
+
 
 def _get_app(idx=1, num_ports=3, num_tasks=1, ip_per_task=True,
              inc_service_ports=False):
     app = {
-        "id": "app-%d" % idx
+        "id": "app-%d" % idx,
+        "tasks": [_get_task(idx*10 + idx2) for idx2 in range(num_tasks)],
+        "ports": [],
+        "ipAddress": None,
     }
+
     if inc_service_ports:
         app["ports"] = list(range(100, 100 + num_ports))
-    else:
-        app["ports"] = []
 
     if ip_per_task:
         app["ipAddress"] = {
@@ -177,12 +202,10 @@ def _get_app(idx=1, num_ports=3, num_tasks=1, ip_per_task=True,
             }
         }
 
-    app["tasks"] = [_get_task(idx*10, num_ports) for idx in range(num_tasks)]
-
     return app
 
 
-def _get_task(idx, num_ports):
+def _get_task(idx):
     return {
         "id": "task-%d" % idx,
         "ipAddresses": [{"ipAddress": "1.2.3.4"}]
