@@ -25,6 +25,8 @@ usage: marathon_lb.py [-h] [--longhelp] [--marathon MARATHON [MARATHON ...]]
                       [--lru-cache-capacity LRU_CACHE_CAPACITY]
                       [--dont-bind-http-https] [--ssl-certs SSL_CERTS]
                       [--skip-validation] [--dry]
+                      [--min-serv-port-ip-per-task MIN_SERV_PORT_IP_PER_TASK]
+                      [--max-serv-port-ip-per-task MAX_SERV_PORT_IP_PER_TASK]
                       [--syslog-socket SYSLOG_SOCKET]
                       [--log-format LOG_FORMAT]
                       [--marathon-auth-credential-file MARATHON_AUTH_CREDENTIAL_FILE]
@@ -73,9 +75,15 @@ optional arguments:
                         /etc/ssl/mesosphere.com.pem)
   --skip-validation     Skip haproxy config file validation (default: False)
   --dry, -d             Only print configuration to console (default: False)
+  --min-serv-port-ip-per-task MIN_SERV_PORT_IP_PER_TASK
+                        Minimum port number to use when auto-assigning service
+                        ports for IP-per-task applications (default: 10050)
+  --max-serv-port-ip-per-task MAX_SERV_PORT_IP_PER_TASK
+                        Maximum port number to use when auto-assigning service
+                        ports for IP-per-task applications (default: 10100)
   --syslog-socket SYSLOG_SOCKET
                         Socket to write syslog messages to. Use '/dev/null' to
-                        disable logging to syslog (default: /var/run/syslog)
+                        disable logging to syslog (default: /dev/log)
   --log-format LOG_FORMAT
                         Set log message format (default: %(name)s:
                         %(message)s)

@@ -1,6 +1,5 @@
 import unittest
 import json
-from mock import patch
 import marathon_lb
 
 
@@ -1684,66 +1683,3 @@ backend nginx_10000
   server agent1_1_1_1_1_1024 1.1.1.1:1024 check cookie d6ad48c81f
 '''
         self.assertMultiLineEqual(config, expected)
-
-    def test_get_task_ip_and_ports_ip_per_task(self):
-        app = {
-            "ipAddress": {
-                "discovery": {
-                    "ports": [{"number": 123}, {"number": 234}]
-                }
-            },
-        }
-        task = {
-            "id": "testtaskid",
-            "ipAddresses": [{"ipAddress": "1.2.3.4"}]
-        }
-
-        result = marathon_lb.get_task_ip_and_ports(app, task)
-        expected = ("1.2.3.4", [123, 234])
-
-        self.assertEquals(result, expected)
-
-    def test_get_task_ip_and_ports_ip_per_task_no_ip(self):
-        app = {
-            "ipAddress": {
-                "discovery": {
-                    "ports": [{"number": 123}, {"number": 234}]
-                }
-            },
-        }
-        task = {
-            "id": "testtaskid"
-        }
-
-        result = marathon_lb.get_task_ip_and_ports(app, task)
-        expected = (None, None)
-
-        self.assertEquals(result, expected)
-
-    def test_get_task_ip_and_ports_port_map(self):
-        app = {}
-        task = {
-            "id": "testtaskid",
-            "ports": [234, 345, 567],
-            "host": "agent1"
-        }
-
-        with patch("marathon_lb.resolve_ip", return_value="1.2.3.4"):
-            result = marathon_lb.get_task_ip_and_ports(app, task)
-            expected = ("1.2.3.4", [234, 345, 567])
-
-        self.assertEquals(result, expected)
-
-    def test_get_task_ip_and_ports_port_map_no_ip(self):
-        app = {}
-        task = {
-            "id": "testtaskid",
-            "ports": [234, 345, 567],
-            "host": "agent1"
-        }
-
-        with patch("marathon_lb.resolve_ip", return_value=None):
-            result = marathon_lb.get_task_ip_and_ports(app, task)
-            expected = (None, None)
-
-            self.assertEquals(result, expected)
