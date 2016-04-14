@@ -1232,7 +1232,7 @@ def get_arg_parser():
                         "the backend pool.",
                         action="store_true")
     parser.add_argument("--lru-cache-capacity",
-                        help="Health check result LRU cache size (in number "
+                        help="LRU cache size (in number "
                         "of items). This should be at least as large as the "
                         "number of tasks exposed via marathon-lb.",
                         type=int, default=1000
@@ -1381,6 +1381,7 @@ if __name__ == '__main__':
     # initialize health check LRU cache
     if args.health_check:
         healthCheckResultCache = LRUCache(args.lru_cache_capacity)
+    set_ip_cache(LRUCache(args.lru_cache_capacity))
 
     # Marathon API connector
     marathon = Marathon(args.marathon,

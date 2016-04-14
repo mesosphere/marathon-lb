@@ -5,6 +5,8 @@ import struct
 import logging
 import socket
 
+from lrucache import *
+
 logger = logging.getLogger('utils')
 
 # The maximum number of clashes to allow when assigning a port.
@@ -129,11 +131,15 @@ def resolve_ip(host):
         try:
             logger.debug("trying to resolve ip address for host %s", host)
             ip = socket.gethostbyname(host)
-            ip_cache[host] = ip
+            ip_cache.set(host, ip)
             return ip
         except socket.gaierror:
             return None
-ip_cache = dict()
+ip_cache = LRUCache()
+
+
+def set_ip_cache(new_ip_cache):
+    ip_cache = new_ip_cache
 
 
 def is_ip_per_task(app):

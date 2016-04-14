@@ -62,9 +62,9 @@ optional arguments:
                         before adding the app instance into the backend pool.
                         (default: False)
   --lru-cache-capacity LRU_CACHE_CAPACITY
-                        Health check result LRU cache size (in number of
-                        items). This should be at least as large as the number
-                        of tasks exposed via marathon-lb. (default: 1000)
+                        LRU cache size (in number of items). This should be at
+                        least as large as the number of tasks exposed via
+                        marathon-lb. (default: 1000)
   --dont-bind-http-https
                         Don't bind to HTTP and HTTPS frontends. (default:
                         False)
@@ -83,7 +83,7 @@ optional arguments:
                         ports for IP-per-task applications (default: 10100)
   --syslog-socket SYSLOG_SOCKET
                         Socket to write syslog messages to. Use '/dev/null' to
-                        disable logging to syslog (default: /dev/log)
+                        disable logging to syslog (default: /var/run/syslog)
   --log-format LOG_FORMAT
                         Set log message format (default: %(name)s:
                         %(message)s)
