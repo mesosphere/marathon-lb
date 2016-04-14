@@ -83,7 +83,7 @@ optional arguments:
                         ports for IP-per-task applications (default: 10100)
   --syslog-socket SYSLOG_SOCKET
                         Socket to write syslog messages to. Use '/dev/null' to
-                        disable logging to syslog (default: /dev/log)
+                        disable logging to syslog (default: /var/run/syslog)
   --log-format LOG_FORMAT
                         Set log message format (default: %(name)s:
                         %(message)s)
@@ -803,6 +803,23 @@ The http basic auth definition.
 
 Ex: `HAPROXY_0_AUTH = realm:username:encryptedpassword`
 
+## `HAPROXY_{n}_BACKEND_WEIGHT`
+  *per service port*
+
+Specified as `HAPROXY_{n}_BACKEND_WEIGHT`.
+
+Some ACLs may be affected by order. For example, if you're using VHost
+and path ACLs that are shared amongst backends, the ordering of the ACLs
+will matter. With HAPROXY_{n}_BACKEND_WEIGHT you can change the ordering
+by specifying a weight. Backends are sorted from largest to smallest
+weight.
+
+By default, any backends which use `HAPROXY_{n}_PATH` will have a
+weight of 1, if the default weight is used (which is 0).
+
+Ex: `HAPROXY_0_BACKEND_WEIGHT = 1`
+                    
+
 ## `HAPROXY_{n}_BALANCE`
   *per service port*
 
@@ -941,6 +958,11 @@ The HTTP path to match, starting at the beginning. To specify multiple paths,
 pass a space separated list. The syntax matches that of the `path_beg` config
 option in HAProxy. To use the path routing, you must also define a VHost.
 
+If you have multiple backends which share VHosts or paths, you may need to
+manually specify ordering of the backend ACLs with
+`HAPROXY_{n}_BACKEND_WEIGHT`. In HAProxy, the `use_backend` directive is
+evaluated in the order it appears in the configuration.
+
 Ex: `HAPROXY_0_PATH = '/v2/api/derp'`
 
 Ex: `HAPROXY_0_PATH = '-i /multiple /paths'`
@@ -1003,6 +1025,11 @@ Ex: `HAPROXY_0_USE_HSTS = true`
 Specified as `HAPROXY_{n}_VHOST`.
 
 The Marathon HTTP Virtual Host proxy hostname(s) to gather.
+
+If you have multiple backends which share VHosts or paths, you may need to
+manually specify ordering of the backend ACLs with
+`HAPROXY_{n}_BACKEND_WEIGHT`. In HAProxy, the `use_backend` directive is
+evaluated in the order it appears in the configuration.
 
 Ex: `HAPROXY_0_VHOST = 'marathon.mesosphere.com'`
 

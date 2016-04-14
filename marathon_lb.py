@@ -113,6 +113,7 @@ class MarathonService(object):
         self.balance = 'roundrobin'
         self.healthCheck = healthCheck
         self.labels = {}
+        self.backend_weight = 0
         if healthCheck:
             if healthCheck['protocol'] == 'HTTP':
                 self.mode = 'http'
@@ -282,6 +283,8 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
     backends = str()
     http_appid_frontends = templater.haproxy_http_frontend_appid_head
     apps_with_http_appid_backend = []
+    http_frontend_list = []
+    https_frontend_list = []
 
     for app in sorted(apps, key=attrgetter('appId', 'servicePort')):
         # App only applies if we have it's group
@@ -336,9 +339,12 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
         # TODO(lloesche): Check if the hostname is already defined by another
         # service
         if bind_http_https and app.hostname:
-            p_fe, s_fe = generateHttpVhostAcl(templater, app, backend)
-            http_frontends += p_fe
-            https_frontends += s_fe
+            backend_weight, p_fe, s_fe = \
+                generateHttpVhostAcl(templater,
+                                     app,
+                                     backend)
+            http_frontend_list.append((backend_weight, p_fe))
+            https_frontend_list.append((backend_weight, s_fe))
 
         # if app mode is http, we add the app to the second http frontend
         # selecting apps by http header X-Marathon-App-Id
@@ -492,6 +498,14 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
                 if healthCheckOptions else '',
                 otherOptions=' disabled' if backendServer.draining else ''
             )
+
+    http_frontend_list.sort(key=lambda x: x[0], reverse=True)
+    https_frontend_list.sort(key=lambda x: x[0], reverse=True)
+
+    for backend in http_frontend_list:
+        http_frontends += backend[1]
+    for backend in https_frontend_list:
+        https_frontends += backend[1]
 
     config += userlists
     if bind_http_https:
@@ -854,7 +868,9 @@ def generateHttpVhostAcl(templater, app, backend):
                     appId=app.appId,
                     backend=backend
                 )
-    return (staging_http_frontends, staging_https_frontends)
+    return (app.backend_weight,
+            staging_http_frontends,
+            staging_https_frontends)
 
 
 def writeConfigAndValidate(config, config_file):
