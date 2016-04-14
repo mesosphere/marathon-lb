@@ -246,10 +246,13 @@ tasks services are directly accessible via the configured discovery ports and th
 is no host port mapping.  Note, that due to limitations with Marathon (see 
 [mesosphere/marathon#3636](https://github.com/mesosphere/marathon/issues/3636)) 
 configured service ports are not exposed to marathon-lb for IP-per-task apps.  
+
 For these apps, if the service ports are missing from the Marathon app data,
 marathon-lb will automatically assign port values from a configurable range.  The range
 is configured using the `--min-serv-port-ip-per-task` and `--max-serv-port-ip-per-task`
-options.
+options. While port assignment is deterministic, the assignment is not guaranteed if
+you change the current set of deployed apps. In other words, when you deploy a new
+app, the port assignments may change.
 
 ## Contributing
 
