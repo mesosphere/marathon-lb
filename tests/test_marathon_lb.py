@@ -1,4 +1,5 @@
 import unittest
+import copy
 import json
 import marathon_lb
 
@@ -1681,5 +1682,146 @@ backend nginx_10000
   mode tcp
   cookie mesosphere_server_id insert indirect nocache
   server agent1_1_1_1_1_1024 1.1.1.1:1024 check cookie d6ad48c81f
+'''
+        self.assertMultiLineEqual(config, expected)
+
+    def test_config_multi_app_multiple_vhost_with_path(self):
+        apps = dict()
+        groups = ['external']
+        bind_http_https = True
+        ssl_certs = ""
+        templater = marathon_lb.ConfigTemplater()
+
+        healthCheck = {
+            "path": "/",
+            "protocol": "HTTP",
+            "portIndex": 0,
+            "gracePeriodSeconds": 10,
+            "intervalSeconds": 2,
+            "timeoutSeconds": 10,
+            "maxConsecutiveFailures": 10,
+            "ignoreHttp1xx": False
+        }
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app.hostname = "test.example.com,test"
+        app.path = '/some/path'
+        app.groups = ['external']
+        app1 = copy.deepcopy(app)
+        app2 = copy.deepcopy(app)
+        app3 = copy.deepcopy(app)
+        app1.backend_weight = 1
+        app1.appId += '1'
+        app2.backend_weight = 2
+        app2.appId += '2'
+        app3.backend_weight = 3
+        app3.appId += '3'
+        apps = [app, app1, app2, app3]
+
+        config = marathon_lb.config(apps, groups, bind_http_https,
+                                    ssl_certs, templater)
+        expected = self.base_config + '''
+frontend marathon_http_in
+  bind *:80
+  mode http
+  acl path_nginx3_10000 path_beg /some/path
+  acl host_test_example_com_nginx3 hdr(host) -i test.example.com
+  acl host_test_example_com_nginx3 hdr(host) -i test
+  use_backend nginx3_10000 if host_test_example_com_nginx3 path_nginx3_10000
+  acl path_nginx2_10000 path_beg /some/path
+  acl host_test_example_com_nginx2 hdr(host) -i test.example.com
+  acl host_test_example_com_nginx2 hdr(host) -i test
+  use_backend nginx2_10000 if host_test_example_com_nginx2 path_nginx2_10000
+  acl path_nginx1_10000 path_beg /some/path
+  acl host_test_example_com_nginx1 hdr(host) -i test.example.com
+  acl host_test_example_com_nginx1 hdr(host) -i test
+  use_backend nginx1_10000 if host_test_example_com_nginx1 path_nginx1_10000
+  acl path_nginx_10000 path_beg /some/path
+  acl host_test_example_com_nginx hdr(host) -i test.example.com
+  acl host_test_example_com_nginx hdr(host) -i test
+  use_backend nginx_10000 if host_test_example_com_nginx path_nginx_10000
+
+frontend marathon_http_appid_in
+  bind *:9091
+  mode http
+  acl app__nginx hdr(x-marathon-app-id) -i /nginx
+  use_backend nginx_10000 if app__nginx
+  acl app__nginx1 hdr(x-marathon-app-id) -i /nginx1
+  use_backend nginx1_10000 if app__nginx1
+  acl app__nginx2 hdr(x-marathon-app-id) -i /nginx2
+  use_backend nginx2_10000 if app__nginx2
+  acl app__nginx3 hdr(x-marathon-app-id) -i /nginx3
+  use_backend nginx3_10000 if app__nginx3
+
+frontend marathon_https_in
+  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  mode http
+  acl path_nginx3_10000 path_beg /some/path
+  use_backend nginx3_10000 if { ssl_fc_sni test.example.com } path_nginx3_10000
+  use_backend nginx3_10000 if { ssl_fc_sni test } path_nginx3_10000
+  acl path_nginx2_10000 path_beg /some/path
+  use_backend nginx2_10000 if { ssl_fc_sni test.example.com } path_nginx2_10000
+  use_backend nginx2_10000 if { ssl_fc_sni test } path_nginx2_10000
+  acl path_nginx1_10000 path_beg /some/path
+  use_backend nginx1_10000 if { ssl_fc_sni test.example.com } path_nginx1_10000
+  use_backend nginx1_10000 if { ssl_fc_sni test } path_nginx1_10000
+  acl path_nginx_10000 path_beg /some/path
+  use_backend nginx_10000 if { ssl_fc_sni test.example.com } path_nginx_10000
+  use_backend nginx_10000 if { ssl_fc_sni test } path_nginx_10000
+
+frontend nginx_10000
+  bind *:10000
+  mode http
+  use_backend nginx_10000
+
+frontend nginx1_10000
+  bind *:10000
+  mode http
+  use_backend nginx1_10000
+
+frontend nginx2_10000
+  bind *:10000
+  mode http
+  use_backend nginx2_10000
+
+frontend nginx3_10000
+  bind *:10000
+  mode http
+  use_backend nginx3_10000
+
+backend nginx_10000
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  option  httpchk GET /
+  timeout check 10s
+
+backend nginx1_10000
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  option  httpchk GET /
+  timeout check 10s
+
+backend nginx2_10000
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  option  httpchk GET /
+  timeout check 10s
+
+backend nginx3_10000
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  option  httpchk GET /
+  timeout check 10s
 '''
         self.assertMultiLineEqual(config, expected)
