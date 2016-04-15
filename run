@@ -46,6 +46,16 @@ if [ -n "${MESOS_SANDBOX-}" ] && [ -d "$MESOS_SANDBOX/templates" ]; then
   cp -v "$MESOS_SANDBOX/templates/"* templates/
 fi
 
+if [ -n "${HAPROXY_SYSCTL_PARAMS-}" ]; then
+  echo "setting sysctl params to: ${HAPROXY_SYSCTL_PARAMS}"
+  if [ -n "${HAPROXY_SYSCTL_NONSTRICT-}" ]; then
+    # ignore errors
+    sysctl -w $HAPROXY_SYSCTL_PARAMS || true
+  else
+    sysctl -w $HAPROXY_SYSCTL_PARAMS
+  fi
+fi
+
 /usr/bin/runsv "$HAPROXY_SERVICE" &
 RUNSV=$!
 ARGS=""
@@ -74,11 +84,6 @@ case "$MODE" in
     exit 1
     ;;
 esac
-
-if [ -n "${HAPROXY_SYSCTL_PARAMS-}" ]; then
-  echo "setting sysctl params to: ${HAPROXY_SYSCTL_PARAMS}"
-  sysctl -w $HAPROXY_SYSCTL_PARAMS
-fi
 
 while true; do
   /marathon-lb/marathon_lb.py \
