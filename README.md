@@ -9,7 +9,7 @@ Marathon-lb is a tool for managing HAProxy, by consuming [Marathon's](https://gi
  * Support for Marathon's **health checks**
  * **Multi-cert TLS/SSL** support
  * Per-service **HAProxy templates**
- * DCOS integration
+ * DC/OS integration
  * Automated Docker image builds ([mesosphere/marathon-lb](https://hub.docker.com/r/mesosphere/marathon-lb))
  * Global HAProxy templates which can be supplied at launch
  * Supports IP-per-task integration, such as [Project Calico](https://github.com/projectcalico/calico-containers)
@@ -48,7 +48,7 @@ retrieve the current HAProxy config from the `:9090/_haproxy_getconfig` endpoint
 
 ## Deployment
 The package is currently available [from the universe](https://github.com/mesosphere/universe).
-To deploy marathon-lb on the public slaves in your DCOS cluster,
+To deploy marathon-lb on the public slaves in your DC/OS cluster,
 simply run:
 
 ```
@@ -244,8 +244,8 @@ Zero downtime deployments are accomplished through the use of a Lua module, whic
 Marathon-lb supports load balancing for applications that use the Mesos IP-per-task
 feature, whereby each task is assigned unique, accessible, IP addresses.  For these
 tasks services are directly accessible via the configured discovery ports and there
-is no host port mapping.  Note, that due to limitations with Marathon (see 
-[mesosphere/marathon#3636](https://github.com/mesosphere/marathon/issues/3636)) 
+is no host port mapping.  Note, that due to limitations with Marathon (see
+[mesosphere/marathon#3636](https://github.com/mesosphere/marathon/issues/3636))
 configured service ports are not exposed to marathon-lb for IP-per-task apps.  
 
 For these apps, if the service ports are missing from the Marathon app data,
