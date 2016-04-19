@@ -20,7 +20,6 @@ which marathon-lb can be reached by Marathon.
 ### Command Line Usage
 """
 
-from logging.handlers import SysLogHandler
 from operator import attrgetter
 from shutil import move
 from tempfile import mkstemp
@@ -29,6 +28,8 @@ from six.moves.urllib import parse
 from itertools import cycle
 from common import *
 from config import *
+from lrucache import *
+from utils import *
 
 import argparse
 import json
@@ -41,29 +42,49 @@ import requests
 import shlex
 import subprocess
 import sys
-import socket
 import time
 import dateutil.parser
-import math
 import threading
+import traceback
 import random
 import hashlib
 
 logger = logging.getLogger('marathon_lb')
+SERVICE_PORT_ASSIGNER = ServicePortAssigner()
 
 
 class MarathonBackend(object):
 
-    def __init__(self, host, port, draining):
+    def __init__(self, host, ip, port, draining):
         self.host = host
+        """
+        The host that is running this task.
+        """
+
+        self.ip = ip
+        """
+        The IP address used to access the task.  For tasks using IP-per-task,
+        this is the actual IP address of the task; otherwise, it is the IP
+        address resolved from the hostname.
+        """
+
         self.port = port
+        """
+        The port used to access a particular service on a task.  For tasks
+        using IP-per-task, this is the actual port exposed by the task;
+        otherwise, it is the port exposed on the host.
+        """
+
         self.draining = draining
+        """
+        Whether we should be draining access to this task in the LB.
+        """
 
     def __hash__(self):
         return hash((self.host, self.port))
 
     def __repr__(self):
-        return "MarathonBackend(%r, %r)" % (self.host, self.port)
+        return "MarathonBackend(%r, %r, %r)" % (self.host, self.ip, self.port)
 
 
 class MarathonService(object):
@@ -92,12 +113,13 @@ class MarathonService(object):
         self.balance = 'roundrobin'
         self.healthCheck = healthCheck
         self.labels = {}
+        self.backend_weight = 0
         if healthCheck:
             if healthCheck['protocol'] == 'HTTP':
                 self.mode = 'http'
 
-    def add_backend(self, host, port, draining):
-        self.backends.add(MarathonBackend(host, port, draining))
+    def add_backend(self, host, ip, port, draining):
+        self.backends.add(MarathonBackend(host, ip, port, draining))
 
     def __hash__(self):
         return hash(self.servicePort)
@@ -242,22 +264,6 @@ def has_group(groups, app_groups):
 
     return False
 
-ip_cache = dict()
-
-
-def resolve_ip(host):
-    cached_ip = ip_cache.get(host, None)
-    if cached_ip:
-        return cached_ip
-    else:
-        try:
-            logger.debug("trying to resolve ip address for host %s", host)
-            ip = socket.gethostbyname(host)
-            ip_cache[host] = ip
-            return ip
-        except socket.gaierror:
-            return None
-
 
 def config(apps, groups, bind_http_https, ssl_certs, templater):
     logger.info("generating config")
@@ -277,6 +283,8 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
     backends = str()
     http_appid_frontends = templater.haproxy_http_frontend_appid_head
     apps_with_http_appid_backend = []
+    http_frontend_list = []
+    https_frontend_list = []
 
     for app in sorted(apps, key=attrgetter('appId', 'servicePort')):
         # App only applies if we have it's group
@@ -331,9 +339,12 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
         # TODO(lloesche): Check if the hostname is already defined by another
         # service
         if bind_http_https and app.hostname:
-            p_fe, s_fe = generateHttpVhostAcl(templater, app, backend)
-            http_frontends += p_fe
-            https_frontends += s_fe
+            backend_weight, p_fe, s_fe = \
+                generateHttpVhostAcl(templater,
+                                     app,
+                                     backend)
+            http_frontend_list.append((backend_weight, p_fe))
+            https_frontend_list.append((backend_weight, s_fe))
 
         # if app mode is http, we add the app to the second http frontend
         # selecting apps by http header X-Marathon-App-Id
@@ -420,12 +431,25 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
         key_func = attrgetter('host', 'port')
         for backendServer in sorted(app.backends, key=key_func):
             logger.debug(
-                "backend server at %s:%d",
-                backendServer.host,
-                backendServer.port)
-            serverName = re.sub(
-                r'[^a-zA-Z0-9\-]', '_',
-                backendServer.host + '_' + str(backendServer.port))
+                "backend server %s:%d on %s",
+                backendServer.ip,
+                backendServer.port,
+                backendServer.host)
+
+            # Create a unique, friendly name for the backend server.  We concat
+            # the host, task IP and task port together.  If the host and task
+            # IP are actually the same then omit one for clarity.
+            if backendServer.host != backendServer.ip:
+                serverName = re.sub(
+                    r'[^a-zA-Z0-9\-]', '_',
+                    (backendServer.host + '_' +
+                     backendServer.ip + '_' +
+                     str(backendServer.port)))
+            else:
+                serverName = re.sub(
+                    r'[^a-zA-Z0-9\-]', '_',
+                    (backendServer.ip + '_' +
+                     str(backendServer.port)))
             shortHashedServerName = hashlib.sha1(serverName.encode()) \
                 .hexdigest()[:10]
 
@@ -461,26 +485,27 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
                         healthCheckPortOptions=' port ' +
                         str(healthCheckPort) if healthCheckPort else ''
                     )
-            ipv4 = resolve_ip(backendServer.host)
+            backend_server_options = templater \
+                .haproxy_backend_server_options(app)
+            backends += backend_server_options.format(
+                host=backendServer.host,
+                host_ipv4=backendServer.ip,
+                port=backendServer.port,
+                serverName=serverName,
+                cookieOptions=' check cookie ' +
+                shortHashedServerName if app.sticky else '',
+                healthCheckOptions=healthCheckOptions
+                if healthCheckOptions else '',
+                otherOptions=' disabled' if backendServer.draining else ''
+            )
 
-            if ipv4 is not None:
-                backend_server_options = templater \
-                    .haproxy_backend_server_options(app)
-                backends += backend_server_options.format(
-                    host=backendServer.host,
-                    host_ipv4=ipv4,
-                    port=backendServer.port,
-                    serverName=serverName,
-                    cookieOptions=' check cookie ' +
-                    shortHashedServerName if app.sticky else '',
-                    healthCheckOptions=healthCheckOptions
-                    if healthCheckOptions else '',
-                    otherOptions=' disabled' if backendServer.draining else ''
-                )
-            else:
-                logger.warning("Could not resolve ip for host %s, "
-                               "ignoring this backend",
-                               backendServer.host)
+    http_frontend_list.sort(key=lambda x: x[0], reverse=True)
+    https_frontend_list.sort(key=lambda x: x[0], reverse=True)
+
+    for backend in http_frontend_list:
+        http_frontends += backend[1]
+    for backend in https_frontend_list:
+        https_frontends += backend[1]
 
     config += userlists
     if bind_http_https:
@@ -843,7 +868,9 @@ def generateHttpVhostAcl(templater, app, backend):
                     appId=app.appId,
                     backend=backend
                 )
-    return (staging_http_frontends, staging_https_frontends)
+    return (app.backend_weight,
+            staging_http_frontends,
+            staging_https_frontends)
 
 
 def writeConfigAndValidate(config, config_file):
@@ -917,6 +944,8 @@ def get_health_check(app, portIndex):
             return check
     return None
 
+healthCheckResultCache = LRUCache()
+
 
 def get_apps(marathon):
     apps = marathon.list()
@@ -967,11 +996,11 @@ def get_apps(marathon):
             target_instances = \
                 int(new['labels']['HAPROXY_DEPLOYMENT_TARGET_INSTANCES'])
 
-            # mark N tasks from old app as draining, where N is the
-            # number of instances in the new app
-            old_tasks = sorted(old['tasks'],
-                               key=lambda task: task['host'] +
-                               ":" + str(task['ports']))
+            # Mark N tasks from old app as draining, where N is the
+            # number of instances in the new app.  Sort the old tasks so that
+            # order is deterministic (i.e. so that we always drain the same
+            # tasks).
+            old_tasks = sorted(old['tasks'], key=lambda task: task['id'])
 
             healthy_new_instances = 0
             if len(app['healthChecks']) > 0:
@@ -1007,6 +1036,13 @@ def get_apps(marathon):
 
     processed_apps.extend(deployment_groups.values())
 
+    # Reset the service port assigner.  This forces the port assigner to
+    # re-assign ports for IP-per-task applications.  The upshot is that
+    # the service port for a particular app may change dynamically, but
+    # the service port will be deterministic and identical across all
+    # instances of the marathon-lb.
+    SERVICE_PORT_ASSIGNER.reset()
+
     for app in processed_apps:
         appId = app['id']
         if appId[1:] == os.environ.get("FRAMEWORK_NAME"):
@@ -1019,9 +1055,12 @@ def get_apps(marathon):
                 marathon_app.app['labels']['HAPROXY_GROUP'].split(',')
         marathon_apps.append(marathon_app)
 
-        service_ports = app['ports']
-        for i in range(len(service_ports)):
-            servicePort = service_ports[i]
+        service_ports = SERVICE_PORT_ASSIGNER.get_service_ports(app)
+        for i, servicePort in enumerate(service_ports):
+            if servicePort is None:
+                logger.warning("Skipping undefined service port")
+                continue
+
             service = MarathonService(
                         appId, servicePort, get_health_check(app, i))
 
@@ -1037,38 +1076,41 @@ def get_apps(marathon):
 
         for task in app['tasks']:
             # Marathon 0.7.6 bug workaround
-            if len(task['host']) == 0:
+            if not task['host']:
                 logger.warning("Ignoring Marathon task without host " +
                                task['id'])
                 continue
 
             if marathon.health_check() and 'healthChecks' in app and \
                len(app['healthChecks']) > 0:
-                if 'healthCheckResults' not in task:
-                    continue
                 alive = True
-                for result in task['healthCheckResults']:
-                    if not result['alive']:
-                        alive = False
-                if not alive:
-                    continue
+                if 'healthCheckResults' not in task:
+                    # use previously cached result, if it exists
+                    if not healthCheckResultCache.get(task['id'], False):
+                        continue
+                else:
+                    for result in task['healthCheckResults']:
+                        if not result['alive']:
+                            alive = False
+                    healthCheckResultCache.set(task['id'], alive)
+                    if not alive:
+                        continue
 
-            task_ports = task.get('ports', [])
-            draining = False
-            if 'draining' in task:
-                draining = task['draining']
+            task_ip, task_ports = get_task_ip_and_ports(app, task)
+            if not task_ip:
+                logger.warning("Task has no resolvable IP address - skip")
+                continue
+
+            draining = task.get('draining', False)
 
             # if different versions of app have different number of ports,
             # try to match as many ports as possible
-            number_of_defined_ports = min(len(task_ports), len(service_ports))
-
-            for i in range(number_of_defined_ports):
-                task_port = task_ports[i]
-                service_port = service_ports[i]
+            for task_port, service_port in zip(task_ports, service_ports):
                 service = marathon_app.services.get(service_port, None)
                 if service:
                     service.groups = marathon_app.groups
                     service.add_backend(task['host'],
+                                        task_ip,
                                         task_port,
                                         draining)
 
@@ -1078,6 +1120,7 @@ def get_apps(marathon):
         for service in list(marathon_app.services.values()):
             if service.backends:
                 apps_list.append(service)
+
     return apps_list
 
 
@@ -1204,6 +1247,12 @@ def get_arg_parser():
                         "statuses before adding the app instance into "
                         "the backend pool.",
                         action="store_true")
+    parser.add_argument("--lru-cache-capacity",
+                        help="LRU cache size (in number "
+                        "of items). This should be at least as large as the "
+                        "number of tasks exposed via marathon-lb.",
+                        type=int, default=1000
+                        )
     parser.add_argument("--dont-bind-http-https",
                         help="Don't bind to HTTP and HTTPS frontends.",
                         action="store_true")
@@ -1218,6 +1267,14 @@ def get_arg_parser():
     parser.add_argument("--dry", "-d",
                         help="Only print configuration to console",
                         action="store_true")
+    parser.add_argument("--min-serv-port-ip-per-task",
+                        help="Minimum port number to use when auto-assigning "
+                             "service ports for IP-per-task applications",
+                        type=int, default=10050)
+    parser.add_argument("--max-serv-port-ip-per-task",
+                        help="Maximum port number to use when auto-assigning "
+                             "service ports for IP-per-task applications",
+                        type=int, default=10100)
     parser = set_logging_args(parser)
     parser = set_marathon_auth_args(parser)
     return parser
@@ -1284,6 +1341,7 @@ def process_sse_events(marathon, config_file, groups,
             except:
                 print(event.data)
                 print("Unexpected error:", sys.exc_info()[0])
+                traceback.print_stack()
                 raise
     finally:
         processor.stop()
@@ -1309,9 +1367,24 @@ if __name__ == '__main__':
         if args.sse and args.listening:
             arg_parser.error(
                 'cannot use --listening and --sse at the same time')
+        if bool(args.min_serv_port_ip_per_task) != \
+           bool(args.max_serv_port_ip_per_task):
+            arg_parser.error(
+                'either specify both --min-serv-port-ip-per-task '
+                'and --max-serv-port-ip-per-task or neither (set both to zero '
+                'to disable auto assignment)')
+        if args.min_serv_port_ip_per_task > args.max_serv_port_ip_per_task:
+            arg_parser.error(
+                'cannot set --min-serv-port-ip-per-task to a higher value '
+                'than --max-serv-port-ip-per-task')
         if len(args.group) == 0:
             arg_parser.error('argument --group is required: please' +
                              'specify at least one group name')
+
+    # Configure the service port assigner if min/max ports have been specified.
+    if args.min_serv_port_ip_per_task and args.max_serv_port_ip_per_task:
+        SERVICE_PORT_ASSIGNER.set_ports(args.min_serv_port_ip_per_task,
+                                        args.max_serv_port_ip_per_task)
 
     # Set request retries
     s = requests.Session()
@@ -1320,6 +1393,11 @@ if __name__ == '__main__':
 
     # Setup logging
     setup_logging(logger, args.syslog_socket, args.log_format)
+
+    # initialize health check LRU cache
+    if args.health_check:
+        healthCheckResultCache = LRUCache(args.lru_cache_capacity)
+    set_ip_cache(LRUCache(args.lru_cache_capacity))
 
     # Marathon API connector
     marathon = Marathon(args.marathon,

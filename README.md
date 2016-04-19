@@ -6,17 +6,20 @@ Marathon-lb is a tool for managing HAProxy, by consuming [Marathon's](https://gi
  * **Stateless design**: no direct dependency on any third-party state store like ZooKeeper or etcd (_except through Marathon_)
  * **Real-time LB updates**, via [Marathon's event bus](https://mesosphere.github.io/marathon/docs/event-bus.html)
  * Support for Marathon's **health checks**
- * **Multi-cert SSL** support
+ * **Multi-cert TLS/SSL** support
  * Per-service **HAProxy templates**
  * DCOS integration
  * Automated Docker image builds ([mesosphere/marathon-lb](https://hub.docker.com/r/mesosphere/marathon-lb))
  * Global HAProxy templates which can be supplied at launch
+ * Supports IP-per-task integration, such as [Project Calico](https://github.com/projectcalico/calico-containers)
 
 ### Getting started
 
  * [Using marathon-lb](https://docs.mesosphere.com/administration/service-discovery/service-discovery-and-load-balancing-with-marathon-lb/service-discovery-and-load-balancing/)
  * [Advanced features of marathon-lb](https://docs.mesosphere.com/administration/service-discovery/service-discovery-and-load-balancing-with-marathon-lb/advanced-features-of-marathon-lb/)
  * [Securing your service with TLS/SSL (blog post)](https://mesosphere.com/blog/2016/04/06/lets-encrypt-dcos/)
+
+Take a look at [the marathon-lb wiki](https://github.com/mesosphere/marathon-lb/wiki) for example usage, templates, and more.
 
 ## Architecture
 The marathon-lb script `marathon_lb.py` connects to the marathon API
@@ -234,6 +237,22 @@ An example minimal configuration for a [test instance of nginx is included here]
 ```
 
 Zero downtime deployments are accomplished through the use of a Lua module, which reports the number of HAProxy processes which are currently running by hitting the stats endpoint at the `/_haproxy_getpids`. After a restart, there will be multiple HAProxy PIDs until all remaining connections have gracefully terminated. By waiting for all connections to complete, you may safely and deterministically drain tasks. A caveat of this, however, is that if you have any long-lived connections on the same LB, HAProxy will continue to run and serve those connections until they complete, thereby breaking this technique.
+
+## Mesos with IP-per-task support
+
+Marathon-lb supports load balancing for applications that use the Mesos IP-per-task
+feature, whereby each task is assigned unique, accessible, IP addresses.  For these
+tasks services are directly accessible via the configured discovery ports and there
+is no host port mapping.  Note, that due to limitations with Marathon (see 
+[mesosphere/marathon#3636](https://github.com/mesosphere/marathon/issues/3636)) 
+configured service ports are not exposed to marathon-lb for IP-per-task apps.  
+
+For these apps, if the service ports are missing from the Marathon app data,
+marathon-lb will automatically assign port values from a configurable range.  The range
+is configured using the `--min-serv-port-ip-per-task` and `--max-serv-port-ip-per-task`
+options. While port assignment is deterministic, the assignment is not guaranteed if
+you change the current set of deployed apps. In other words, when you deploy a new
+app, the port assignments may change.
 
 ## Contributing
 

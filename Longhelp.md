@@ -22,8 +22,11 @@ usage: marathon_lb.py [-h] [--longhelp] [--marathon MARATHON [MARATHON ...]]
                       [--listening LISTENING] [--callback-url CALLBACK_URL]
                       [--haproxy-config HAPROXY_CONFIG] [--group GROUP]
                       [--command COMMAND] [--sse] [--health-check]
+                      [--lru-cache-capacity LRU_CACHE_CAPACITY]
                       [--dont-bind-http-https] [--ssl-certs SSL_CERTS]
                       [--skip-validation] [--dry]
+                      [--min-serv-port-ip-per-task MIN_SERV_PORT_IP_PER_TASK]
+                      [--max-serv-port-ip-per-task MAX_SERV_PORT_IP_PER_TASK]
                       [--syslog-socket SYSLOG_SOCKET]
                       [--log-format LOG_FORMAT]
                       [--marathon-auth-credential-file MARATHON_AUTH_CREDENTIAL_FILE]
@@ -58,6 +61,10 @@ optional arguments:
   --health-check, -H    If set, respect Marathon's health check statuses
                         before adding the app instance into the backend pool.
                         (default: False)
+  --lru-cache-capacity LRU_CACHE_CAPACITY
+                        LRU cache size (in number of items). This should be at
+                        least as large as the number of tasks exposed via
+                        marathon-lb. (default: 1000)
   --dont-bind-http-https
                         Don't bind to HTTP and HTTPS frontends. (default:
                         False)
@@ -68,6 +75,12 @@ optional arguments:
                         /etc/ssl/mesosphere.com.pem)
   --skip-validation     Skip haproxy config file validation (default: False)
   --dry, -d             Only print configuration to console (default: False)
+  --min-serv-port-ip-per-task MIN_SERV_PORT_IP_PER_TASK
+                        Minimum port number to use when auto-assigning service
+                        ports for IP-per-task applications (default: 10050)
+  --max-serv-port-ip-per-task MAX_SERV_PORT_IP_PER_TASK
+                        Maximum port number to use when auto-assigning service
+                        ports for IP-per-task applications (default: 10100)
   --syslog-socket SYSLOG_SOCKET
                         Socket to write syslog messages to. Use '/dev/null' to
                         disable logging to syslog (default: /var/run/syslog)
@@ -790,6 +803,23 @@ The http basic auth definition.
 
 Ex: `HAPROXY_0_AUTH = realm:username:encryptedpassword`
 
+## `HAPROXY_{n}_BACKEND_WEIGHT`
+  *per service port*
+
+Specified as `HAPROXY_{n}_BACKEND_WEIGHT`.
+
+Some ACLs may be affected by order. For example, if you're using VHost
+and path ACLs that are shared amongst backends, the ordering of the ACLs
+will matter. With HAPROXY_{n}_BACKEND_WEIGHT you can change the ordering
+by specifying a weight. Backends are sorted from largest to smallest
+weight.
+
+By default, any backends which use `HAPROXY_{n}_PATH` will have a
+weight of 1, if the default weight is used (which is 0).
+
+Ex: `HAPROXY_0_BACKEND_WEIGHT = 1`
+                    
+
 ## `HAPROXY_{n}_BALANCE`
   *per service port*
 
@@ -924,6 +954,18 @@ Ex: `HAPROXY_0_MODE = 'http'`
 
 Specified as `HAPROXY_{n}_PATH`.
 
+The HTTP path to match, starting at the beginning. To specify multiple paths,
+pass a space separated list. The syntax matches that of the `path_beg` config
+option in HAProxy. To use the path routing, you must also define a VHost.
+
+If you have multiple backends which share VHosts or paths, you may need to
+manually specify ordering of the backend ACLs with
+`HAPROXY_{n}_BACKEND_WEIGHT`. In HAProxy, the `use_backend` directive is
+evaluated in the order it appears in the configuration.
+
+Ex: `HAPROXY_0_PATH = '/v2/api/derp'`
+
+Ex: `HAPROXY_0_PATH = '-i /multiple /paths'`
                     
 
 ## `HAPROXY_{n}_PORT`
@@ -983,6 +1025,11 @@ Ex: `HAPROXY_0_USE_HSTS = true`
 Specified as `HAPROXY_{n}_VHOST`.
 
 The Marathon HTTP Virtual Host proxy hostname(s) to gather.
+
+If you have multiple backends which share VHosts or paths, you may need to
+manually specify ordering of the backend ACLs with
+`HAPROXY_{n}_BACKEND_WEIGHT`. In HAProxy, the `use_backend` directive is
+evaluated in the order it appears in the configuration.
 
 Ex: `HAPROXY_0_VHOST = 'marathon.mesosphere.com'`
 

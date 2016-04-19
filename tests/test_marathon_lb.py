@@ -1,4 +1,5 @@
 import unittest
+import copy
 import json
 import marathon_lb
 
@@ -162,7 +163,7 @@ frontend marathon_https_in
         }
         app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
         app.groups = ['external']
-        app.add_backend("1.1.1.1", 1024, False)
+        app.add_backend("agent1", "1.1.1.1", 1024, False)
         apps = [app]
 
         config = marathon_lb.config(apps, groups, bind_http_https,
@@ -195,7 +196,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server 1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -221,7 +222,7 @@ backend nginx_10000
         }
         app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
         app.groups = ['external']
-        app.add_backend("1.1.1.1", 1024, False)
+        app.add_backend("agent1", "1.1.1.1", 1024, False)
         apps = [app]
 
         config = marathon_lb.config(apps, groups, bind_http_https,
@@ -247,7 +248,7 @@ frontend nginx_10000
 backend nginx_10000
   balance roundrobin
   mode tcp
-  server 1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -271,7 +272,7 @@ backend nginx_10000
         app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
         app.hostname = "test.example.com"
         app.groups = ['external']
-        app.add_backend("1.1.1.1", 1024, False)
+        app.add_backend("agent1", "1.1.1.1", 1024, False)
         apps = [app]
 
         config = marathon_lb.config(apps, groups, bind_http_https,
@@ -307,7 +308,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server 1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -391,7 +392,7 @@ backend nginx_10000
         app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
         app.hostname = "test.example.com"
         app.groups = ['external']
-        app.add_backend("1.1.1.1", 1024, False)
+        app.add_backend("agent1", "1.1.1.1", 1024, False)
         app.redirectHttpToHttps = True
         apps = [app]
 
@@ -428,7 +429,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server 1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -516,7 +517,7 @@ backend nginx_10000
         app.authRealm = "realm"
         app.authUser = "testuser"
         app.authPasswd = "testpasswd"
-        app.add_backend("1.1.1.1", 1024, False)
+        app.add_backend("agent1", "1.1.1.1", 1024, False)
         apps = [app]
 
         config = marathon_lb.config(apps, groups, bind_http_https,
@@ -561,7 +562,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server 1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -664,7 +665,7 @@ backend nginx_10000
         app.authRealm = "realm"
         app.authUser = "testuser"
         app.authPasswd = "testpasswd"
-        app.add_backend("1.1.1.1", 1024, False)
+        app.add_backend("agent1", "1.1.1.1", 1024, False)
         apps = [app]
 
         config = marathon_lb.config(apps, groups, bind_http_https,
@@ -711,7 +712,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server 1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -815,7 +816,7 @@ backend nginx_10000
         app.hostname = "test.example.com"
         app.path = '/some/path'
         app.groups = ['external']
-        app.add_backend("1.1.1.1", 1024, False)
+        app.add_backend("agent1", "1.1.1.1", 1024, False)
         apps = [app]
 
         config = marathon_lb.config(apps, groups, bind_http_https,
@@ -853,7 +854,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server 1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -942,7 +943,7 @@ backend nginx_10000
         app.hostname = "test.example.com"
         app.path = '/some/path'
         app.groups = ['external']
-        app.add_backend("1.1.1.1", 1024, False)
+        app.add_backend("agent1", "1.1.1.1", 1024, False)
         app.redirectHttpToHttps = True
         apps = [app]
 
@@ -982,7 +983,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server 1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -1140,7 +1141,7 @@ backend nginx_10000
         app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
         app.balance = "leastconn"
         app.groups = ['external']
-        app.add_backend("1.1.1.1", 1024, False)
+        app.add_backend("agent1", "1.1.1.1", 1024, False)
         apps = [app]
 
         config = marathon_lb.config(apps, groups, bind_http_https,
@@ -1173,7 +1174,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server 1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -1227,9 +1228,9 @@ backend nginx_10000
   option  httpchk GET /
   timeout check 15s
   server 10_0_1_147_25724 10.0.1.147:25724 check inter 3s fall 11
-  server 10_0_6_25_16916 10.0.6.25:16916 check inter 3s fall 11 disabled
+  server 10_0_6_25_16916 10.0.6.25:16916 check inter 3s fall 11
   server 10_0_6_25_23336 10.0.6.25:23336 check inter 3s fall 11
-  server 10_0_6_25_31184 10.0.6.25:31184 check inter 3s fall 11
+  server 10_0_6_25_31184 10.0.6.25:31184 check inter 3s fall 11 disabled
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -1252,7 +1253,7 @@ backend nginx_10000
         }
         app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
         app.groups = ['external']
-        app.add_backend("1.1.1.1", 1024, False)
+        app.add_backend("agent1", "1.1.1.1", 1024, False)
         apps = [app]
 
         config = marathon_lb.config(apps, groups, bind_http_https,
@@ -1285,7 +1286,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server 1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11 port 1024
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11 port 1024
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -1307,7 +1308,7 @@ backend nginx_10000
         }
         app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
         app.groups = ['external']
-        app.add_backend("1.1.1.1", 1024, False)
+        app.add_backend("agent1", "1.1.1.1", 1024, False)
         app.hostname = "test.example.com"
         apps = [app]
 
@@ -1342,7 +1343,7 @@ backend nginx_10000
   option forwardfor
   http-request set-header X-Forwarded-Port %[dst_port]
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
-  server 1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -1356,10 +1357,10 @@ backend nginx_10000
         healthCheck = {}
         app1 = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
         app1.groups = ['external', 'internal']
-        app1.add_backend("1.1.1.1", 1024, False)
+        app1.add_backend("agent1", "1.1.1.1", 1024, False)
         app2 = marathon_lb.MarathonService('/nginx', 10001, healthCheck)
         app2.groups = ['external', 'internal']
-        app2.add_backend("1.1.1.1", 1025, False)
+        app2.add_backend("agent1", "1.1.1.1", 1025, False)
         apps = [app1, app2]
         config = marathon_lb.config(apps, groups, bind_http_https,
                                     ssl_certs, templater)
@@ -1389,12 +1390,12 @@ frontend nginx_10001
 backend nginx_10000
   balance roundrobin
   mode tcp
-  server 1_1_1_1_1024 1.1.1.1:1024
+  server agent1_1_1_1_1_1024 1.1.1.1:1024
 
 backend nginx_10001
   balance roundrobin
   mode tcp
-  server 1_1_1_1_1025 1.1.1.1:1025
+  server agent1_1_1_1_1_1025 1.1.1.1:1025
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -1408,10 +1409,10 @@ backend nginx_10001
         healthCheck = {}
         app1 = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
         app1.haproxy_groups = ['external']
-        app1.add_backend("1.1.1.1", 1024, False)
+        app1.add_backend("agent1", "1.1.1.1", 1024, False)
         app2 = marathon_lb.MarathonService('/nginx', 10001, healthCheck)
         app2.haproxy_groups = ['internal']
-        app2.add_backend("1.1.1.1", 1025, False)
+        app2.add_backend("agent1", "1.1.1.1", 1025, False)
         apps = [app1, app2]
         config = marathon_lb.config(apps, groups, bind_http_https,
                                     ssl_certs, templater)
@@ -1436,7 +1437,7 @@ frontend nginx_10000
 backend nginx_10000
   balance roundrobin
   mode tcp
-  server 1_1_1_1_1024 1.1.1.1:1024
+  server agent1_1_1_1_1_1024 1.1.1.1:1024
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -1450,10 +1451,10 @@ backend nginx_10000
         healthCheck = {}
         app1 = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
         app1.haproxy_groups = ['internal']
-        app1.add_backend("1.1.1.1", 1024, False)
+        app1.add_backend("agent1", "1.1.1.1", 1024, False)
         app2 = marathon_lb.MarathonService('/nginx', 10001, healthCheck)
         app2.groups = ['external']
-        app2.add_backend("1.1.1.1", 1025, False)
+        app2.add_backend("agent1", "1.1.1.1", 1025, False)
         apps = [app1, app2]
         config = marathon_lb.config(apps, groups, bind_http_https,
                                     ssl_certs, templater)
@@ -1478,7 +1479,7 @@ frontend nginx_10001
 backend nginx_10001
   balance roundrobin
   mode tcp
-  server 1_1_1_1_1025 1.1.1.1:1025
+  server agent1_1_1_1_1_1025 1.1.1.1:1025
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -1496,7 +1497,7 @@ backend nginx_10001
         app.groups = ['external']
         app.hostname = 'test.example.com'
         app.proxypath = '/test/'
-        app.add_backend("1.1.1.1", 1024, False)
+        app.add_backend("agent1", "1.1.1.1", 1024, False)
         apps = [app]
 
         config = marathon_lb.config(apps, groups, bind_http_https,
@@ -1532,7 +1533,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   http-request set-header Host test.example.com
   reqirep  "^([^ :]*)\ /test/(.*)" "\\1\ /\\2"
-  server 1_1_1_1_1024 1.1.1.1:1024
+  server agent1_1_1_1_1_1024 1.1.1.1:1024
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -1548,7 +1549,7 @@ backend nginx_10000
         app.groups = ['external']
         app.hostname = 'test.example.com'
         app.revproxypath = '/test'
-        app.add_backend("1.1.1.1", 1024, False)
+        app.add_backend("agent1", "1.1.1.1", 1024, False)
         apps = [app]
 
         config = marathon_lb.config(apps, groups, bind_http_https,
@@ -1585,7 +1586,7 @@ backend nginx_10000
   acl hdr_location res.hdr(Location) -m found
   rspirep "^Location: (https?://test.example.com(:[0-9]+)?)?(/.*)" "Location: \
   /test if hdr_location"
-  server 1_1_1_1_1024 1.1.1.1:1024
+  server agent1_1_1_1_1_1024 1.1.1.1:1024
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -1601,7 +1602,7 @@ backend nginx_10000
         app.groups = ['external']
         app.hostname = 'test.example.com'
         app.redirpath = '/test'
-        app.add_backend("1.1.1.1", 1024, False)
+        app.add_backend("agent1", "1.1.1.1", 1024, False)
         apps = [app]
 
         config = marathon_lb.config(apps, groups, bind_http_https,
@@ -1638,7 +1639,7 @@ backend nginx_10000
   acl is_root path -i /
   acl is_domain hdr(host) -i test.example.com
   redirect code 301 location /test if is_domain is_root
-  server 1_1_1_1_1024 1.1.1.1:1024
+  server agent1_1_1_1_1_1024 1.1.1.1:1024
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -1652,7 +1653,7 @@ backend nginx_10000
         healthCheck = {}
         app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
         app.groups = ['external']
-        app.add_backend("1.1.1.1", 1024, False)
+        app.add_backend("agent1", "1.1.1.1", 1024, False)
         app.sticky = True
         apps = [app]
 
@@ -1680,6 +1681,147 @@ backend nginx_10000
   balance roundrobin
   mode tcp
   cookie mesosphere_server_id insert indirect nocache
-  server 1_1_1_1_1024 1.1.1.1:1024 check cookie b270c76538
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 check cookie d6ad48c81f
+'''
+        self.assertMultiLineEqual(config, expected)
+
+    def test_config_multi_app_multiple_vhost_with_path(self):
+        apps = dict()
+        groups = ['external']
+        bind_http_https = True
+        ssl_certs = ""
+        templater = marathon_lb.ConfigTemplater()
+
+        healthCheck = {
+            "path": "/",
+            "protocol": "HTTP",
+            "portIndex": 0,
+            "gracePeriodSeconds": 10,
+            "intervalSeconds": 2,
+            "timeoutSeconds": 10,
+            "maxConsecutiveFailures": 10,
+            "ignoreHttp1xx": False
+        }
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app.hostname = "test.example.com,test"
+        app.path = '/some/path'
+        app.groups = ['external']
+        app1 = copy.deepcopy(app)
+        app2 = copy.deepcopy(app)
+        app3 = copy.deepcopy(app)
+        app1.backend_weight = 1
+        app1.appId += '1'
+        app2.backend_weight = 2
+        app2.appId += '2'
+        app3.backend_weight = 3
+        app3.appId += '3'
+        apps = [app, app1, app2, app3]
+
+        config = marathon_lb.config(apps, groups, bind_http_https,
+                                    ssl_certs, templater)
+        expected = self.base_config + '''
+frontend marathon_http_in
+  bind *:80
+  mode http
+  acl path_nginx3_10000 path_beg /some/path
+  acl host_test_example_com_nginx3 hdr(host) -i test.example.com
+  acl host_test_example_com_nginx3 hdr(host) -i test
+  use_backend nginx3_10000 if host_test_example_com_nginx3 path_nginx3_10000
+  acl path_nginx2_10000 path_beg /some/path
+  acl host_test_example_com_nginx2 hdr(host) -i test.example.com
+  acl host_test_example_com_nginx2 hdr(host) -i test
+  use_backend nginx2_10000 if host_test_example_com_nginx2 path_nginx2_10000
+  acl path_nginx1_10000 path_beg /some/path
+  acl host_test_example_com_nginx1 hdr(host) -i test.example.com
+  acl host_test_example_com_nginx1 hdr(host) -i test
+  use_backend nginx1_10000 if host_test_example_com_nginx1 path_nginx1_10000
+  acl path_nginx_10000 path_beg /some/path
+  acl host_test_example_com_nginx hdr(host) -i test.example.com
+  acl host_test_example_com_nginx hdr(host) -i test
+  use_backend nginx_10000 if host_test_example_com_nginx path_nginx_10000
+
+frontend marathon_http_appid_in
+  bind *:9091
+  mode http
+  acl app__nginx hdr(x-marathon-app-id) -i /nginx
+  use_backend nginx_10000 if app__nginx
+  acl app__nginx1 hdr(x-marathon-app-id) -i /nginx1
+  use_backend nginx1_10000 if app__nginx1
+  acl app__nginx2 hdr(x-marathon-app-id) -i /nginx2
+  use_backend nginx2_10000 if app__nginx2
+  acl app__nginx3 hdr(x-marathon-app-id) -i /nginx3
+  use_backend nginx3_10000 if app__nginx3
+
+frontend marathon_https_in
+  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  mode http
+  acl path_nginx3_10000 path_beg /some/path
+  use_backend nginx3_10000 if { ssl_fc_sni test.example.com } path_nginx3_10000
+  use_backend nginx3_10000 if { ssl_fc_sni test } path_nginx3_10000
+  acl path_nginx2_10000 path_beg /some/path
+  use_backend nginx2_10000 if { ssl_fc_sni test.example.com } path_nginx2_10000
+  use_backend nginx2_10000 if { ssl_fc_sni test } path_nginx2_10000
+  acl path_nginx1_10000 path_beg /some/path
+  use_backend nginx1_10000 if { ssl_fc_sni test.example.com } path_nginx1_10000
+  use_backend nginx1_10000 if { ssl_fc_sni test } path_nginx1_10000
+  acl path_nginx_10000 path_beg /some/path
+  use_backend nginx_10000 if { ssl_fc_sni test.example.com } path_nginx_10000
+  use_backend nginx_10000 if { ssl_fc_sni test } path_nginx_10000
+
+frontend nginx_10000
+  bind *:10000
+  mode http
+  use_backend nginx_10000
+
+frontend nginx1_10000
+  bind *:10000
+  mode http
+  use_backend nginx1_10000
+
+frontend nginx2_10000
+  bind *:10000
+  mode http
+  use_backend nginx2_10000
+
+frontend nginx3_10000
+  bind *:10000
+  mode http
+  use_backend nginx3_10000
+
+backend nginx_10000
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  option  httpchk GET /
+  timeout check 10s
+
+backend nginx1_10000
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  option  httpchk GET /
+  timeout check 10s
+
+backend nginx2_10000
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  option  httpchk GET /
+  timeout check 10s
+
+backend nginx3_10000
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  option  httpchk GET /
+  timeout check 10s
 '''
         self.assertMultiLineEqual(config, expected)

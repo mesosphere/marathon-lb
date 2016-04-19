@@ -970,6 +970,8 @@ def set_hostname(x, k, v):
 
 def set_path(x, k, v):
     x.path = v
+    if x.backend_weight == 0:
+        x.backend_weight = 1
 
 
 def set_sticky(x, k, v):
@@ -1002,6 +1004,10 @@ def set_bindAddr(x, k, v):
 
 def set_port(x, k, v):
     x.servicePort = int(v)
+
+
+def set_backend_weight(x, k, v):
+    x.backend_weight = int(v)
 
 
 def set_mode(x, k, v):
@@ -1054,6 +1060,11 @@ labels.append(Label(name='VHOST',
                     func=set_hostname,
                     description='''\
 The Marathon HTTP Virtual Host proxy hostname(s) to gather.
+
+If you have multiple backends which share VHosts or paths, you may need to
+manually specify ordering of the backend ACLs with
+`HAPROXY_{n}_BACKEND_WEIGHT`. In HAProxy, the `use_backend` directive is
+evaluated in the order it appears in the configuration.
 
 Ex: `HAPROXY_0_VHOST = 'marathon.mesosphere.com'`
 
@@ -1130,6 +1141,18 @@ own deployment orchestrator.
 labels.append(Label(name='PATH',
                     func=set_path,
                     description='''\
+The HTTP path to match, starting at the beginning. To specify multiple paths,
+pass a space separated list. The syntax matches that of the `path_beg` config
+option in HAProxy. To use the path routing, you must also define a VHost.
+
+If you have multiple backends which share VHosts or paths, you may need to
+manually specify ordering of the backend ACLs with
+`HAPROXY_{n}_BACKEND_WEIGHT`. In HAProxy, the `use_backend` directive is
+evaluated in the order it appears in the configuration.
+
+Ex: `HAPROXY_0_PATH = '/v2/api/derp'`
+
+Ex: `HAPROXY_0_PATH = '-i /multiple /paths'`
                     '''))
 labels.append(Label(name='STICKY',
                     func=set_sticky,
@@ -1218,6 +1241,20 @@ labels.append(Label(name='HTTP_BACKEND_REDIR',
                     description='''\
 Set the path to redirect the root of the domain to
 Ex: `HAPROXY_0_HTTP_BACKEND_REDIR = '/my/content'`
+                    '''))
+labels.append(Label(name='BACKEND_WEIGHT',
+                    func=set_backend_weight,
+                    description='''\
+Some ACLs may be affected by order. For example, if you're using VHost
+and path ACLs that are shared amongst backends, the ordering of the ACLs
+will matter. With HAPROXY_{n}_BACKEND_WEIGHT you can change the ordering
+by specifying a weight. Backends are sorted from largest to smallest
+weight.
+
+By default, any backends which use `HAPROXY_{n}_PATH` will have a
+weight of 1, if the default weight is used (which is 0).
+
+Ex: `HAPROXY_0_BACKEND_WEIGHT = 1`
                     '''))
 
 labels.append(Label(name='FRONTEND_HEAD',
