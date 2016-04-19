@@ -368,6 +368,7 @@ global
   server-state-base /var/state/haproxy/
   lua-load /marathon-lb/getpids.lua
   lua-load /marathon-lb/getconfig.lua
+  lua-load /marathon-lb/acme-http01-webroot.lua
 defaults
   load-server-state-from-file global
   log               global
@@ -721,6 +722,8 @@ all virtual hosts as defined by the `HAPROXY_{n}_VHOST` label.
 frontend marathon_http_in
   bind *:80
   mode http
+  acl url_acme_http01 path_beg /.well-known/acme-challenge/
+  http-request use-service lua.acme-http01 if METH_GET url_acme_http01
 ```
 ## `HAPROXY_HTTP_FRONTEND_ROUTING_ONLY`
   *Overridable*
