@@ -11,7 +11,7 @@ fast, efficient, battle-tested, highly available load balancer with many advance
  * **Highly scalable**: [can achieve line-rate](http://www.haproxy.org/10g.html) per instance, with multiple instances providing fault-tolerance and greater throughput
  * **Real-time LB updates**, via [Marathon's event bus](https://mesosphere.github.io/marathon/docs/event-bus.html)
  * Support for Marathon's **health checks**
- * **Multi-cert TLS/SSL** and **acme** support
+ * **Multi-cert TLS/SSL** support
  * Per-service **HAProxy templates**
  * DC/OS integration
  * Automated Docker image builds ([mesosphere/marathon-lb](https://hub.docker.com/r/mesosphere/marathon-lb))
