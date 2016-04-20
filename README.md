@@ -6,7 +6,7 @@ Marathon-lb is a tool for managing HAProxy, by consuming [Marathon's](https://gi
  * **Stateless design**: no direct dependency on any third-party state store like ZooKeeper or etcd (_except through Marathon_)
  * **Real-time LB updates**, via [Marathon's event bus](https://mesosphere.github.io/marathon/docs/event-bus.html)
  * Support for Marathon's **health checks**
- * **Multi-cert TLS/SSL** and **acme** support
+ * **Multi-cert TLS/SSL** support
  * Per-service **HAProxy templates**
  * DCOS integration
  * Automated Docker image builds ([mesosphere/marathon-lb](https://hub.docker.com/r/mesosphere/marathon-lb))
