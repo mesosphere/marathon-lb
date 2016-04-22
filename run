@@ -1,6 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
+SYSLOG_SOCKET=${SYSLOG_SOCKET:-/dev/null}
+
 HAPROXY_SERVICE="/marathon-lb/service/haproxy"
 mkdir -p $HAPROXY_SERVICE/env
 
@@ -44,6 +46,16 @@ if [ -n "${MESOS_SANDBOX-}" ] && [ -d "$MESOS_SANDBOX/templates" ]; then
   cp -v "$MESOS_SANDBOX/templates/"* templates/
 fi
 
+if [ -n "${HAPROXY_SYSCTL_PARAMS-}" ]; then
+  echo "setting sysctl params to: ${HAPROXY_SYSCTL_PARAMS}"
+  if [ -n "${HAPROXY_SYSCTL_NONSTRICT-}" ]; then
+    # ignore errors
+    sysctl -w $HAPROXY_SYSCTL_PARAMS || true
+  else
+    sysctl -w $HAPROXY_SYSCTL_PARAMS
+  fi
+fi
+
 /usr/bin/runsv "$HAPROXY_SERVICE" &
 RUNSV=$!
 ARGS=""
@@ -65,7 +77,7 @@ case "$MODE" in
       exit 1
     fi
     echo "Using $URL as event callback-url"
-    ARGS="-l :8080 -u '$URL'"
+    ARGS="-u $URL"
     ;;
   *)
     echo "Unknown mode $MODE. Synopsis: $0 poll|sse|event [marathon_lb.py args]" >&2
@@ -73,14 +85,9 @@ case "$MODE" in
     ;;
 esac
 
-if [ -n "${HAPROXY_SYSCTL_PARAMS-}" ]; then
-  echo "setting sysctl params to: ${HAPROXY_SYSCTL_PARAMS}"
-  sysctl -w $HAPROXY_SYSCTL_PARAMS
-fi
-
 while true; do
   /marathon-lb/marathon_lb.py \
-    --syslog-socket /dev/null \
+    --syslog-socket $SYSLOG_SOCKET \
     --haproxy-config /marathon-lb/haproxy.cfg \
     -c "sv reload $HAPROXY_SERVICE" \
     $ARGS "$@" &
