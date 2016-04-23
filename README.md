@@ -227,6 +227,7 @@ are [documented here](Longhelp.md#templates).
  * Consider running multiple marathon-lb instances. In practice, 2 or more should be used to provide high availability.
  * Consider using a dedicated load balancer in front of marathon-lb to permit upgrades/changes. Common choices include an ELB (on AWS) or a hardware load balancer for on-premise installations.
  * Use separate marathon-lb groups (specified with `--group`) for internal and external load balancing. On DC/OS, the default group is `external`. A simple `options.json` for an internal load balancer would be:
+
  ```json
    {
      "marathon-lb": {
@@ -238,6 +239,7 @@ are [documented here](Longhelp.md#templates).
    }
  ```
  * For HTTP services, consider setting VHost (and optionally a path) to access the service on ports 80 and 443. Alternatively, the service can be accessed on port 9091 using the `X-Marathon-App-Id` header. For example:
+
   ```
   $ curl -vH "X-Marathon-App-Id: /tweeter" marathon-lb.marathon.mesos:9091/
   *   Trying 10.0.4.74...
