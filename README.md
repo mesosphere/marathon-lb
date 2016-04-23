@@ -238,7 +238,7 @@ are [documented here](Longhelp.md#templates).
      }
    }
  ```
- * For HTTP services, consider setting VHost (and optionally a path) to access the service on ports 80 and 443. Alternatively, the service can be accessed on port 9091 using the `X-Marathon-App-Id` header. For example:
+ * For HTTP services, consider setting VHost (and optionally a path) to access the service on ports 80 and 443. Alternatively, the service can be accessed on port 9091 using the `X-Marathon-App-Id` header. For example, to access an app with the ID `tweeter`:
 
   ```
   $ curl -vH "X-Marathon-App-Id: /tweeter" marathon-lb.marathon.mesos:9091/
