@@ -1,10 +1,14 @@
 # marathon-lb [![Build Status](https://travis-ci.org/mesosphere/marathon-lb.svg?branch=master)](https://travis-ci.org/mesosphere/marathon-lb) [![Velocity](http://velocity.mesosphere.com/service/velocity/buildStatus/icon?job=marathon-lb-unit)](http://velocity.mesosphere.com/service/velocity/job/marathon-lb-unit/)
 
-Marathon-lb is a tool for managing HAProxy, by consuming [Marathon's](https://github.com/mesosphere/marathon) app state.
+Marathon-lb is a tool for managing HAProxy, by consuming
+[Marathon's](https://github.com/mesosphere/marathon) app state. HAProxy is a
+fast, efficient, battle-tested, highly available load balancer with many advanced features which power a number of high-profile websites.
 
 ### Features
 
  * **Stateless design**: no direct dependency on any third-party state store like ZooKeeper or etcd (_except through Marathon_)
+ * **Idempotent and deterministic**: scales horizontally
+ * **Highly scalable**: [can achieve line-rate](http://www.haproxy.org/10g.html) per instance, with multiple instances providing fault-tolerance and greater throughput
  * **Real-time LB updates**, via [Marathon's event bus](https://mesosphere.github.io/marathon/docs/event-bus.html)
  * Support for Marathon's **health checks**
  * **Multi-cert TLS/SSL** support
@@ -215,6 +219,37 @@ Here is an example for a service called `http-service` which requires that
 
 The full list of per service port templates which can be specified
 are [documented here](Longhelp.md#templates).
+
+## Operational Best Practices
+
+ * Use service ports within the reserved range (which is 10000 to 10100 by default). This will prevent port conflicts, and ensure reloads don't result in connection errors.
+ * Avoid using the `HAPROXY_{n}_PORT` label; prefer defining service ports.
+ * Consider running multiple marathon-lb instances. In practice, 2 or more should be used to provide high availability.
+ * Consider using a dedicated load balancer in front of marathon-lb to permit upgrades/changes. Common choices include an ELB (on AWS) or a hardware load balancer for on-premise installations.
+ * Use separate marathon-lb groups (specified with `--group`) for internal and external load balancing. On DC/OS, the default group is `external`. A simple `options.json` for an internal load balancer would be:
+ ```json
+   {
+     "marathon-lb": {
+       "name": "marathon-lb-internal",
+       "haproxy-group": "internal",
+       "bind-http-https": false,
+       "role": ""
+     }
+   }
+ ```
+ * For HTTP services, consider setting VHost (and optionally a path) to access the service on ports 80 and 443. Alternatively, the service can be accessed on port 9091 using the `X-Marathon-App-Id` header. For example:
+  ```
+  $ curl -vH "X-Marathon-App-Id: /tweeter" marathon-lb.marathon.mesos:9091/
+  *   Trying 10.0.4.74...
+  * Connected to marathon-lb.marathon.mesos (10.0.4.74) port 9091 (#0)
+  > GET / HTTP/1.1
+  > Host: marathon-lb.marathon.mesos:9091
+  > User-Agent: curl/7.48.0
+  > Accept: */*
+  > X-Marathon-App-Id: /tweeter
+  >
+  < HTTP/1.1 200 OK
+  ```
 
 ## Zero downtime deployments
 
