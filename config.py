@@ -789,7 +789,7 @@ Specified as {specifiedAs}.
         return self.t['HTTPS_FRONTEND_ACL_WITH_AUTH_AND_PATH'].value
 
     def haproxy_frontend_head(self, app):
-        if 'FRONTEND_HEAD' in app.labels:
+        if 'HAPROXY_{0}_FRONTEND_HEAD' in app.labels:
             return app.labels['HAPROXY_{0}_FRONTEND_HEAD']
         return self.t['FRONTEND_HEAD'].value
 
