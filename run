@@ -14,23 +14,29 @@ else
 fi
 
 # Iterate through the arguments to see if any SSL certificate is provided.
+prev=0
 for key in "$@"
 do
 
-case $key in
+case $prev in
     --ssl-certs)
-    SSL_CERTS="yes"
+      SSL_CERTS=$key
     ;;
     *)
             # unknown option
     ;;
 esac
+prev=$key
 done
 
-SSL_CERTS="/etc/ssl/cert.pem"
 if [ -n "${HAPROXY_SSL_CERT-}" ]; then
   # if provided via environment variable, use it.
   echo -e "$HAPROXY_SSL_CERT" > /etc/ssl/cert.pem
+  if [ -n "${SSL_CERTS-}" ]; then
+    SSL_CERTS+=",/etc/ssl/cert.pem"
+  else
+    SSL_CERTS="/etc/ssl/cert.pem"
+  fi
 elif ! [ -n "${SSL_CERTS-}" ]; then
   # if no environment variable or command line argument is provided,
   # create self-signed ssl certificate
@@ -39,6 +45,7 @@ elif ! [ -n "${SSL_CERTS-}" ]; then
   openssl x509 -req -in /tmp/server-csr.pem -out /tmp/server-cert.pem -signkey /tmp/server-key.pem -days 3650
   cat /tmp/server-cert.pem /tmp/server-key.pem > /etc/ssl/cert.pem
   rm /tmp/server-*.pem
+  SSL_CERTS="/etc/ssl/cert.pem"
 fi
 
 for i in {0..100}; do
