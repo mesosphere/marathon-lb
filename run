@@ -27,19 +27,28 @@ case $key in
 esac
 done
 
-
+SSL_CERTS="/etc/ssl/cert.pem"
 if [ -n "${HAPROXY_SSL_CERT-}" ]; then
   # if provided via environment variable, use it.
-  echo -e "$HAPROXY_SSL_CERT" > /etc/ssl/mesosphere.com.pem
+  echo -e "$HAPROXY_SSL_CERT" > /etc/ssl/cert.pem
 elif ! [ -n "${SSL_CERTS-}" ]; then
   # if no environment variable or command line argument is provided,
   # create self-signed ssl certificate
   openssl genrsa -out /tmp/server-key.pem 2048
   openssl req -new -key /tmp/server-key.pem -out /tmp/server-csr.pem -subj /CN=*/
   openssl x509 -req -in /tmp/server-csr.pem -out /tmp/server-cert.pem -signkey /tmp/server-key.pem -days 3650
-  cat /tmp/server-cert.pem /tmp/server-key.pem > /etc/ssl/mesosphere.com.pem
+  cat /tmp/server-cert.pem /tmp/server-key.pem > /etc/ssl/cert.pem
   rm /tmp/server-*.pem
 fi
+
+for i in {0..100}; do
+  certenv="HAPROXY_SSL_CERT$i"
+  if [ -n "${!certenv-}" ]; then
+    certfile="/etc/ssl/cert$i.pem"
+    echo -e "${!certenv}" > $certfile
+    SSL_CERTS+=",$certfile"
+  fi
+done
 
 if [ -n "${MESOS_SANDBOX-}" ] && [ -d "$MESOS_SANDBOX/templates" ]; then
   mkdir -p templates
@@ -89,7 +98,8 @@ while true; do
   /marathon-lb/marathon_lb.py \
     --syslog-socket $SYSLOG_SOCKET \
     --haproxy-config /marathon-lb/haproxy.cfg \
-    -c "sv reload $HAPROXY_SERVICE" \
+    --ssl-certs $SSL_CERTS \
+    --command "sv reload $HAPROXY_SERVICE" \
     $ARGS "$@" &
   wait $! || exit $? # Needed for the traps to work
   if [ "$MODE" != "poll" ]; then

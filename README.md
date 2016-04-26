@@ -74,7 +74,8 @@ You must set `PORTS` environment variable to allow haproxy bind to this port.
 Syntax: `docker run -e PORTS=9090 mesosphere/marathon-lb sse [other args]`
 
 You can pass in your own certificates for the SSL frontend by setting
-the `HAPROXY_SSL_CERT` environment variable.
+the `HAPROXY_SSL_CERT` environment variable. If you need more than one
+certificate you can specify additional ones by setting `HAPROXY_SSL_CERT0` - `HAPROXY_SSL_CERT100`.
 
 #### `sse` mode
 In SSE mode, the script connects to the marathon events endpoint to get
