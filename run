@@ -29,51 +29,30 @@ esac
 prev=$key
 done
 
-if [ -n "${HAPROXY_SSL_CERT-}" ]; then
-  # if provided via environment variable, use it.
-  echo -e "$HAPROXY_SSL_CERT" > /etc/ssl/cert.pem
-  if [ -n "${SSL_CERTS-}" ]; then
-    SSL_CERTS+=",/etc/ssl/cert.pem"
-  else
-    SSL_CERTS="/etc/ssl/cert.pem"
-  fi
-elif ! [ -n "${SSL_CERTS-}" ]; then
-  # if no environment variable or command line argument is provided,
-  # create self-signed ssl certificate
-  openssl genrsa -out /tmp/server-key.pem 2048
-  openssl req -new -key /tmp/server-key.pem -out /tmp/server-csr.pem -subj /CN=*/
-  openssl x509 -req -in /tmp/server-csr.pem -out /tmp/server-cert.pem -signkey /tmp/server-key.pem -days 3650
-  cat /tmp/server-cert.pem /tmp/server-key.pem > /etc/ssl/cert.pem
-  rm /tmp/server-*.pem
-  SSL_CERTS="/etc/ssl/cert.pem"
-fi
-
-for i in {0..100}; do
-  certenv="HAPROXY_SSL_CERT$i"
-  if [ -n "${!certenv-}" ]; then
-    certfile="/etc/ssl/cert$i.pem"
-    echo -e "${!certenv}" > $certfile
-    SSL_CERTS+=",$certfile"
-  fi
-done
+openssl genrsa -out /tmp/server-key.pem 2048
+openssl req -new -key /tmp/server-key.pem -out /tmp/server-csr.pem -subj /CN=*/
+openssl x509 -req -in /tmp/server-csr.pem -out /tmp/server-cert.pem -signkey /tmp/server-key.pem -days 3650
+cat /tmp/server-cert.pem /tmp/server-key.pem > /etc/ssl/private/selfsigned.pem
+rm /tmp/server-*.pem
+SSL_CERTS="/etc/ssl/private"
 
 # Download certs from nutcracker.
 # Required environment variables:
-# NM_ID - Nutcracker ID
-# NM_KEY - Nutcracker key
-# NM_SERVER - Nutcracker server
-# NM_CERTS - comma-separated list of certificate names
+# NC_ID - Nutcracker ID
+# NC_KEY - Nutcracker key
+# NC_SERVER - Nutcracker server
+# NC_CERTS - comma-separated list of certificate names
 get_ssl() {
-  for :; do
-    certlist=( ${NM_CERTS//,/ } )
+  while :; do
+    certlist=( ${NC_CERTS//,/ } )
     mkdir -p /etc/ssl/private
 
     for cert in "${certlist[@]}"; do
         file="/etc/ssl/private/$cert.pem"
-        /usr/local/bin/nutcracker-cli -i "$NM_ID" -k "$NM_KEY" -s "$NM_SERVER" get -n "$cert" > "$file.new"
+        /usr/local/bin/nutcracker-cli -i "$NC_ID" -k "$NC_KEY" -s "$NC_SERVER" get -n "$cert" > "$file.new"
         # Only replace the cert if we downloaded it successfully.  Success is defined as a file with
         # actual content in it.
-        if (( $(stat -f %s $file.new) > 0 )); then
+        if (( $(stat -c %s $file.new) > 0 )); then
           mv "$file.new" "$file"
         fi
     done

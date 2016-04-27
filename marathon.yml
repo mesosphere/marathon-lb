@@ -1,45 +1,38 @@
-id: /{{APP_NAME}}
+id: /marathon-lb
 cpus: 0.01
 mem: 128
-constraints:
-  -
-    - hostname
-    - LIKE
-    - 172.22.3.242
 args: [ 
     "sse",
     "--group=internal",
-    "--marathon=http://172.22.1.20:8080",
-    "--auth-credentials=marathon:NutmegMarathon"
+    "--marathon={{marathon_url}}",
+    "--auth-credentials={{marathon_creds}}"
     ]
 container:
   docker:
-    image: mesosphere/marathon-lb:{{VERSION}}
+    image: registry.nutmeg.co.uk:8443/marathon-lb:{{version}}
+    forcePullImage: true
     network: BRIDGE
     portMappings:
       - 
         containerPort: 80
-        hostPort: 0
-        servicePort: 0
+        hostPort: 80
       -
         containerPort: 443
-        hostPort: 0
-        servicePort: 0
+        hostPort: 443
       -
         containerPort: 9090
-        hostPort: 0
-        servicePort: 0
       -
         containerPort: 9091
-        hostPort: 0
-        servicePort: 0
     parameters:
       -
         key: "label"
-        value: "APP_NAME={{APP_NAME}}"
+        value: "APP_NAME=marathon-lb"
       -
         key: "label"
-        value: "APP_BUILD={{VERSION}}"
+        value: "APP_BUILD={{version}}"
+      -
+        key: "dns"
+        value: "{{docker_bridge}}"
 healthChecks:
   -
     protocol: HTTP
@@ -48,3 +41,9 @@ healthChecks:
     timeoutSeconds: 2
     maxConsecutiveFailures: 2
     portIndex: 2
+env:
+  NC_ID: {{nutcracker_id}}
+  NC_KEY: {{nutcracker_key}}
+  NC_SERVER: {{nutcracker_server}}
+  NC_CERTS: {{nutcracker_certs}}
+  
