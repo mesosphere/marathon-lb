@@ -14,48 +14,32 @@ else
 fi
 
 # Iterate through the arguments to see if any SSL certificate is provided.
-prev=0
 for key in "$@"
 do
 
-case $prev in
+case $key in
     --ssl-certs)
-      SSL_CERTS=$key
+    SSL_CERTS="yes"
     ;;
     *)
             # unknown option
     ;;
 esac
-prev=$key
 done
+
 
 if [ -n "${HAPROXY_SSL_CERT-}" ]; then
   # if provided via environment variable, use it.
-  echo -e "$HAPROXY_SSL_CERT" > /etc/ssl/cert.pem
-  if [ -n "${SSL_CERTS-}" ]; then
-    SSL_CERTS+=",/etc/ssl/cert.pem"
-  else
-    SSL_CERTS="/etc/ssl/cert.pem"
-  fi
+  echo -e "$HAPROXY_SSL_CERT" > /etc/ssl/mesosphere.com.pem
 elif ! [ -n "${SSL_CERTS-}" ]; then
   # if no environment variable or command line argument is provided,
   # create self-signed ssl certificate
   openssl genrsa -out /tmp/server-key.pem 2048
   openssl req -new -key /tmp/server-key.pem -out /tmp/server-csr.pem -subj /CN=*/
   openssl x509 -req -in /tmp/server-csr.pem -out /tmp/server-cert.pem -signkey /tmp/server-key.pem -days 3650
-  cat /tmp/server-cert.pem /tmp/server-key.pem > /etc/ssl/cert.pem
+  cat /tmp/server-cert.pem /tmp/server-key.pem > /etc/ssl/mesosphere.com.pem
   rm /tmp/server-*.pem
-  SSL_CERTS="/etc/ssl/cert.pem"
 fi
-
-for i in {0..100}; do
-  certenv="HAPROXY_SSL_CERT$i"
-  if [ -n "${!certenv-}" ]; then
-    certfile="/etc/ssl/cert$i.pem"
-    echo -e "${!certenv}" > $certfile
-    SSL_CERTS+=",$certfile"
-  fi
-done
 
 if [ -n "${MESOS_SANDBOX-}" ] && [ -d "$MESOS_SANDBOX/templates" ]; then
   mkdir -p templates
@@ -105,8 +89,7 @@ while true; do
   /marathon-lb/marathon_lb.py \
     --syslog-socket $SYSLOG_SOCKET \
     --haproxy-config /marathon-lb/haproxy.cfg \
-    --ssl-certs $SSL_CERTS \
-    --command "sv reload $HAPROXY_SERVICE" \
+    -c "sv reload $HAPROXY_SERVICE" \
     $ARGS "$@" &
   wait $! || exit $? # Needed for the traps to work
   if [ "$MODE" != "poll" ]; then
