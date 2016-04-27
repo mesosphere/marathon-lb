@@ -932,13 +932,6 @@ it falls back to default `HAPROXY_GROUP` and gets associated with
 Load balancers with the group '*' will collect all groups.
     
 
-## `HAPROXY_{n}_HTTPS_FRONTEND_ACL_ONLY_WITH_PATH_AND_AUTH`
-  *per service port*
-
-Specified as `HAPROXY_{n}_HTTPS_FRONTEND_ACL_ONLY_WITH_PATH_AND_AUTH`.
-
-
-
 ## `HAPROXY_{n}_MODE`
   *per service port*
 
