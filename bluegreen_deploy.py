@@ -358,6 +358,16 @@ def validate_app(app):
                         )
 
 
+def set_app_ids(app, colour):
+    app['labels']['HAPROXY_APP_ID'] = app['id']
+    app['id'] = app['id'] + '-' + colour
+
+    if app['id'][0] != '/':
+        app['id'] = '/' + app['id']
+
+    return app
+
+
 def process_json(args, out=sys.stdout):
     with open(args.json, 'r') as content_file:
         content = content_file.read()
@@ -369,7 +379,6 @@ def process_json(args, out=sys.stdout):
 
     deployment_group = app['labels']['HAPROXY_DEPLOYMENT_GROUP']
     alt_port = app['labels']['HAPROXY_DEPLOYMENT_ALT_PORT']
-    app['labels']['HAPROXY_APP_ID'] = app_id
 
     service_port = get_service_port(app)
 
@@ -377,10 +386,8 @@ def process_json(args, out=sys.stdout):
         get_app_info(args, deployment_group, alt_port)
 
     app = set_service_port(app, port)
+    app = set_app_ids(app, colour)
 
-    app['id'] = app_id + "-" + colour
-    if app['id'][0] != '/':
-        app['id'] = '/' + app['id']
     if existing_app is not None:
         app['instances'] = args.initial_instances
         app['labels']['HAPROXY_DEPLOYMENT_TARGET_INSTANCES'] = \
