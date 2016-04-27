@@ -53,10 +53,15 @@ def query_yes_no(question, default="yes"):
                              "(or 'y' or 'n').\n")
 
 
-def list_marathon_apps(args):
-    url = args.marathon + "/v2/apps"
+def marathon_get_request(args, path):
+    url = args.marathon + path
     response = requests.get(url, auth=get_marathon_auth_params(args))
     response.raise_for_status()
+    return response
+
+
+def list_marathon_apps(args):
+    response = marathon_get_request(args, "/v2/apps")
     return response.json()
 
 
