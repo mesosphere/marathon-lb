@@ -53,11 +53,15 @@ def query_yes_no(question, default="yes"):
                              "(or 'y' or 'n').\n")
 
 
-def get_app_info(args, deployment_group, alt_port):
+def list_marathon_apps(args):
     url = args.marathon + "/v2/apps"
     response = requests.get(url, auth=get_marathon_auth_params(args))
     response.raise_for_status()
-    apps = response.json()
+    return response.json()
+
+
+def get_app_info(args, deployment_group, alt_port):
+    apps = list_marathon_apps(args)
     existing_app = None
     colour = 'blue'
     next_port = alt_port
