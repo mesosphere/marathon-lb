@@ -368,9 +368,9 @@ def process_json(args, out=sys.stdout):
         content = content_file.read()
 
     app = json.loads(content)
+    validate_app(app)
 
     app_id = app['id']
-    validate_app(app)
 
     deployment_group = app['labels']['HAPROXY_DEPLOYMENT_GROUP']
     alt_port = app['labels']['HAPROXY_DEPLOYMENT_ALT_PORT']
