@@ -57,6 +57,30 @@ for i in {0..100}; do
   fi
 done
 
+# Download certs from nutcracker.
+# Required environment variables:
+# NM_ID - Nutcracker ID
+# NM_KEY - Nutcracker key
+# NM_SERVER - Nutcracker server
+# NM_CERTS - comma-separated list of certificate names
+get_ssl() {
+  for :; do
+    certlist=( ${NM_CERTS//,/ } )
+    mkdir -p /etc/ssl/private
+
+    for cert in "${certlist[@]}"; do
+        file="/etc/ssl/private/$cert.pem"
+        /usr/local/bin/nutcracker-cli -i "$NM_ID" -k "$NM_KEY" -s "$NM_SERVER" get -n "$cert" > "$file.new"
+        # Only replace the cert if we downloaded it successfully.  Success is defined as a file with
+        # actual content in it.
+        if (( $(stat -f %s $file.new) > 0 )); then
+          mv "$file.new" "$file"
+        fi
+    done
+  sleep 86400 # Update daily
+  done
+}
+
 if [ -n "${MESOS_SANDBOX-}" ] && [ -d "$MESOS_SANDBOX/templates" ]; then
   mkdir -p templates
   cp -v "$MESOS_SANDBOX/templates/"* templates/
@@ -102,6 +126,7 @@ case "$MODE" in
 esac
 
 while true; do
+  get_ssl &
   /marathon-lb/marathon_lb.py \
     --syslog-socket $SYSLOG_SOCKET \
     --haproxy-config /marathon-lb/haproxy.cfg \
