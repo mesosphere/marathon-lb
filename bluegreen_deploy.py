@@ -331,14 +331,12 @@ def get_service_port(app):
         return app['ports'][0]
 
 
-def set_service_port(app, port):
-    if 'container' in app and \
-            'docker' in app['container'] and \
-            'portMappings' in app['container']['docker']:
-        app['container']['docker']['portMappings'][0]['servicePort'] = \
-            int(port)
-        return app
-    app['ports'][0] = int(servicePort)
+def set_service_port(app, servicePort):
+    try:
+        app['container']['docker']['portMappings'][0]['servicePort'] = int(servicePort)
+    except KeyError:
+        app['ports'][0] = int(servicePort)
+
     return app
 
 
