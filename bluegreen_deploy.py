@@ -368,6 +368,10 @@ def select_last_deploy(apps):
     return sort_deploys(apps).pop()
 
 
+def select_last_two_deploys(apps):
+    return sort_deploys(apps)[0:2]
+
+
 def get_deployment_group(app):
     return app.get('labels', {}).get('HAPROXY_DEPLOYMENT_GROUP')
 
@@ -412,6 +416,16 @@ def process_json(args, out=sys.stdout):
     previous_deploys = \
         select_previous_deploys(existing_apps, get_deployment_group(app))
 
+    if len(previous_deploys) > 1:
+        # There is a stuck deploy, oh no!
+        if args.resume:
+            logger.info("Found previous deployment, resuming")
+            old_deploy, current_deploy = select_last_two_deploys(previous_deploys)
+            start_deployment(args, current_deploy, old_deploy, True)
+        else:
+            raise Exception("There appears to be an"
+                            " existing deployment in progress")
+
     app = prepare_deploy(args, previous_deploys, app)
 
     logger.info('Final app definition:')
@@ -427,20 +441,10 @@ def process_json(args, out=sys.stdout):
             # This is the first deployment, no existing_app
             start_deployment(args, app, None, False)
 
-        existing_app = select_last_deploy(previous_deploys)
-
         if len(previous_deploys) == 1:
             # This is a standard blue/green deploy
+            existing_app = select_last_deploy(previous_deploys)
             start_deployment(args, app, existing_app, False)
-
-        if len(previous_deploys) > 1:
-            # There is a stuck deploy, oh no!
-            if args.resume:
-                logger.info("Found previous deployment, resuming")
-                start_deployment(args, app, existing_app, True)
-            else:
-                raise Exception("There appears to be an"
-                                " existing deployment in progress")
 
 
 def get_arg_parser():
