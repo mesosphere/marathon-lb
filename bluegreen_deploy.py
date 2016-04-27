@@ -420,7 +420,8 @@ def process_json(args, out=sys.stdout):
         # There is a stuck deploy, oh no!
         if args.resume:
             logger.info("Found previous deployment, resuming")
-            old_deploy, current_deploy = select_last_two_deploys(previous_deploys)
+            old_deploy, current_deploy = \
+                select_last_two_deploys(previous_deploys)
             start_deployment(args, current_deploy, old_deploy, True)
         else:
             raise Exception("There appears to be an"
