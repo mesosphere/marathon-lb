@@ -65,6 +65,11 @@ def list_marathon_apps(args):
     return response.json()
 
 
+def fetch_marathon_app(args, app_ip):
+    response = marathon_get_request(args, "/v2/apps" + app_id)
+    return response.json()['app']
+
+
 def get_app_info(args, deployment_group, alt_port):
     apps = list_marathon_apps(args)
     existing_app = None
@@ -340,14 +345,8 @@ def set_service_port(app, port):
     return app
 
 
-def process_json(args, out=sys.stdout):
-    with open(args.json, 'r') as content_file:
-        content = content_file.read()
-
-    app = json.loads(content)
-
-    app_id = app['id']
-    if app_id is None:
+def validate_app(app):
+    if app['id'] is None:
         raise Exception("App doesn't contain a valid App ID")
 
     if 'labels' not in app:
@@ -362,6 +361,16 @@ def process_json(args, out=sys.stdout):
         raise Exception("Please define the "
                         "HAPROXY_DEPLOYMENT_ALT_PORT label"
                         )
+
+
+def process_json(args, out=sys.stdout):
+    with open(args.json, 'r') as content_file:
+        content = content_file.read()
+
+    app = json.loads(content)
+
+    app_id = app['id']
+    validate_app(app)
 
     deployment_group = app['labels']['HAPROXY_DEPLOYMENT_GROUP']
     alt_port = app['labels']['HAPROXY_DEPLOYMENT_ALT_PORT']
