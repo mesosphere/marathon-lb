@@ -62,49 +62,12 @@ def marathon_get_request(args, path):
 
 def list_marathon_apps(args):
     response = marathon_get_request(args, "/v2/apps")
-    return response.json()
+    return response.json()['apps']
 
 
 def fetch_marathon_app(args, app_ip):
     response = marathon_get_request(args, "/v2/apps" + app_id)
     return response.json()['app']
-
-
-def get_app_info(args, deployment_group, alt_port):
-    apps = list_marathon_apps(args)
-    existing_app = None
-    colour = 'blue'
-    next_port = alt_port
-    resuming = False
-    for app in apps['apps']:
-        if 'labels' in app and \
-                'HAPROXY_DEPLOYMENT_GROUP' in app['labels'] and \
-                'HAPROXY_DEPLOYMENT_COLOUR' in app['labels'] and \
-                app['labels']['HAPROXY_DEPLOYMENT_GROUP'] == deployment_group:
-            if existing_app is not None:
-                if args.resume:
-                    logger.info("Found previous deployment, resuming")
-                    resuming = True
-                    if existing_app['labels']['HAPROXY_DEPLOYMENT_STARTED_AT']\
-                            < app['labels']['HAPROXY_DEPLOYMENT_STARTED_AT']:
-                        # stop here
-                        break
-                else:
-                    raise Exception("There appears to be an existing"
-                                    " deployment in progress")
-
-            prev_colour = app['labels']['HAPROXY_DEPLOYMENT_COLOUR']
-            prev_port = app['ports'][0]
-            existing_app = app
-            if prev_port == int(alt_port):
-                next_port = app['labels']['HAPROXY_0_PORT']
-            else:
-                next_port = alt_port
-            if prev_colour == 'blue':
-                colour = 'green'
-            else:
-                colour = 'blue'
-    return (colour, next_port, existing_app, resuming)
 
 
 def get_hostports_from_backends(hmap, backends, haproxy_instance_count):
@@ -368,6 +331,66 @@ def set_app_ids(app, colour):
     return app
 
 
+def set_service_ports(app, servicePort):
+    app['labels']['HAPROXY_0_PORT'] = str(get_service_port(app))
+    try:
+        app['container']['docker']['portMappings'][0]['servicePort'] = int(servicePort)
+        return app
+    except KeyError:
+        app['ports'][0] = int(servicePort)
+        return app
+
+
+def select_next_port(app):
+    if int(app['ports'][0]) == int(app['labels']['HAPROXY_DEPLOYMENT_ALT_PORT']):
+        return int(app['labels']['HAPROXY_0_PORT'])
+    else:
+        return int(app['labels']['HAPROXY_DEPLOYMENT_ALT_PORT'])
+
+
+def select_next_colour(app):
+    if app['labels'].get('HAPROXY_DEPLOYMENT_COLOUR') == 'blue':
+        return 'green'
+    else:
+        return 'blue'
+
+
+def sort_deploys(apps):
+    return sorted(apps, key=lambda a: a.get('labels', {}).get('HAPROXY_DEPLOYMENT_STARTED_AT', '0'))
+
+
+def select_last_deploy(apps):
+    return sort_deploys(apps).pop()
+
+
+def select_previous_deploys(apps, deployment_group):
+    return [ a for a in apps if a.get('labels', {}).get('HAPROXY_DEPLOYMENT_GROUP') == deployment_group ]
+
+
+def prepare_deploy(args, previous_deploys, app):
+    """ Return a blue or a green version of `app` based on prexisting deploys
+    """
+    if len(previous_deploys) > 0:
+        last_deploy = select_last_deploy(previous_deploys)
+
+        app['instances'] = args.initial_instances
+        next_colour      = select_next_colour(last_deploy)
+        next_port        = select_next_port(last_deploy)
+        deployment_target_instances = last_deploy['instances']
+    else:
+        next_colour = 'blue'
+        next_port   = get_service_port(app)
+        deployment_target_instances = app['instances']
+
+    app = set_app_ids(app, next_colour)
+    app = set_service_ports(app, next_port)
+    app['labels']['HAPROXY_DEPLOYMENT_TARGET_INSTANCES'] = str(deployment_target_instances)
+    app['labels']['HAPROXY_DEPLOYMENT_COLOUR']           = next_colour
+    app['labels']['HAPROXY_DEPLOYMENT_STARTED_AT']       = datetime.now().isoformat()
+
+    return app
+
+
 def process_json(args, out=sys.stdout):
     with open(args.json, 'r') as content_file:
         content = content_file.read()
@@ -375,29 +398,9 @@ def process_json(args, out=sys.stdout):
     app = json.loads(content)
     validate_app(app)
 
-    app_id = app['id']
-
-    deployment_group = app['labels']['HAPROXY_DEPLOYMENT_GROUP']
-    alt_port = app['labels']['HAPROXY_DEPLOYMENT_ALT_PORT']
-
-    service_port = get_service_port(app)
-
-    (colour, port, existing_app, resuming) = \
-        get_app_info(args, deployment_group, alt_port)
-
-    app = set_service_port(app, port)
-    app = set_app_ids(app, colour)
-
-    if existing_app is not None:
-        app['instances'] = args.initial_instances
-        app['labels']['HAPROXY_DEPLOYMENT_TARGET_INSTANCES'] = \
-            str(existing_app['instances'])
-    else:
-        app['labels']['HAPROXY_DEPLOYMENT_TARGET_INSTANCES'] = \
-            str(app['instances'])
-    app['labels']['HAPROXY_DEPLOYMENT_COLOUR'] = colour
-    app['labels']['HAPROXY_DEPLOYMENT_STARTED_AT'] = datetime.now().isoformat()
-    app['labels']['HAPROXY_0_PORT'] = str(service_port)
+    existing_apps    = list_marathon_apps(args)
+    previous_deploys = select_previous_deploys(existing_apps, app['labels']['HAPROXY_DEPLOYMENT_GROUP'])
+    app              = prepare_deploy(args, previous_deploys, app)
 
     logger.info('Final app definition:')
     out.write(json.dumps(app, sort_keys=True, indent=2))
@@ -407,7 +410,24 @@ def process_json(args, out=sys.stdout):
         return
 
     if args.force or query_yes_no("Continue with deployment?"):
-        start_deployment(args, app, existing_app, resuming)
+
+        if len(previous_deploys) == 0:
+            # This is the first deployment, no existing_app
+            start_deployment(args, app, None, False)
+
+        existing_app = select_last_deploy(previous_deploys)
+
+        if len(previous_deploys) == 1:
+            # This is a standard blue/green deploy
+            start_deployment(args, app, existing_app, False)
+
+        if len(previous_deploys) > 1:
+            # There is a stuck deploy, oh no!
+            if args.resume:
+                logger.info("Found previous deployment, resuming")
+                start_deployment(args, app, existing_app, True)
+            else:
+                raise Exception("There appears to be an existing deployment in progress")
 
 
 def get_arg_parser():
