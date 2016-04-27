@@ -325,13 +325,10 @@ def start_deployment(args, app, existing_app, resuming):
 
 
 def get_service_port(app):
-    if 'container' in app and \
-            'docker' in app['container'] and \
-            'portMappings' in app['container']['docker']:
-        portMappings = app['container']['docker']['portMappings']
-        # Just take the first servicePort
-        return portMappings[0]['servicePort']
-    return app['ports'][0]
+    try:
+        return app['container']['docker']['portMappings'][0]['servicePort']
+    except KeyError:
+        return app['ports'][0]
 
 
 def set_service_port(app, port):
