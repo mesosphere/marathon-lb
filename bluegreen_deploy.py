@@ -2,7 +2,8 @@
 
 from common import *
 from datetime import datetime
-from io import StringIO
+from collections import namedtuple, defaultdict
+from itertools import groupby
 
 import argparse
 import json
@@ -65,239 +66,318 @@ def list_marathon_apps(args):
     return response.json()['apps']
 
 
-def fetch_marathon_app(args, app_ip):
+def fetch_marathon_app(args, app_id):
     response = marathon_get_request(args, "/v2/apps" + app_id)
     return response.json()['app']
 
 
-def get_hostports_from_backends(hmap, backends, haproxy_instance_count):
-    hostports = {}
-    regex = re.compile(r"^(\d+)_(\d+)_(\d+)_(\d+)_(\d+)$", re.IGNORECASE)
-    counts = {}
-    for backend in backends:
-        svname = backend[hmap['svname']]
-        if svname in counts:
-            counts[svname] += 1
-        else:
-            counts[svname] = 1
-        # Are all backends across all instances draining?
-        if counts[svname] == haproxy_instance_count:
-            m = regex.match(svname)
-            host = '.'.join(m.group(1, 2, 3, 4))
-            port = m.group(5)
-            if host in hostports:
-                hostports[host].append(int(port))
-            else:
-                hostports[host] = [int(port)]
-    return hostports
+def _get_alias_records(hostname):
+    """Return all IPv4 A records for a given hostname
+    """
+    return socket.gethostbyname_ex(hostname)[2]
 
 
-def find_tasks_to_kill(tasks, hostports):
-    tasks_to_kill = set()
+def _unparse_url_alias(url, addr):
+    """Reassemble a url object into a string but with a new address
+    """
+    return urllib.parse.urlunparse((url[0],
+                                    addr + ":" + str(url.port),
+                                    url[2],
+                                    url[3],
+                                    url[4],
+                                    url[5]))
+
+
+def get_marathon_lb_urls(args):
+    """Return a list of urls for all Aliases of the
+       marathon_lb url passed in as an argument
+    """
+    url = urllib.parse.urlparse(args.marathon_lb)
+    addrs = _get_alias_records(url.hostname)
+    return [_unparse_url_alias(url, addr) for addr in addrs]
+
+
+def fetch_haproxy_pids(haproxy_url):
+    try:
+        response = requests.get(haproxy_url + "/_haproxy_getpids")
+        response.raise_for_status()
+    except requests.exceptions.RequestException:
+        logger.exception("Caught exception when retrieving HAProxy"
+                         " pids from " + haproxy_url)
+        raise
+
+    return response.text.split()
+
+
+def check_haproxy_reloading(haproxy_url):
+    """Return False if haproxy has only one pid, it is not reloading.
+       Return True if we catch an exception while making a request to
+       haproxy or if more than one pid is returned
+    """
+    try:
+        pids = fetch_haproxy_pids(haproxy_url)
+    except requests.exceptions.RequestException:
+        # Assume reloading on any error, this should be caught with a timeout
+        return True
+
+    if len(pids) > 1:
+        logger.info("Waiting for {} pids on {}".format(len(pids), haproxy_url))
+        return True
+
+    return False
+
+
+def any_marathon_lb_reloading(marathon_lb_urls):
+    return any([check_haproxy_reloading(url) for url in marathon_lb_urls])
+
+
+def fetch_haproxy_stats(haproxy_url):
+    try:
+        response = requests.get(haproxy_url + "/haproxy?stats;csv")
+        response.raise_for_status()
+    except requests.exceptions.RequestException:
+        logger.exception("Caught exception when retrieving HAProxy"
+                         " stats from " + haproxy_url)
+        raise
+
+    return response.text
+
+
+def fetch_combined_haproxy_stats(marathon_lb_urls):
+    raw = ''.join([fetch_haproxy_stats(url) for url in marathon_lb_urls])
+    return parse_haproxy_stats(raw)
+
+
+def parse_haproxy_stats(csv_data):
+    rows = csv_data.splitlines()
+    headings = rows.pop(0).lstrip('# ').rstrip(',\n').split(',')
+    csv_reader = csv.reader(rows, delimiter=',', quotechar="'")
+
+    Row = namedtuple('Row', headings)
+
+    return [Row(*row[0:-1]) for row in csv_reader if row[0][0] != '#']
+
+
+def get_deployment_label(app):
+    return get_deployment_group(app) + "_" + app['labels']['HAPROXY_0_PORT']
+
+
+def _if_app_listener(app, listener):
+    return (listener.pxname == get_deployment_label(app) and
+            listener.svname not in ['BACKEND', 'FRONTEND'])
+
+
+def fetch_app_listeners(app, marathon_lb_urls):
+    haproxy_stats = fetch_combined_haproxy_stats(marathon_lb_urls)
+    return [l for l in haproxy_stats if _if_app_listener(app, l)]
+
+
+def waiting_for_listeners(new_app, old_app, listeners, haproxy_count):
+    listener_count = (len(listeners) / haproxy_count)
+    return listener_count != new_app['instances'] + old_app['instances']
+
+
+def get_deployment_target(app):
+    return int(app['labels']['HAPROXY_DEPLOYMENT_TARGET_INSTANCES'])
+
+
+def waiting_for_up_listeners(app, listeners, haproxy_count):
+    up_listeners = [l for l in listeners if l.status == 'UP']
+    up_listener_count = (len(up_listeners) / haproxy_count)
+
+    return up_listener_count < get_deployment_target(app)
+
+
+def _has_pending_requests(listener):
+    return int(listener.qcur or 0) > 0 or int(listener.scur or 0) > 0
+
+
+def select_drained_listeners(listeners):
+    draining_listeners = [l for l in listeners if l.status == 'MAINT']
+    return [l for l in draining_listeners if not _has_pending_requests(l)]
+
+
+def get_svnames_from_task(task):
+    prefix = task['host'].replace('.', '_')
+    for port in task['ports']:
+        yield(prefix + '_{}'.format(port))
+
+
+def get_svnames_from_tasks(tasks):
+    svnames = []
     for task in tasks:
-        if task['host'] in hostports:
-            for port in hostports[task['host']]:
-                if port in task['ports']:
-                    tasks_to_kill.add(task['id'])
-    return list(tasks_to_kill)
+        svnames += get_svnames_from_task(task)
+    return svnames
 
 
-def check_if_tasks_drained(args, app, existing_app, step_started_at):
-    time.sleep(args.step_delay)
-    url = args.marathon + "/v2/apps" + existing_app['id']
-    response = requests.get(url, auth=get_marathon_auth_params(args))
-    response.raise_for_status()
-    existing_app = response.json()['app']
+def find_drained_task_ids(app, listeners, haproxy_count):
+    """Return app tasks which have all haproxy listeners down and drained
+       of any pending sessions or connections
+    """
+    tasks = zip(get_svnames_from_tasks(app['tasks']), app['tasks'])
+    drained_listeners = select_drained_listeners(listeners)
 
-    url = args.marathon + "/v2/apps" + app['id']
-    response = requests.get(url, auth=get_marathon_auth_params(args))
-    response.raise_for_status()
-    app = response.json()['app']
+    drained_task_ids = []
+    for svname, task in tasks:
+        task_listeners = [l for l in drained_listeners if l.svname == svname]
+        if len(task_listeners) == haproxy_count:
+            drained_task_ids.append(task['id'])
 
-    target_instances = \
-        int(app['labels']['HAPROXY_DEPLOYMENT_TARGET_INSTANCES'])
+    return drained_task_ids
 
-    logger.info("Existing app running {} instances, "
-                "new app running {} instances"
-                .format(existing_app['instances'], app['instances']))
 
-    url = args.marathon_lb
-    url = urllib.parse.urlparse(url)
-    # Have to find _all_ haproxy stats backends
-    addrs = socket.gethostbyname_ex(url.hostname)[2]
-    csv_data = ''
-    for addr in addrs:
-        try:
-            nexturl = \
-                urllib.parse.urlunparse((url[0],
-                                         addr + ":" + str(url.port),
-                                         url[2],
-                                         url[3],
-                                         url[4],
-                                         url[5]))
-            response = requests.get(nexturl + "/haproxy?stats;csv")
-            response.raise_for_status()
-            csv_data = csv_data + response.text
+def max_wait_exceeded(max_wait, timestamp):
+    return (time.time() - timestamp > max_wait)
 
-            response = requests.get(nexturl + "/_haproxy_getpids")
-            response.raise_for_status()
-            pids = response.text.split()
-            if len(pids) > 1 and time.time() - step_started_at < args.max_wait:
-                # HAProxy has not finished reloading
-                logger.info("Waiting for {} pids on {}"
-                            .format(len(pids), nexturl))
-                return check_if_tasks_drained(args,
-                                              app,
-                                              existing_app,
-                                              step_started_at)
-        except requests.exceptions.RequestException as e:
-            logger.exception("Caught exception when retrieving HAProxy"
-                             " stats from " + nexturl)
-            return check_if_tasks_drained(args,
-                                          app,
-                                          existing_app,
-                                          step_started_at)
 
-    backends = []
-    f = StringIO(csv_data)
-    header = None
-    haproxy_instance_count = 0
-    for row in csv.reader(f, delimiter=',', quotechar="'"):
-        if row[0][0] == '#':
-            header = row
-            haproxy_instance_count += 1
+def check_time_and_sleep(args, timestamp):
+    if max_wait_exceeded(args.max_wait, timestamp):
+        raise TimeoutError('Max wait Time Exceeded')
+
+    return time.sleep(args.step_delay)
+
+
+def swap_bluegreen_apps(args, new_app, old_app, timestamp):
+    while True:
+        check_time_and_sleep(args, timestamp)
+
+        old_app = fetch_marathon_app(args, old_app['id'])
+        new_app = fetch_marathon_app(args, new_app['id'])
+
+        logger.info("Existing app running {} instances, "
+                    "new app running {} instances"
+                    .format(old_app['instances'], new_app['instances']))
+
+        marathon_lb_urls = get_marathon_lb_urls(args)
+        haproxy_count = len(marathon_lb_urls)
+
+        if any_marathon_lb_reloading(marathon_lb_urls):
             continue
-        if row[0] == app['labels']['HAPROXY_DEPLOYMENT_GROUP'] + "_" + \
-                app['labels']['HAPROXY_0_PORT'] and \
-                row[1] != "BACKEND" and \
-                row[1] != "FRONTEND":
-            backends.append(row)
 
-    logger.info("Found {} app backends across {} HAProxy instances"
-                .format(len(backends), haproxy_instance_count))
-    # Create map of column names to idx
-    hmap = {}
-    for i in range(0, len(header)):
-        hmap[header[i]] = i
+        try:
+            listeners = fetch_app_listeners(new_app, marathon_lb_urls)
+        except requests.exceptions.RequestException:
+            # Restart loop if we hit an exception while loading listeners,
+            # this may be normal behaviour
+            continue
 
-    if (len(backends) / haproxy_instance_count) != \
-            app['instances'] + existing_app['instances']:
-        # HAProxy hasn't updated yet, try again
-        return check_if_tasks_drained(args,
-                                      app,
-                                      existing_app,
-                                      step_started_at)
+        logger.info("Found {} app listeners across {} HAProxy instances"
+                    .format(len(listeners), haproxy_count))
 
-    up_backends = \
-        [b for b in backends if b[hmap['status']] == 'UP']
-    if (len(up_backends) / haproxy_instance_count) < target_instances:
-        # Wait until we're in a healthy state
-        return check_if_tasks_drained(args,
-                                      app,
-                                      existing_app,
-                                      step_started_at)
+        if waiting_for_listeners(new_app, old_app, listeners, haproxy_count):
+            continue
 
-    # Double check that current draining backends are finished serving requests
-    draining_backends = \
-        [b for b in backends if b[hmap['status']] == 'MAINT']
+        if waiting_for_up_listeners(new_app, listeners, haproxy_count):
+            continue
 
-    if (len(draining_backends) / haproxy_instance_count) < 1:
-        # No backends have started draining yet
-        return check_if_tasks_drained(args,
-                                      app,
-                                      existing_app,
-                                      step_started_at)
+        if waiting_for_drained_listeners(listeners):
+            continue
 
-    for backend in draining_backends:
-        # Verify that the backends have no sessions or pending connections.
-        # This is likely overkill, but we'll do it anyway to be safe.
-        if int(backend[hmap['qcur']]) > 0 or int(backend[hmap['scur']]) > 0:
-            # Backends are not yet drained.
-            return check_if_tasks_drained(args,
-                                          app,
-                                          existing_app,
-                                          step_started_at)
+        drained_task_ids = \
+            find_drained_task_ids(old_app, listeners, haproxy_count)
 
-    # If we made it here, all the backends are drained and we can start
-    # slaughtering tasks, with prejudice
-    hostports = get_hostports_from_backends(hmap,
-                                            draining_backends,
-                                            haproxy_instance_count)
+        if ready_to_delete_old_app(new_app, old_app, drained_task_ids):
+            return safe_delete_app(args, old_app)
 
-    tasks_to_kill = find_tasks_to_kill(existing_app['tasks'], hostports)
+        logger.info("There are {} drained listeners, "
+                    "about to kill & scale for these tasks:\n  - {}"
+                    .format(len(drained_task_ids),
+                            "\n  - ".join(drained_task_ids)))
 
-    logger.info("There are {} drained backends, "
-                "about to kill & scale for these tasks:\n{}"
-                .format(len(tasks_to_kill), "\n".join(tasks_to_kill)))
-
-    if app['instances'] == target_instances and \
-            len(tasks_to_kill) == existing_app['instances']:
-        logger.info("About to delete old app {}".format(existing_app['id']))
         if args.force or query_yes_no("Continue?"):
-            url = args.marathon + "/v2/apps" + existing_app['id']
-            response = requests.delete(url,
-                                       auth=get_marathon_auth_params(args))
-            response.raise_for_status()
-            return True
+            scale_up_app_instances(args, new_app)
+
+            # Kill any drained tasks
+            logger.info("Scaling down old app by {} instances"
+                        .format(len(drained_task_ids)))
+
+            kill_marathon_tasks(args, drained_task_ids)
+            continue
         else:
             return False
 
+
+def ready_to_delete_old_app(new_app, old_app, drained_task_ids):
+    return (int(new_app['instances']) == get_deployment_target(new_app) and
+            len(drained_task_ids) == int(old_app['instances']))
+
+
+def waiting_for_drained_listeners(listeners):
+    return len(select_drained_listeners(listeners)) < 1
+
+
+def scale_up_app_instances(args, app):
+    """Scale the app by 150% of its existing instances until we hit the
+       deployment target
+    """
+    instances = math.floor(app['instances'] + (app['instances'] + 1) / 2)
+    if instances >= app['instances']:
+        instances = get_deployment_target(app)  # Don't go past the target
+
+    logger.info("Scaling new app up to {} instances".format(instances))
+    scale_marathon_app_instances(args, app, instances)
+
+
+def safe_delete_app(args, app):
+    logger.info("About to delete old app {}".format(app['id']))
     if args.force or query_yes_no("Continue?"):
-        # Scale new app up
-        instances = math.floor(app['instances'] + (app['instances'] + 1) / 2)
-        if instances >= existing_app['instances']:
-            instances = target_instances
-        logger.info("Scaling new app up to {} instances".format(instances))
-        url = args.marathon + "/v2/apps" + app['id']
-        data = json.dumps({'instances': instances})
-        headers = {'Content-Type': 'application/json'}
-        response = requests.put(url, headers=headers, data=data,
-                                auth=get_marathon_auth_params(args))
-        response.raise_for_status()
-
-        # Scale old app down
-        logger.info("Scaling down old app by {} instances"
-                    .format(len(tasks_to_kill)))
-        data = json.dumps({'ids': tasks_to_kill})
-        url = args.marathon + "/v2/tasks/delete?scale=true"
-        response = requests.post(url, headers=headers, data=data,
-                                 auth=get_marathon_auth_params(args))
-        response.raise_for_status()
-
-        return check_if_tasks_drained(args,
-                                      app,
-                                      existing_app,
-                                      time.time())
-    return False
+        delete_marathon_app(args, app)
+        return True
+    else:
+        return False
 
 
-def start_deployment(args, app, existing_app, resuming):
-    if not resuming:
-        url = args.marathon + "/v2/apps"
-        data = json.dumps(app)
-        headers = {'Content-Type': 'application/json'}
-        response = requests.post(url, headers=headers, data=data,
-                                 auth=get_marathon_auth_params(args))
-        response.raise_for_status()
-    if existing_app is not None:
-        return check_if_tasks_drained(args,
-                                      app,
-                                      existing_app,
-                                      time.time())
-    return False
+def delete_marathon_app(args, app):
+    url = args.marathon + '/v2/apps' + app['id']
+    response = requests.delete(url,
+                               auth=get_marathon_auth_params(args))
+    response.raise_for_status()
+    return response
+
+
+def kill_marathon_tasks(args, ids):
+    data = json.dumps({'ids': ids})
+    url = args.marathon + "/v2/tasks/delete?scale=true"
+    headers = {'Content-Type': 'application/json'}
+    response = requests.post(url, headers=headers, data=data,
+                             auth=get_marathon_auth_params(args))
+    response.raise_for_status()
+    return response
+
+
+def scale_marathon_app_instances(args, app, instances):
+    url = args.marathon + "/v2/apps" + app['id']
+    data = json.dumps({'instances': instances})
+    headers = {'Content-Type': 'application/json'}
+
+    response = requests.put(url, headers=headers, data=data,
+                            auth=get_marathon_auth_params(args))
+
+    response.raise_for_status()
+    return response
+
+
+def deploy_marathon_app(args, app):
+    url = args.marathon + "/v2/apps"
+    data = json.dumps(app)
+    headers = {'Content-Type': 'application/json'}
+    response = requests.post(url, headers=headers, data=data,
+                             auth=get_marathon_auth_params(args))
+    response.raise_for_status()
+    return response
 
 
 def get_service_port(app):
     try:
-        return app['container']['docker']['portMappings'][0]['servicePort']
+        return int(app['container']['docker']['portMappings'][0]['servicePort'])
     except KeyError:
-        return app['ports'][0]
+        return int(app['ports'][0])
 
 
 def set_service_port(app, servicePort):
     try:
-        app['container']['docker']['portMappings'][0]['servicePort'] \
-            = int(servicePort)
+        app['container']['docker']['portMappings'][0]['servicePort'] = \
+          int(servicePort)
     except KeyError:
         app['ports'][0] = int(servicePort)
 
@@ -307,19 +387,15 @@ def set_service_port(app, servicePort):
 def validate_app(app):
     if app['id'] is None:
         raise Exception("App doesn't contain a valid App ID")
-
     if 'labels' not in app:
         raise Exception("No labels found. Please define the"
-                        "HAPROXY_DEPLOYMENT_GROUP label"
-                        )
+                        "HAPROXY_DEPLOYMENT_GROUP label")
     if 'HAPROXY_DEPLOYMENT_GROUP' not in app['labels']:
         raise Exception("Please define the "
-                        "HAPROXY_DEPLOYMENT_GROUP label"
-                        )
+                        "HAPROXY_DEPLOYMENT_GROUP label")
     if 'HAPROXY_DEPLOYMENT_ALT_PORT' not in app['labels']:
         raise Exception("Please define the "
-                        "HAPROXY_DEPLOYMENT_ALT_PORT label"
-                        )
+                        "HAPROXY_DEPLOYMENT_ALT_PORT label")
 
 
 def set_app_ids(app, colour):
@@ -335,8 +411,8 @@ def set_app_ids(app, colour):
 def set_service_ports(app, servicePort):
     app['labels']['HAPROXY_0_PORT'] = str(get_service_port(app))
     try:
-        app['container']['docker']['portMappings'][0]['servicePort'] \
-            = int(servicePort)
+        app['container']['docker']['portMappings'][0]['servicePort'] = \
+          int(servicePort)
         return app
     except KeyError:
         app['ports'][0] = int(servicePort)
@@ -344,12 +420,11 @@ def set_service_ports(app, servicePort):
 
 
 def select_next_port(app):
-    if int(app['ports'][0]) \
-      == int(app['labels']['HAPROXY_DEPLOYMENT_ALT_PORT']):
-
+    alt_port = int(app['labels']['HAPROXY_DEPLOYMENT_ALT_PORT'])
+    if int(app['ports'][0]) == alt_port:
         return int(app['labels']['HAPROXY_0_PORT'])
     else:
-        return int(app['labels']['HAPROXY_DEPLOYMENT_ALT_PORT'])
+        return alt_port
 
 
 def select_next_colour(app):
@@ -369,15 +444,17 @@ def select_last_deploy(apps):
 
 
 def select_last_two_deploys(apps):
-    return sort_deploys(apps)[0:2]
+    return sort_deploys(apps)[:-3:-1]
 
 
 def get_deployment_group(app):
     return app.get('labels', {}).get('HAPROXY_DEPLOYMENT_GROUP')
 
 
-def select_previous_deploys(apps, deployment_group):
-    return [a for a in apps if get_deployment_group(a) == deployment_group]
+def fetch_previous_deploys(args, app):
+    apps = list_marathon_apps(args)
+    app_deployment_group = get_deployment_group(app)
+    return [a for a in apps if get_deployment_group(a) == app_deployment_group]
 
 
 def prepare_deploy(args, previous_deploys, app):
@@ -405,47 +482,50 @@ def prepare_deploy(args, previous_deploys, app):
     return app
 
 
-def process_json(args, out=sys.stdout):
-    with open(args.json, 'r') as content_file:
-        content = content_file.read()
+def load_app_json(args):
+    with open(args.json) as content_file:
+        return json.load(content_file)
 
-    app = json.loads(content)
+
+def safe_resume_deploy(args, previous_deploys):
+    if args.resume:
+        logger.info("Found previous deployment, resuming")
+        new_app, old_app = select_last_two_deploys(previous_deploys)
+        swap_bluegreen_apps(args, new_app, old_app, time.time())
+    else:
+        raise Exception("There appears to be an"
+                        " existing deployment in progress")
+
+
+def do_bluegreen_deploy(args, out=sys.stdout):
+    app = load_app_json(args)
     validate_app(app)
 
-    existing_apps = list_marathon_apps(args)
-    previous_deploys = \
-        select_previous_deploys(existing_apps, get_deployment_group(app))
+    previous_deploys = fetch_previous_deploys(args, app)
 
     if len(previous_deploys) > 1:
-        # There is a stuck deploy, oh no!
-        if args.resume:
-            logger.info("Found previous deployment, resuming")
-            old_deploy, current_deploy = \
-                select_last_two_deploys(previous_deploys)
-            start_deployment(args, current_deploy, old_deploy, True)
-        else:
-            raise Exception("There appears to be an"
-                            " existing deployment in progress")
+        # There is a stuck deploy
+        return safe_resume_deploy(args, previous_deploys)
 
-    app = prepare_deploy(args, previous_deploys, app)
+    new_app = prepare_deploy(args, previous_deploys, app)
 
     logger.info('Final app definition:')
-    out.write(json.dumps(app, sort_keys=True, indent=2))
+    out.write(json.dumps(new_app, sort_keys=True, indent=2))
     out.write("\n")
 
     if args.dry_run:
-        return
+        return True
 
     if args.force or query_yes_no("Continue with deployment?"):
+        deploy_marathon_app(args, new_app)
 
         if len(previous_deploys) == 0:
-            # This is the first deployment, no existing_app
-            start_deployment(args, app, None, False)
-
-        if len(previous_deploys) == 1:
-            # This is a standard blue/green deploy
-            existing_app = select_last_deploy(previous_deploys)
-            start_deployment(args, app, existing_app, False)
+            # This was the first deploy, nothing to swap
+            return True
+        else:
+            # This is a standard blue/green deploy, swap new app with old
+            old_app = select_last_deploy(previous_deploys)
+            return swap_bluegreen_apps(args, new_app, old_app, time.time())
 
 
 def get_arg_parser():
@@ -499,12 +579,17 @@ def get_arg_parser():
     return parser
 
 
-if __name__ == '__main__':
+def set_request_retries():
+    s = requests.Session()
+    a = requests.adapters.HTTPAdapter(max_retries=3)
+    s.mount('http://', a)
+
+
+def process_arguments():
     # Process arguments
     arg_parser = get_arg_parser()
     args = arg_parser.parse_args()
 
-    # Print the long help text if flag is set
     if args.longhelp:
         print(__doc__)
         sys.exit()
@@ -517,12 +602,12 @@ if __name__ == '__main__':
         if args.json is None:
             arg_parser.error('argument --json/-j is required')
 
-    # Set request retries
-    s = requests.Session()
-    a = requests.adapters.HTTPAdapter(max_retries=3)
-    s.mount('http://', a)
+    return args
 
-    # Setup logging
+
+if __name__ == '__main__':
+    args = process_arguments()
+    set_request_retries()
     setup_logging(logger, args.syslog_socket, args.log_format)
 
-    process_json(args)
+    do_bluegreen_deploy(args)
