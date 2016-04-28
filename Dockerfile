@@ -16,5 +16,5 @@ RUN apt-get update && apt-get install -y python3 python3-pip openssl libssl-dev 
 
 WORKDIR /marathon-lb
 
-ADD https://github.com/nutmegdevelopment/nutcracker-cli/releases/download/0.0.1/nutcracker-cli /usr/local/bin/nutcracker-cli
+ADD https://github.com/nutmegdevelopment/nutcracker-cli/releases/download/0.0.2/nutcracker-cli /usr/local/bin/nutcracker-cli
 RUN chmod +x /usr/local/bin/nutcracker-cli
