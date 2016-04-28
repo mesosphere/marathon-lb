@@ -11,18 +11,7 @@ container:
   docker:
     image: registry.nutmeg.co.uk:8443/marathon-lb:{{version}}
     forcePullImage: true
-    network: BRIDGE
-    portMappings:
-      - 
-        containerPort: 80
-        hostPort: 80
-      -
-        containerPort: 443
-        hostPort: 443
-      -
-        containerPort: 9090
-      -
-        containerPort: 9091
+    network: HOST
     parameters:
       -
         key: "label"
@@ -33,14 +22,6 @@ container:
       -
         key: "dns"
         value: "{{docker_bridge}}"
-healthChecks:
-  -
-    protocol: HTTP
-    path: /_haproxy_health_check
-    intervalSeconds: 5
-    timeoutSeconds: 2
-    maxConsecutiveFailures: 2
-    portIndex: 2
 env:
   NC_ID: {{nutcracker_id}}
   NC_KEY: {{nutcracker_key}}
