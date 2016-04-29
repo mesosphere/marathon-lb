@@ -1,6 +1,7 @@
 id: /marathon-lb
 cpus: 0.01
 mem: 128
+instances: 9
 args: [ 
     "sse",
     "--group=internal",
@@ -23,4 +24,10 @@ env:
   NC_ID: {{nutcracker_id}}
   NC_KEY: {{nutcracker_key}}
   NC_SERVER: {{nutcracker_server}}
-  
+constraints:
+  -
+    - hostname
+    - UNIQUE
+upgradeStrategy:
+  minimumHealthCapacity: 0.75
+  maximumOverCapacity: 0

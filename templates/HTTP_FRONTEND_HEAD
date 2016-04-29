@@ -1,0 +1,9 @@
+frontend marathon_http_in
+  bind *:80
+  mode http
+  acl host_mesos hdr(host) -i mesos.dev.nutmeg.co.uk
+  use_backend mesos if host_mesos
+  acl host_marathon hdr(host) -i marathon.dev.nutmeg.co.uk
+  use_backend marathon if host_marathon
+  acl host_eremetic hdr(host) -i eremetic.dev.nutmeg.co.uk
+  use_backend eremetic if host_eremetic
