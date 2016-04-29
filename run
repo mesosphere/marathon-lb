@@ -106,6 +106,8 @@ esac
 
 while true; do
   get_ssl &
+  # Give nutcracker-cli 30 seconds to grab certs
+  sleep 30
   /marathon-lb/marathon_lb.py \
     --syslog-socket $SYSLOG_SOCKET \
     --haproxy-config /marathon-lb/haproxy.cfg \
