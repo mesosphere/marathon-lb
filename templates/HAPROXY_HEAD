@@ -59,7 +59,8 @@ backend marathon
   option forwardfor
   http-request set-header X-Forwarded-Port %[dst_port]
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
-  option  httpchk GET / expect 401
+  option  httpchk GET /
+  http-check expect status 401
   timeout check 10s
   server leader master.mesos:8080 check inter 5s fall 4
   
