@@ -1,0 +1,10 @@
+frontend marathon_http_in
+  bind *:80
+  mode http
+  acl host_mesos hdr(host) -i mesos.dev.nutmeg.co.uk
+  redirect scheme https code 301 if !{ ssl_fc } host_mesos
+  acl host_marathon hdr(host) -i marathon.dev.nutmeg.co.uk
+  redirect scheme https code 301 if !{ ssl_fc } host_marathon
+  acl host_eremetic hdr(host) -i eremetic.dev.nutmeg.co.uk
+  redirect scheme https code 301 if !{ ssl_fc } host_eremetic
+
