@@ -40,14 +40,14 @@ class TestBluegreenDeploy(unittest.TestCase):
         apps = json.loads(open('tests/bluegreen_app_blue.json').read())
         app = apps['apps'][0]
 
-        results = bluegreen_deploy.find_drained_task_ids(app,
-                                                         listeners,
-                                                         haproxy_instance_count)
+        results = \
+            bluegreen_deploy.find_drained_task_ids(app,
+                                                   listeners,
+                                                   haproxy_instance_count)
 
-        assert app['tasks'][0]['id'] in results # Both down, no sessions
-        assert app['tasks'][1]['id'] not in results # One up, one down
-        assert app['tasks'][2]['id'] not in results # Both down, one with sessions
-
+        assert app['tasks'][0]['id'] in results  # 2 down, no sessions
+        assert app['tasks'][1]['id'] not in results  # 1 up, one down
+        assert app['tasks'][2]['id'] not in results  # 2 down, one w/ session
 
     def test_get_svnames_from_tasks(self):
         apps = json.loads(open('tests/bluegreen_app_blue.json').read())
@@ -58,7 +58,6 @@ class TestBluegreenDeploy(unittest.TestCase):
         assert '10_0_6_25_16916' in task_svnames
         assert '10_0_6_25_31184' in task_svnames
 
-
     def test_parse_haproxy_stats(self):
         with open('tests/haproxy_stats.csv') as f:
             results = bluegreen_deploy.parse_haproxy_stats(f.read())
@@ -68,7 +67,6 @@ class TestBluegreenDeploy(unittest.TestCase):
 
             assert results[2].pxname == 'http-out'
             assert results[2].svname == 'IPv4-cached'
-
 
     @mock.patch('bluegreen_deploy.fetch_combined_haproxy_stats',
                 mock.Mock(side_effect=lambda _: _load_listeners()))
@@ -85,10 +83,9 @@ class TestBluegreenDeploy(unittest.TestCase):
         assert app_listeners[0].pxname == 'foobar_8080'
         assert len(app_listeners) == 1
 
-
     @mock.patch('socket.gethostbyname_ex',
                 mock.Mock(side_effect=lambda hostname:
-                          (hostname, [], ['127.0.0.1','127.0.0.2'])))
+                          (hostname, [], ['127.0.0.1', '127.0.0.2'])))
     def test_get_marathon_lb_urls(self):
         marathon_lb_urls = bluegreen_deploy.get_marathon_lb_urls(Arguments())
 

@@ -369,7 +369,8 @@ def deploy_marathon_app(args, app):
 
 def get_service_port(app):
     try:
-        return int(app['container']['docker']['portMappings'][0]['servicePort'])
+        return \
+            int(app['container']['docker']['portMappings'][0]['servicePort'])
     except KeyError:
         return int(app['ports'][0])
 
