@@ -3,5 +3,6 @@ frontend marathon_https_in
   mode http
   use_backend mesos if {{ ssl_fc_sni mesos.dev.nutmeg.co.uk }}
   use_backend marathon if {{ ssl_fc_sni marathon.dev.nutmeg.co.uk }}
+  use_backend consul if {{ ssl_fc_sni consul.dev.nutmeg.co.uk }}
   use_backend eremetic if {{ ssl_fc_sni eremetic.dev.nutmeg.co.uk }}
 

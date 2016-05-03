@@ -5,6 +5,8 @@ frontend marathon_http_in
   redirect scheme https code 301 if !{ ssl_fc } host_mesos
   acl host_marathon hdr(host) -i marathon.dev.nutmeg.co.uk
   redirect scheme https code 301 if !{ ssl_fc } host_marathon
+  acl host_consul hdr(host) -i consul.dev.nutmeg.co.uk
+  redirect scheme https code 301 if !{ ssl_fc } host_consul
   acl host_eremetic hdr(host) -i eremetic.dev.nutmeg.co.uk
   redirect scheme https code 301 if !{ ssl_fc } host_eremetic
 

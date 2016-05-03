@@ -64,6 +64,16 @@ backend marathon
   timeout check 10s
   server leader master.mesos:8080 check inter 5s fall 4
   
+backend consul
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  option  httpchk GET /
+  timeout check 10s
+  server leader master.mesos:8500 check inter 5s fall 4
+  
 backend eremetic
   balance roundrobin
   mode http
