@@ -8,6 +8,7 @@ class Arguments:
     json = 'tests/1-nginx.json'
     force = False
     marathon = "http://marathon"
+    marathon_lb = "http://marathon-lb:9090"
     dry_run = True
     initial_instances = 1
     marathon_auth_credential_file = None
@@ -26,7 +27,71 @@ class MyResponse:
         return self.data
 
 
+def _load_listeners():
+    with open('tests/haproxy_stats.csv') as f:
+        return bluegreen_deploy.parse_haproxy_stats(f.read())
+
+
 class TestBluegreenDeploy(unittest.TestCase):
+
+    def test_find_drained_task_ids(self):
+        listeners = _load_listeners()
+        haproxy_instance_count = 2
+        apps = json.loads(open('tests/bluegreen_app_blue.json').read())
+        app = apps['apps'][0]
+
+        results = \
+            bluegreen_deploy.find_drained_task_ids(app,
+                                                   listeners,
+                                                   haproxy_instance_count)
+
+        assert app['tasks'][0]['id'] in results  # 2 down, no sessions
+        assert app['tasks'][1]['id'] not in results  # 1 up, one down
+        assert app['tasks'][2]['id'] not in results  # 2 down, one w/ session
+
+    def test_get_svnames_from_tasks(self):
+        apps = json.loads(open('tests/bluegreen_app_blue.json').read())
+        tasks = apps['apps'][0]['tasks']
+
+        task_svnames = bluegreen_deploy.get_svnames_from_tasks(tasks)
+
+        assert '10_0_6_25_16916' in task_svnames
+        assert '10_0_6_25_31184' in task_svnames
+
+    def test_parse_haproxy_stats(self):
+        with open('tests/haproxy_stats.csv') as f:
+            results = bluegreen_deploy.parse_haproxy_stats(f.read())
+
+            assert results[1].pxname == 'http-in'
+            assert results[1].svname == 'IPv4-direct'
+
+            assert results[2].pxname == 'http-out'
+            assert results[2].svname == 'IPv4-cached'
+
+    @mock.patch('bluegreen_deploy.fetch_combined_haproxy_stats',
+                mock.Mock(side_effect=lambda _: _load_listeners()))
+    def test_fetch_app_listeners(self):
+        app = {
+                'labels': {
+                  'HAPROXY_DEPLOYMENT_GROUP': 'foobar',
+                  'HAPROXY_0_PORT': '8080'
+                }
+              }
+
+        app_listeners = bluegreen_deploy.fetch_app_listeners(app, [])
+
+        assert app_listeners[0].pxname == 'foobar_8080'
+        assert len(app_listeners) == 1
+
+    @mock.patch('socket.gethostbyname_ex',
+                mock.Mock(side_effect=lambda hostname:
+                          (hostname, [], ['127.0.0.1', '127.0.0.2'])))
+    def test_get_marathon_lb_urls(self):
+        marathon_lb_urls = bluegreen_deploy.get_marathon_lb_urls(Arguments())
+
+        assert 'http://127.0.0.1:9090' in marathon_lb_urls
+        assert 'http://127.0.0.2:9090' in marathon_lb_urls
+        assert 'http://127.0.0.3:9090' not in marathon_lb_urls
 
     @mock.patch('requests.get',
                 mock.Mock(side_effect=lambda k, auth:
@@ -37,7 +102,7 @@ class TestBluegreenDeploy(unittest.TestCase):
         from six import StringIO
 
         out = StringIO()
-        bluegreen_deploy.process_json(Arguments(), out)
+        bluegreen_deploy.do_bluegreen_deploy(Arguments(), out)
         output = json.loads(out.getvalue())
         output['labels']['HAPROXY_DEPLOYMENT_STARTED_AT'] = ""
 
