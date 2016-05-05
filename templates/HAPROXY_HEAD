@@ -13,6 +13,7 @@ global
   server-state-base /var/state/haproxy/
   lua-load /marathon-lb/getpids.lua
   lua-load /marathon-lb/getconfig.lua
+  
 defaults
   load-server-state-from-file global
   log               global
@@ -32,6 +33,10 @@ defaults
   option            dontlognull
   option            tcp-smart-accept
   option            tcp-smart-connect
+  option            httplog
+  option            splice-auto
+  option            forwardfor
+  
 listen stats
   bind 0.0.0.0:9090
   balance
