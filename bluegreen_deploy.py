@@ -307,9 +307,9 @@ def waiting_for_drained_listeners(listeners):
 
 
 def scale_new_app_instances(args, new_app, old_app):
-    """Scale the app by 150% of its existing instances until we
-       meet or surpase old_app instances. At which point go right to
-       the new_app deployment target
+    """Scale the app by 50% of its existing instances until we
+       meet or surpass instances deployed for old_app.
+       At which point go right to the new_app deployment target
     """
     instances = (math.floor(new_app['instances'] +
                  (new_app['instances'] + 1) / 2))
