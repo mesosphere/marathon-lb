@@ -35,11 +35,11 @@ def _load_listeners():
 class TestBluegreenDeploy(unittest.TestCase):
 
     @mock.patch('bluegreen_deploy.scale_marathon_app_instances')
-    """When scaling new_app instances, increase instances by 50% of existing
-       instances if we have not yet met or surpassed the amount of instances
-       deployed by old_app
-    """
     def test_scale_new_app_instances_up_50_percent(self, mock):
+        """When scaling new_app instances, increase instances by 50% of existing
+           instances if we have not yet met or surpassed the amount of instances
+           deployed by old_app
+        """
         new_app = {
             'instances': 10,
             'labels': {
