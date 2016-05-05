@@ -34,6 +34,44 @@ def _load_listeners():
 
 class TestBluegreenDeploy(unittest.TestCase):
 
+    @mock.patch('bluegreen_deploy.scale_marathon_app_instances')
+    def test_scale_new_app_instances_up_50_percent(self, mock):
+        """When scaling new_app instances, increase instances by 50% of
+           existing instances if we have not yet met or surpassed the amount
+           of instances deployed by old_app
+        """
+        new_app = {
+            'instances': 10,
+            'labels': {
+                'HAPROXY_DEPLOYMENT_TARGET_INSTANCES': 30
+            }
+        }
+        old_app = {'instances': 30}
+        args = Arguments()
+        args.initial_instances = 5
+        bluegreen_deploy.scale_new_app_instances(args, new_app, old_app)
+        mock.assert_called_with(
+          args, new_app, 15)
+
+    @mock.patch('bluegreen_deploy.scale_marathon_app_instances')
+    def test_scale_new_app_instances_to_target(self, mock):
+        """When scaling new instances up, if we have met or surpassed the
+           amount of instances deployed for old_app, go right to our
+           deployment target amount of instances for new_app
+        """
+        new_app = {
+            'instances': 10,
+            'labels': {
+                'HAPROXY_DEPLOYMENT_TARGET_INSTANCES': 30
+            }
+        }
+        old_app = {'instances': 8}
+        args = Arguments()
+        args.initial_instances = 5
+        bluegreen_deploy.scale_new_app_instances(args, new_app, old_app)
+        mock.assert_called_with(
+          args, new_app, 30)
+
     def test_find_drained_task_ids(self):
         listeners = _load_listeners()
         haproxy_instance_count = 2

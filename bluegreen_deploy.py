@@ -285,7 +285,7 @@ def swap_bluegreen_apps(args, new_app, old_app, timestamp):
                             "\n  - ".join(drained_task_ids)))
 
         if args.force or query_yes_no("Continue?"):
-            scale_up_app_instances(args, new_app)
+            scale_new_app_instances(args, new_app, old_app)
 
             # Kill any drained tasks
             logger.info("Scaling down old app by {} instances"
@@ -306,16 +306,18 @@ def waiting_for_drained_listeners(listeners):
     return len(select_drained_listeners(listeners)) < 1
 
 
-def scale_up_app_instances(args, app):
-    """Scale the app by 150% of its existing instances until we hit the
-       deployment target
+def scale_new_app_instances(args, new_app, old_app):
+    """Scale the app by 50% of its existing instances until we
+       meet or surpass instances deployed for old_app.
+       At which point go right to the new_app deployment target
     """
-    instances = math.floor(app['instances'] + (app['instances'] + 1) / 2)
-    if instances >= app['instances']:
-        instances = get_deployment_target(app)  # Don't go past the target
+    instances = (math.floor(new_app['instances'] +
+                 (new_app['instances'] + 1) / 2))
+    if instances >= old_app['instances']:
+        instances = get_deployment_target(new_app)
 
     logger.info("Scaling new app up to {} instances".format(instances))
-    scale_marathon_app_instances(args, app, instances)
+    return scale_marathon_app_instances(args, new_app, instances)
 
 
 def safe_delete_app(args, app):
