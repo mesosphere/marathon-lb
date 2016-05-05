@@ -307,14 +307,14 @@ def waiting_for_drained_listeners(listeners):
 
 
 def scale_new_app_instances(args, new_app, old_app):
-    """Scale the app by 150% of its existing instances until we hit the
+    """Scale the app by 150% of its existing instances until we
        meet or surpase old_app instances. At which point go right to
        the new_app deployment target
     """
     instances = (math.floor(new_app['instances'] +
                  (new_app['instances'] + 1) / 2))
     if instances >= old_app['instances']:
-        instances = get_deployment_target(new_app)  # If we've eclipsed old_app
+        instances = get_deployment_target(new_app)
 
     logger.info("Scaling new app up to {} instances".format(instances))
     return scale_marathon_app_instances(args, new_app, instances)
