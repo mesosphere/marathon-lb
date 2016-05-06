@@ -848,7 +848,7 @@ Specified as `HAPROXY_{n}_BIND_OPTIONS`.
 
 Set additional bind options
 
-Ex: `HAPROXY_0_BIND_OPTIONS = 'ciphers AES128+EECDH:AES128+EDH force-tlsv12 no-tlsv10 no-sslv3'`
+Ex: `HAPROXY_0_BIND_OPTIONS = 'ciphers AES128+EECDH:AES128+EDH force-tlsv12 no-sslv3 no-tlsv10'`
                     
 
 ## `HAPROXY_DEPLOYMENT_ALT_PORT`
