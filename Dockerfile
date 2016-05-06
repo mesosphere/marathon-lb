@@ -1,4 +1,4 @@
-FROM debian:stretch
+FROM debian:sid
 
 ENTRYPOINT [ "/marathon-lb/run" ]
 CMD        [ "sse", "-m", "http://master.mesos:8080", "--health-check", "--group", "external" ]
