@@ -239,45 +239,53 @@ def check_time_and_sleep(args, timestamp):
 
 def swap_bluegreen_apps(args, new_app, old_app, timestamp):
     while True:
-        check_time_and_sleep(args, timestamp)
-
-        old_app = fetch_marathon_app(args, old_app['id'])
-        new_app = fetch_marathon_app(args, new_app['id'])
-
-        logger.info("Existing app running {} instances, "
-                    "new app running {} instances"
-                    .format(old_app['instances'], new_app['instances']))
-
-        marathon_lb_urls = get_marathon_lb_urls(args)
-        haproxy_count = len(marathon_lb_urls)
-
-        if any_marathon_lb_reloading(marathon_lb_urls):
-            continue
-
         try:
-            listeners = fetch_app_listeners(new_app, marathon_lb_urls)
-        except requests.exceptions.RequestException:
-            # Restart loop if we hit an exception while loading listeners,
-            # this may be normal behaviour
-            continue
+            check_time_and_sleep(args, timestamp)
 
-        logger.info("Found {} app listeners across {} HAProxy instances"
-                    .format(len(listeners), haproxy_count))
+            old_app = fetch_marathon_app(args, old_app['id'])
+            new_app = fetch_marathon_app(args, new_app['id'])
 
-        if waiting_for_listeners(new_app, old_app, listeners, haproxy_count):
-            continue
+            logger.info("Existing app running {} instances, "
+                        "new app running {} instances"
+                        .format(old_app['instances'], new_app['instances']))
 
-        if waiting_for_up_listeners(new_app, listeners, haproxy_count):
-            continue
+            marathon_lb_urls = get_marathon_lb_urls(args)
+            haproxy_count = len(marathon_lb_urls)
 
-        if waiting_for_drained_listeners(listeners):
-            continue
+            if any_marathon_lb_reloading(marathon_lb_urls):
+                continue
 
-        drained_task_ids = \
-            find_drained_task_ids(old_app, listeners, haproxy_count)
+            try:
+                listeners = fetch_app_listeners(new_app, marathon_lb_urls)
+            except requests.exceptions.RequestException:
+                # Restart loop if we hit an exception while loading listeners,
+                # this may be normal behaviour
+                continue
 
-        if ready_to_delete_old_app(new_app, old_app, drained_task_ids):
-            return safe_delete_app(args, old_app)
+            logger.info("Found {} app listeners across {} HAProxy instances"
+                        .format(len(listeners), haproxy_count))
+
+            if waiting_for_listeners(new_app,
+                                     old_app,
+                                     listeners,
+                                     haproxy_count):
+                continue
+
+            if waiting_for_up_listeners(new_app, listeners, haproxy_count):
+                continue
+
+            if waiting_for_drained_listeners(listeners):
+                continue
+
+            drained_task_ids = \
+                find_drained_task_ids(old_app, listeners, haproxy_count)
+
+            if ready_to_delete_old_app(new_app, old_app, drained_task_ids):
+                return safe_delete_app(args, old_app)
+
+        except TimeoutError:
+            logger.info("Timed out when waiting for backends "
+                        "to drain. Continuing.")
 
         logger.info("There are {} drained listeners, "
                     "about to kill & scale for these tasks:\n  - {}"
