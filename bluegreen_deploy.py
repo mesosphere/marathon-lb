@@ -14,6 +14,7 @@ import re
 import math
 import six.moves.urllib as urllib
 import socket
+import sys
 
 
 logger = logging.getLogger('bluegreen_deploy')
@@ -490,7 +491,7 @@ def safe_resume_deploy(args, previous_deploys):
     if args.resume:
         logger.info("Found previous deployment, resuming")
         new_app, old_app = select_last_two_deploys(previous_deploys)
-        swap_bluegreen_apps(args, new_app, old_app, time.time())
+        return swap_bluegreen_apps(args, new_app, old_app, time.time())
     else:
         raise Exception("There appears to be an"
                         " existing deployment in progress")
@@ -609,4 +610,7 @@ if __name__ == '__main__':
     set_request_retries()
     setup_logging(logger, args.syslog_socket, args.log_format)
 
-    do_bluegreen_deploy(args)
+    if do_bluegreen_deploy(args):
+        sys.exit(0)
+    else:
+        sys.exit(1)
