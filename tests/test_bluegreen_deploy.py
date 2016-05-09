@@ -4,6 +4,7 @@ import mock
 import json
 import time
 
+
 class Arguments:
     json = 'tests/1-nginx.json'
     force = False
@@ -138,11 +139,11 @@ class TestBluegreenDeploy(unittest.TestCase):
         timestamp = time.time() - 15
 
         response = bluegreen_deploy.swap_bluegreen_apps(args, {}, {},
-                                                             timestamp)
+                                                        timestamp)
 
         logger.info.assert_called_with('Timed out when waiting for backends'
                                        ' to drain!')
-        assert response == False
+        assert response is False
 
     @mock.patch('requests.get',
                 mock.Mock(side_effect=lambda k, auth:
