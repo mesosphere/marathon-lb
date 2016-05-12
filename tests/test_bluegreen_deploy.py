@@ -2,6 +2,7 @@ import unittest
 import bluegreen_deploy
 import mock
 import json
+import time
 
 
 class Arguments:
@@ -130,6 +131,19 @@ class TestBluegreenDeploy(unittest.TestCase):
         assert 'http://127.0.0.1:9090' in marathon_lb_urls
         assert 'http://127.0.0.2:9090' in marathon_lb_urls
         assert 'http://127.0.0.3:9090' not in marathon_lb_urls
+
+    @mock.patch('bluegreen_deploy.logger')
+    def test_swap_bluegreen_apps_timeout(self, logger):
+        args = Arguments()
+        args.max_wait = 10
+        timestamp = time.time() - 15
+
+        response = bluegreen_deploy.swap_bluegreen_apps(args, {}, {},
+                                                        timestamp)
+
+        logger.info.assert_called_with('Timed out when waiting for backends'
+                                       ' to drain!')
+        assert response is False
 
     @mock.patch('requests.get',
                 mock.Mock(side_effect=lambda k, auth:
