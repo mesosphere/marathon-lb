@@ -231,12 +231,9 @@ def max_wait_not_exceeded(max_wait, timestamp):
     return (time.time() - timestamp < max_wait)
 
 
-def swap_bluegreen_apps(args, new_app, old_app, timestamp):
+def find_tasks_to_kill(args, new_app, old_app, timestamp):
     while max_wait_not_exceeded(args.max_wait, timestamp):
         time.sleep(args.step_delay)
-
-        old_app = fetch_marathon_app(args, old_app['id'])
-        new_app = fetch_marathon_app(args, new_app['id'])
 
         logger.info("Existing app running {} instances, "
                     "new app running {} instances"
@@ -267,31 +264,45 @@ def swap_bluegreen_apps(args, new_app, old_app, timestamp):
         if waiting_for_drained_listeners(listeners):
             continue
 
-        drained_task_ids = \
-            find_drained_task_ids(old_app, listeners, haproxy_count)
+        return find_drained_task_ids(old_app, listeners, haproxy_count)
 
-        if ready_to_delete_old_app(new_app, old_app, drained_task_ids):
-            return safe_delete_app(args, old_app)
+    logger.info('Timed out waiting for drained tasks, Continuing...')
+    return []
 
+
+def deployment_in_progress(app):
+    return len(app['deployments']) > 0
+
+
+def swap_bluegreen_apps(args, new_app, old_app):
+    old_app = fetch_marathon_app(args, old_app['id'])
+    new_app = fetch_marathon_app(args, new_app['id'])
+
+    if deployment_in_progress(new_app):
+        return swap_bluegreen_apps(args, new_app, old_app)
+
+    tasks_to_kill = find_tasks_to_kill(args, new_app, old_app, time.time())
+
+    if ready_to_delete_old_app(new_app, old_app, tasks_to_kill):
+        return safe_delete_app(args, old_app)
+
+    if len(tasks_to_kill) > 0:
         logger.info("There are {} drained listeners, "
-                    "about to kill & scale for these tasks:\n  - {}"
-                    .format(len(drained_task_ids),
-                            "\n  - ".join(drained_task_ids)))
+                    "about to kill the following tasks:\n  - {}"
+                    .format(len(tasks_to_kill),
+                            "\n  - ".join(tasks_to_kill)))
 
         if args.force or query_yes_no("Continue?"):
-            scale_new_app_instances(args, new_app, old_app)
-
-            # Kill any drained tasks
             logger.info("Scaling down old app by {} instances"
-                        .format(len(drained_task_ids)))
-
-            kill_marathon_tasks(args, drained_task_ids)
-            continue
+                        .format(len(tasks_to_kill)))
+            kill_marathon_tasks(args, tasks_to_kill)
         else:
             return False
 
-    logger.info("Timed out when waiting for backends to drain!")
-    return False
+    if new_app['instances'] < get_deployment_target(new_app):
+        scale_new_app_instances(args, new_app, old_app)
+
+    return swap_bluegreen_apps(args, new_app, old_app)
 
 
 def ready_to_delete_old_app(new_app, old_app, drained_task_ids):
@@ -491,7 +502,7 @@ def safe_resume_deploy(args, previous_deploys):
     if args.resume:
         logger.info("Found previous deployment, resuming")
         new_app, old_app = select_last_two_deploys(previous_deploys)
-        return swap_bluegreen_apps(args, new_app, old_app, time.time())
+        return swap_bluegreen_apps(args, new_app, old_app)
     else:
         raise Exception("There appears to be an"
                         " existing deployment in progress")
@@ -525,7 +536,7 @@ def do_bluegreen_deploy(args, out=sys.stdout):
         else:
             # This is a standard blue/green deploy, swap new app with old
             old_app = select_last_deploy(previous_deploys)
-            return swap_bluegreen_apps(args, new_app, old_app, time.time())
+            return swap_bluegreen_apps(args, new_app, old_app)
 
 
 def get_arg_parser():
