@@ -84,9 +84,24 @@ class TestBluegreenDeploy(unittest.TestCase):
                                                    listeners,
                                                    haproxy_instance_count)
 
-        assert app['tasks'][0]['id'] in results  # 2 down, no sessions
-        assert app['tasks'][1]['id'] not in results  # 1 up, one down
-        assert app['tasks'][2]['id'] not in results  # 2 down, one w/ session
+        assert app['tasks'][0]['id'] in results  # 2 l's down, no sessions
+        assert app['tasks'][1]['id'] not in results  # 1 l up, 1 down
+        assert app['tasks'][2]['id'] not in results  # 2 l's d, 1 w/ scur/qcur
+
+    def test_find_draining_task_ids(self):
+        listeners = _load_listeners()
+        haproxy_instance_count = 2
+        apps = json.loads(open('tests/bluegreen_app_blue.json').read())
+        app = apps['apps'][0]
+
+        results = \
+            bluegreen_deploy.find_draining_task_ids(app,
+                                                    listeners,
+                                                    haproxy_instance_count)
+
+        assert app['tasks'][0]['id'] in results  # 2 l's down, no sessions
+        assert app['tasks'][1]['id'] not in results  # 1 l up, 1 down
+        assert app['tasks'][2]['id'] in results  # 2 l's down, 1 w/ scur/qcur
 
     def test_get_svnames_from_tasks(self):
         apps = json.loads(open('tests/bluegreen_app_blue.json').read())
@@ -131,19 +146,6 @@ class TestBluegreenDeploy(unittest.TestCase):
         assert 'http://127.0.0.1:9090' in marathon_lb_urls
         assert 'http://127.0.0.2:9090' in marathon_lb_urls
         assert 'http://127.0.0.3:9090' not in marathon_lb_urls
-
-    @mock.patch('bluegreen_deploy.logger')
-    def test_swap_bluegreen_apps_timeout(self, logger):
-        args = Arguments()
-        args.max_wait = 10
-        timestamp = time.time() - 15
-
-        response = bluegreen_deploy.swap_bluegreen_apps(args, {}, {},
-                                                        timestamp)
-
-        logger.info.assert_called_with('Timed out when waiting for backends'
-                                       ' to drain!')
-        assert response is False
 
     @mock.patch('requests.get',
                 mock.Mock(side_effect=lambda k, auth:
