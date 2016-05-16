@@ -189,12 +189,12 @@ def waiting_for_up_listeners(app, listeners, haproxy_count):
     return up_listener_count < get_deployment_target(app)
 
 
-def _has_pending_requests(listener):
-    return int(listener.qcur or 0) > 0 or int(listener.scur or 0) > 0
+def select_draining_listeners(listeners):
+    return [l for l in listeners if l.status == 'MAINT']
 
 
 def select_drained_listeners(listeners):
-    draining_listeners = [l for l in listeners if l.status == 'MAINT']
+    draining_listeners = select_draining_listeners(listeners)
     return [l for l in draining_listeners if not _has_pending_requests(l)]
 
 
@@ -211,8 +211,12 @@ def get_svnames_from_tasks(tasks):
     return svnames
 
 
+def _has_pending_requests(listener):
+    return int(listener.qcur or 0) > 0 or int(listener.scur or 0) > 0
+
+
 def find_drained_task_ids(app, listeners, haproxy_count):
-    """Return app tasks which have all haproxy listeners down and drained
+    """Return app tasks which have all haproxy listeners down and draining
        of any pending sessions or connections
     """
     tasks = zip(get_svnames_from_tasks(app['tasks']), app['tasks'])
@@ -227,20 +231,36 @@ def find_drained_task_ids(app, listeners, haproxy_count):
     return drained_task_ids
 
 
+def find_draining_task_ids(app, listeners, haproxy_count):
+    """Return app tasks which have all haproxy listeners draining
+    """
+    tasks = zip(get_svnames_from_tasks(app['tasks']), app['tasks'])
+    draining_listeners = select_draining_listeners(listeners)
+
+    draining_task_ids = []
+    for svname, task in tasks:
+        task_listeners = [l for l in draining_listeners if l.svname == svname]
+        if len(task_listeners) == haproxy_count:
+            draining_task_ids.append(task['id'])
+
+    return draining_task_ids
+
+
 def max_wait_not_exceeded(max_wait, timestamp):
     return (time.time() - timestamp < max_wait)
 
 
 def find_tasks_to_kill(args, new_app, old_app, timestamp):
+    marathon_lb_urls = get_marathon_lb_urls(args)
+    haproxy_count = len(marathon_lb_urls)
+    listeners = []
+
     while max_wait_not_exceeded(args.max_wait, timestamp):
         time.sleep(args.step_delay)
 
         logger.info("Existing app running {} instances, "
                     "new app running {} instances"
                     .format(old_app['instances'], new_app['instances']))
-
-        marathon_lb_urls = get_marathon_lb_urls(args)
-        haproxy_count = len(marathon_lb_urls)
 
         if any_marathon_lb_reloading(marathon_lb_urls):
             continue
@@ -266,8 +286,10 @@ def find_tasks_to_kill(args, new_app, old_app, timestamp):
 
         return find_drained_task_ids(old_app, listeners, haproxy_count)
 
-    logger.info('Timed out waiting for drained tasks, Continuing...')
-    return []
+    logger.info('Timed out waiting for tasks to fully drain, find any draining'
+                ' tasks and continue with deployment...')
+
+    return find_draining_task_ids(old_app, listeners, haproxy_count)
 
 
 def deployment_in_progress(app):
@@ -287,7 +309,7 @@ def swap_bluegreen_apps(args, new_app, old_app):
         return safe_delete_app(args, old_app)
 
     if len(tasks_to_kill) > 0:
-        logger.info("There are {} drained listeners, "
+        logger.info("There are {} draining listeners, "
                     "about to kill the following tasks:\n  - {}"
                     .format(len(tasks_to_kill),
                             "\n  - ".join(tasks_to_kill)))
@@ -305,9 +327,9 @@ def swap_bluegreen_apps(args, new_app, old_app):
     return swap_bluegreen_apps(args, new_app, old_app)
 
 
-def ready_to_delete_old_app(new_app, old_app, drained_task_ids):
+def ready_to_delete_old_app(new_app, old_app, draining_task_ids):
     return (int(new_app['instances']) == get_deployment_target(new_app) and
-            len(drained_task_ids) == int(old_app['instances']))
+            len(draining_task_ids) == int(old_app['instances']))
 
 
 def waiting_for_drained_listeners(listeners):

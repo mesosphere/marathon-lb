@@ -84,9 +84,24 @@ class TestBluegreenDeploy(unittest.TestCase):
                                                    listeners,
                                                    haproxy_instance_count)
 
-        assert app['tasks'][0]['id'] in results  # 2 down, no sessions
-        assert app['tasks'][1]['id'] not in results  # 1 up, one down
-        assert app['tasks'][2]['id'] not in results  # 2 down, one w/ session
+        assert app['tasks'][0]['id'] in results  # 2 l's down, no sessions
+        assert app['tasks'][1]['id'] not in results  # 1 l up, 1 down
+        assert app['tasks'][2]['id'] not in results  # 2 l's d, 1 w/ scur/qcur
+
+    def test_find_draining_task_ids(self):
+        listeners = _load_listeners()
+        haproxy_instance_count = 2
+        apps = json.loads(open('tests/bluegreen_app_blue.json').read())
+        app = apps['apps'][0]
+
+        results = \
+            bluegreen_deploy.find_draining_task_ids(app,
+                                                    listeners,
+                                                    haproxy_instance_count)
+
+        assert app['tasks'][0]['id'] in results  # 2 l's down, no sessions
+        assert app['tasks'][1]['id'] not in results  # 1 l up, 1 down
+        assert app['tasks'][2]['id'] in results  # 2 l's down, 1 w/ scur/qcur
 
     def test_get_svnames_from_tasks(self):
         apps = json.loads(open('tests/bluegreen_app_blue.json').read())
