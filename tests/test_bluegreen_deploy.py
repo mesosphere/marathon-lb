@@ -82,7 +82,8 @@ class TestBluegreenDeploy(unittest.TestCase):
         results = \
             bluegreen_deploy.find_drained_task_ids(app,
                                                    listeners,
-                                                   haproxy_instance_count)
+                                                   haproxy_instance_count,
+                                                   False)
 
         assert app['tasks'][0]['id'] in results  # 2 down, no sessions
         assert app['tasks'][1]['id'] not in results  # 1 up, one down
@@ -131,19 +132,6 @@ class TestBluegreenDeploy(unittest.TestCase):
         assert 'http://127.0.0.1:9090' in marathon_lb_urls
         assert 'http://127.0.0.2:9090' in marathon_lb_urls
         assert 'http://127.0.0.3:9090' not in marathon_lb_urls
-
-    @mock.patch('bluegreen_deploy.logger')
-    def test_swap_bluegreen_apps_timeout(self, logger):
-        args = Arguments()
-        args.max_wait = 10
-        timestamp = time.time() - 15
-
-        response = bluegreen_deploy.swap_bluegreen_apps(args, {}, {},
-                                                        timestamp)
-
-        logger.info.assert_called_with('Timed out when waiting for backends'
-                                       ' to drain!')
-        assert response is False
 
     @mock.patch('requests.get',
                 mock.Mock(side_effect=lambda k, auth:

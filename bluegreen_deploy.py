@@ -193,9 +193,13 @@ def _has_pending_requests(listener):
     return int(listener.qcur or 0) > 0 or int(listener.scur or 0) > 0
 
 
-def select_drained_listeners(listeners):
+def select_drained_listeners(listeners, timed_out):
     draining_listeners = [l for l in listeners if l.status == 'MAINT']
-    return [l for l in draining_listeners if not _has_pending_requests(l)]
+    drained_listeners = \
+        [l for l in draining_listeners if not _has_pending_requests(l)]
+    if timed_out:
+        return draining_listeners
+    return drained_listeners
 
 
 def get_svnames_from_task(task):
@@ -211,12 +215,12 @@ def get_svnames_from_tasks(tasks):
     return svnames
 
 
-def find_drained_task_ids(app, listeners, haproxy_count):
+def find_drained_task_ids(app, listeners, haproxy_count, timed_out):
     """Return app tasks which have all haproxy listeners down and drained
        of any pending sessions or connections
     """
     tasks = zip(get_svnames_from_tasks(app['tasks']), app['tasks'])
-    drained_listeners = select_drained_listeners(listeners)
+    drained_listeners = select_drained_listeners(listeners, timed_out)
 
     drained_task_ids = []
     for svname, task in tasks:
@@ -227,12 +231,18 @@ def find_drained_task_ids(app, listeners, haproxy_count):
     return drained_task_ids
 
 
-def max_wait_not_exceeded(max_wait, timestamp):
-    return (time.time() - timestamp < max_wait)
+def max_wait_exceeded(max_wait, timestamp):
+    exceeded = time.time() - timestamp > max_wait
+    if exceeded:
+        logger.info("Timed out when waiting for backends to drain!")
+    return exceeded
 
 
 def swap_bluegreen_apps(args, new_app, old_app, timestamp):
-    while max_wait_not_exceeded(args.max_wait, timestamp):
+    listeners = None
+    haproxy_count = None
+    timed_out = False
+    while True:
         time.sleep(args.step_delay)
 
         old_app = fetch_marathon_app(args, old_app['id'])
@@ -267,31 +277,32 @@ def swap_bluegreen_apps(args, new_app, old_app, timestamp):
         if waiting_for_drained_listeners(listeners):
             continue
 
-        drained_task_ids = \
-            find_drained_task_ids(old_app, listeners, haproxy_count)
+        if max_wait_exceeded(args.max_wait, timestamp):
+            timed_out = True
+        break
 
-        if ready_to_delete_old_app(new_app, old_app, drained_task_ids):
-            return safe_delete_app(args, old_app)
+    drained_task_ids = \
+        find_drained_task_ids(old_app, listeners, haproxy_count, timed_out)
 
-        logger.info("There are {} drained listeners, "
-                    "about to kill & scale for these tasks:\n  - {}"
-                    .format(len(drained_task_ids),
-                            "\n  - ".join(drained_task_ids)))
+    if ready_to_delete_old_app(new_app, old_app, drained_task_ids):
+        return safe_delete_app(args, old_app)
 
-        if args.force or query_yes_no("Continue?"):
-            scale_new_app_instances(args, new_app, old_app)
+    logger.info("There are {} listeners draining, "
+                "about to kill & scale for these tasks:\n  - {}"
+                .format(len(drained_task_ids),
+                        "\n  - ".join(drained_task_ids)))
 
-            # Kill any drained tasks
-            logger.info("Scaling down old app by {} instances"
-                        .format(len(drained_task_ids)))
+    if args.force or query_yes_no("Continue?"):
+        scale_new_app_instances(args, new_app, old_app)
 
-            kill_marathon_tasks(args, drained_task_ids)
-            continue
-        else:
-            return False
+        # Kill any drained tasks
+        logger.info("Scaling down old app by {} instances"
+                    .format(len(drained_task_ids)))
 
-    logger.info("Timed out when waiting for backends to drain!")
-    return False
+        kill_marathon_tasks(args, drained_task_ids)
+        swap_bluegreen_apps(args, new_app, old_app, time.time())
+    else:
+        return False
 
 
 def ready_to_delete_old_app(new_app, old_app, drained_task_ids):
