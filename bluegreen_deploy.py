@@ -301,6 +301,7 @@ def swap_bluegreen_apps(args, new_app, old_app):
     new_app = fetch_marathon_app(args, new_app['id'])
 
     if deployment_in_progress(new_app):
+        time.sleep(args.step_delay)
         return swap_bluegreen_apps(args, new_app, old_app)
 
     tasks_to_kill = find_tasks_to_kill(args, new_app, old_app, time.time())
