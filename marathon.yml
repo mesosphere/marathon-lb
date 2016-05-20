@@ -24,7 +24,6 @@ env:
   NC_ID: {{nutcracker_id}}
   NC_KEY: {{nutcracker_key}}
   NC_SERVER: {{nutcracker_server}}
-  ZK_DOMAIN: {{zk_domain}}
 constraints:
   -
     - hostname

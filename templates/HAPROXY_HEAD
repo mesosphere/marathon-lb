@@ -67,9 +67,7 @@ backend marathon
   option  httpchk GET /
   http-check expect status 401
   timeout check 10s
-  server marathon1 1.ZK_DOMAIN:8500 check inter 5s fall 4
-  server marathon2 2.ZK_DOMAIN:8500 check inter 5s fall 4
-  server marathon3 3.ZK_DOMAIN:8500 check inter 5s fall 4
+  server marathon master.mesos:8080 check inter 5s fall 4
   
 backend consul
   balance roundrobin
@@ -79,9 +77,7 @@ backend consul
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server consul1 1.ZK_DOMAIN:8500 check inter 5s fall 4
-  server consul2 2.ZK_DOMAIN:8500 check inter 5s fall 4
-  server consul3 3.ZK_DOMAIN:8500 check inter 5s fall 4
+  server consul master.mesos:8500 check inter 5s fall 4
   
 backend eremetic
   balance roundrobin
