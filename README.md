@@ -77,11 +77,6 @@ You can pass in your own certificates for the SSL frontend by setting
 the `HAPROXY_SSL_CERT` environment variable. If you need more than one
 certificate you can specify additional ones by setting `HAPROXY_SSL_CERT0` - `HAPROXY_SSL_CERT100`.
 
-Modify the Marathon URL by either passing `-m/--marathon` or setting the `HAPROXY_MARATHON` environment variable (default value is `http://master.mesos:8080`).
-Likewise the Group can be modified by passing `--group` or setting the `HAPROXY_GROUP` environment variable (default value is `external`).
-Note that `-m/--marathon` can be specified multiple times whereas the environment variable only takes a single value.
-
-
 #### `sse` mode
 In SSE mode, the script connects to the marathon events endpoint to get
 notified about state changes. This only works with Marathon 0.11.0 or
