@@ -117,7 +117,7 @@ while true; do
     --haproxy-config /marathon-lb/haproxy.cfg \
     --ssl-certs "$SSL_CERTS" \
     --command "sv reload $HAPROXY_SERVICE" \
-    $ARGS "${MARATHON_ARGS[@]}" "${GROUP_ARGS[@]}" "$@" &
+    $ARGS "${MARATHON_ARGS[@]-}" "${GROUP_ARGS[@]-}" "$@" &
   wait $! || exit $? # Needed for the traps to work
   if [ "$MODE" != "poll" ]; then
     exit 0
