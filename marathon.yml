@@ -20,9 +20,6 @@ container:
       -
         key: "label"
         value: "APP_BUILD={{version}}"
-      -
-        key: "dns"
-        value: "172.17.0.1"
 env:
   NC_ID: {{nutcracker_id}}
   NC_KEY: {{nutcracker_key}}
