@@ -43,6 +43,9 @@ mkdir -p $ssl_staging_dir
 chmod 700 $ssl_dir
 chmod 700 $ssl_staging_dir
 
+
+sed -i "s/ZK_DOMAIN/$ZK_DOMAIN/" templates/HAPROXY_HEAD
+
 # Download certs from nutcracker.
 # Required environment variables:
 # NC_ID - Nutcracker ID
