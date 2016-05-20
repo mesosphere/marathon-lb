@@ -18,10 +18,15 @@ fi
 # of positional parameters so we don't duplicate them
 # further down when we pass $@ to marathon_lb.py
 declare -i ssl_certs_pos=0
+marathon_via_env=true
+group_via_env=true
 for ((i=1; i<=$#; i++)); do
-  if [ ${!i} = '--ssl-certs' ]; then
+  if [ "${!i}" = '--ssl-certs' ]; then
     ssl_certs_pos=$(($i+1))
-    break
+  elif [ "${!i}" = '-m' -o "${!i}" = '--marathon' ]; then
+    marathon_via_env=false
+  elif [ "${!i}" = '--group' ]; then
+    group_via_env=false
   fi
 done
 if [ $ssl_certs_pos -gt 0 ]; then
@@ -54,6 +59,13 @@ elif [ $ssl_certs_pos -eq 0 ]; then  # if --ssl-certs wasn't passed as arg to th
   cat /tmp/server-cert.pem /tmp/server-key.pem > /etc/ssl/cert.pem
   rm /tmp/server-*.pem
 fi
+
+$marathon_via_env \
+  && declare -a MARATHON_ARGS=('--marathon' "${HAPROXY_MARATHON:-http://master.mesos:8080}") \
+  || declare -a MARATHON_ARGS=()
+$group_via_env \
+  && declare -a GROUP_ARGS=('--group' "${HAPROXY_GROUP:-external}") \
+  || declare -a GROUP_ARGS=()
 
 if [ -n "${MESOS_SANDBOX-}" ] && [ -d "$MESOS_SANDBOX/templates" ]; then
   mkdir -p templates
@@ -105,7 +117,7 @@ while true; do
     --haproxy-config /marathon-lb/haproxy.cfg \
     --ssl-certs "$SSL_CERTS" \
     --command "sv reload $HAPROXY_SERVICE" \
-    $ARGS "$@" &
+    $ARGS "${MARATHON_ARGS[@]}" "${GROUP_ARGS[@]}" "$@" &
   wait $! || exit $? # Needed for the traps to work
   if [ "$MODE" != "poll" ]; then
     exit 0
