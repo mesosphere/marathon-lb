@@ -1178,9 +1178,9 @@ backend nginx_10000
 '''
         self.assertMultiLineEqual(config, expected)
 
-    def test_bluegreen_app(self):
-        with open('tests/bluegreen_apps.json') as data_file:
-            bluegreen_apps = json.load(data_file)
+    def test_zdd_app(self):
+        with open('tests/zdd_apps.json') as data_file:
+            zdd_apps = json.load(data_file)
 
         class Marathon:
             def __init__(self, data):
@@ -1196,7 +1196,7 @@ backend nginx_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
-        apps = marathon_lb.get_apps(Marathon(bluegreen_apps['apps']))
+        apps = marathon_lb.get_apps(Marathon(zdd_apps['apps']))
         config = marathon_lb.config(apps, groups, bind_http_https,
                                     ssl_certs, templater)
         expected = self.base_config + '''
