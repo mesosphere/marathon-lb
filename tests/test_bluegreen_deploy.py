@@ -14,6 +14,7 @@ class Arguments:
     initial_instances = 1
     marathon_auth_credential_file = None
     auth_credentials = None
+    pre_kill_hook = None
 
 
 class MyResponse:
@@ -121,6 +122,22 @@ class TestBluegreenDeploy(unittest.TestCase):
 
             assert results[2].pxname == 'http-out'
             assert results[2].svname == 'IPv4-cached'
+
+    @mock.patch('subprocess.check_call')
+    def test_pre_kill_hook(self, mock):
+        # TODO(BM): This test is naive. An end-to-end test would be nice.
+        args = Arguments()
+        args.pre_kill_hook = 'myhook'
+        app = {
+            'id': 'myApp'
+        }
+        tasks_to_kill = ['task1', 'task2']
+
+        bluegreen_deploy.execute_pre_kill_hook(args, app, tasks_to_kill)
+
+        mock.assert_called_with([args.pre_kill_hook,
+                                 '{"id": "myApp"}',
+                                 '["task1", "task2"]'])
 
     @mock.patch('bluegreen_deploy.fetch_combined_haproxy_stats',
                 mock.Mock(side_effect=lambda _: _load_listeners()))

@@ -15,6 +15,7 @@ import math
 import six.moves.urllib as urllib
 import socket
 import sys
+import subprocess
 
 
 logger = logging.getLogger('bluegreen_deploy')
@@ -296,6 +297,15 @@ def deployment_in_progress(app):
     return len(app['deployments']) > 0
 
 
+def execute_pre_kill_hook(args, old_app, tasks_to_kill):
+    if args.pre_kill_hook is not None:
+        logger.info("Calling pre-kill hook '{}'".format(args.pre_kill_hook))
+
+        subprocess.check_call([args.pre_kill_hook,
+                              json.dumps(old_app),
+                              json.dumps(tasks_to_kill)])
+
+
 def swap_bluegreen_apps(args, new_app, old_app):
     old_app = fetch_marathon_app(args, old_app['id'])
     new_app = fetch_marathon_app(args, new_app['id'])
@@ -310,6 +320,8 @@ def swap_bluegreen_apps(args, new_app, old_app):
         return safe_delete_app(args, old_app)
 
     if len(tasks_to_kill) > 0:
+        execute_pre_kill_hook(args, old_app, tasks_to_kill)
+
         logger.info("There are {} draining listeners, "
                     "about to kill the following tasks:\n  - {}"
                     .format(len(tasks_to_kill),
@@ -607,6 +619,16 @@ def get_arg_parser():
                         help="Maximum amount of time (in seconds) to wait"
                         " for HAProxy to drain connections",
                         type=int, default=300
+                        )
+    parser.add_argument("--pre-kill-hook",
+                        help="A path to an executable (such as a script) "
+                        "which will be called before killing any tasks marked "
+                        "for draining at each step. The script will be called "
+                        "with 2 arguments: the old app definition (in JSON), "
+                        "and the list of tasks which will be killed. An exit "
+                        "code of 0 indicates the deploy may continue. "
+                        "If the hook returns a non-zero exit code, the deploy "
+                        "will stop, and an operator must intervene."
                         )
     parser = set_logging_args(parser)
     parser = set_marathon_auth_args(parser)
