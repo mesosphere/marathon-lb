@@ -74,7 +74,7 @@ if [ -n "${MESOS_SANDBOX-}" ] && [ -d "$MESOS_SANDBOX/templates" ]; then
   cp -v "$MESOS_SANDBOX/templates/"* templates/
 fi
 
-if $NM_ENV=prod; then
+if [[ $NM_ENV == prod ]]; then
   cp prod/* templates/
 else
   cp dev/* templates/
