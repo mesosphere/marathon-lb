@@ -13,7 +13,7 @@ make -j4 install LUA_LIB_NAME=lua53
 
 # Build HAProxy
 cd /usr/src
-wget http://www.haproxy.org/download/1.6/src/haproxy-1.6.4.tar.gz
+wget http://www.haproxy.org/download/1.6/src/haproxy-1.6.5.tar.gz
 tar xf haproxy-*.tar.gz
 cd haproxy-*
 make -j4 \
@@ -29,6 +29,7 @@ make -j4 \
   USE_LUA=1 \
   LUA_LIB=/usr/local/lib/ \
   LUA_INC=/usr/local/include/ \
+  USE_ZLIB=1 \
   LDFLAGS="-lcrypt  -lssl -lcrypto -L/usr/local/lib/ -llua -lm -L/usr/lib -lpcreposix -lpcre"
 make -j4 install LDFLAGS="-lcrypt  -lssl -lcrypto -L/usr/local/lib/ -llua -lm -L/usr/lib -lpcreposix -lpcre -ldl"
 
