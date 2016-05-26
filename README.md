@@ -1,4 +1,4 @@
-# marathon-lb [![Build Status](https://travis-ci.org/mesosphere/marathon-lb.svg?branch=master)](https://travis-ci.org/mesosphere/marathon-lb) [![Velocity](http://velocity.mesosphere.com/service/velocity/buildStatus/icon?job=marathon-lb-unit)](http://velocity.mesosphere.com/service/velocity/job/marathon-lb-unit/)
+# marathon-lb [![Build Status](https://travis-ci.org/mesosphere/marathon-lb.svg?branch=master)](https://travis-ci.org/mesosphere/marathon-lb)
 
 Marathon-lb is a tool for managing HAProxy, by consuming
 [Marathon's](https://github.com/mesosphere/marathon) app state. HAProxy is a
@@ -12,6 +12,7 @@ fast, efficient, battle-tested, highly available load balancer with many advance
  * **Real-time LB updates**, via [Marathon's event bus](https://mesosphere.github.io/marathon/docs/event-bus.html)
  * Support for Marathon's **health checks**
  * **Multi-cert TLS/SSL** support
+ * [Zero-downtime deployments](#zero-downtime-deployments)
  * Per-service **HAProxy templates**
  * DC/OS integration
  * Automated Docker image builds ([mesosphere/marathon-lb](https://hub.docker.com/r/mesosphere/marathon-lb))
@@ -20,7 +21,7 @@ fast, efficient, battle-tested, highly available load balancer with many advance
 
 ### Getting started
 
- * [Using marathon-lb](https://docs.mesosphere.com/administration/service-discovery/service-discovery-and-load-balancing-with-marathon-lb/service-discovery-and-load-balancing/)
+ * [Using marathon-lb](https://docs.mesosphere.com/usage/service-discovery/marathon-lb/using-marathon-lb/)
  * [Advanced features of marathon-lb](https://docs.mesosphere.com/administration/service-discovery/service-discovery-and-load-balancing-with-marathon-lb/advanced-features-of-marathon-lb/)
  * [Securing your service with TLS/SSL (blog post)](https://mesosphere.com/blog/2016/04/06/lets-encrypt-dcos/)
 
@@ -132,14 +133,14 @@ $ ./marathon_lb.py --marathon http://localhost:8080 --group external --ssl-certs
 
 If you are using the script directly, you have two options:
 
- * Provide nothing and config will use `/etc/ssl/mesosphere.com.pem` as the certificate path. Put the certificate in this path or edit the file for the correct path.
+ * Provide nothing and config will use `/etc/ssl/cert.pem` as the certificate path. Put the certificate in this path or edit the file for the correct path.
  * Provide `--ssl-certs` command line argument and config will use these paths.
 
 If you are using the provided `run` script or Docker image, you have three options:
 
- * Provide your certificate text in `HAPROXY_SSL_CERT` environment variable. Contents will be written to `/etc/ssl/mesosphere.com.pem`. Config will use this path unless you specified extra certificate paths as in the next option.
+ * Provide your certificate text in `HAPROXY_SSL_CERT` environment variable. Contents will be written to `/etc/ssl/cert.pem`. Config will use this path unless you specified extra certificate paths as in the next option.
  * Provide SSL certificate paths with `--ssl-certs` command line argument. Your config will use these certificate paths.
- * Provide nothing and it will create self-signed certificate on `/etc/ssl/mesosphere.com.pem` and config will use it.
+ * Provide nothing and it will create self-signed certificate on `/etc/ssl/cert.pem` and config will use it.
 
 
 ### Skipping configuration validation
@@ -156,10 +157,10 @@ Marathon-lb exposes a few endpoints on port 9090 (by default). They are:
 | Endpoint                      | Description                                                                                                                                                                                                                                                                                                               |
 |-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `:9090/haproxy?stats`         | HAProxy stats endpoint. This produces an HTML page which can be viewed in your browser, providing various statistics about the current HAProxy instance.                                                                                                                                                                  |
-| `:9090/haproxy?stats;csv`     | This is a CSV version of the stats above, which can be consumed by other tools. For example, it's used in the [`bluegreen_deploy.py`](bluegreen_deploy.py) script.                                                                                                                                                        |
+| `:9090/haproxy?stats;csv`     | This is a CSV version of the stats above, which can be consumed by other tools. For example, it's used in the [`zdd.py`](zdd.py) script.                                                                                                                                                        |
 | `:9090/_haproxy_health_check` | HAProxy health check endpoint. Returns `200 OK` if HAProxy is healthy.                                                                                                                                                                                                                                                    |
 | `:9090/_haproxy_getconfig`    | Returns the HAProxy config file as it was when HAProxy was started. Implemented in [`getconfig.lua`](getconfig.lua).                                                                                                                                                                                                      |
-| `:9090/_haproxy_getpids`      | Returns the PIDs for all HAProxy instances within the current process namespace. This literally returns `$(pidof haproxy)`. Implemented in [`getpids.lua`](getpids.lua). This is also used by the [`bluegreen_deploy.py`](bluegreen_deploy.py) script to determine if connections have finished draining during a deploy. |
+| `:9090/_haproxy_getpids`      | Returns the PIDs for all HAProxy instances within the current process namespace. This literally returns `$(pidof haproxy)`. Implemented in [`getpids.lua`](getpids.lua). This is also used by the [`zdd.py`](zdd.py) script to determine if connections have finished draining during a deploy. |
 
 
 ## HAProxy configuration
@@ -225,7 +226,7 @@ are [documented here](Longhelp.md#templates).
 
  * Use service ports within the reserved range (which is 10000 to 10100 by default). This will prevent port conflicts, and ensure reloads don't result in connection errors.
  * Avoid using the `HAPROXY_{n}_PORT` label; prefer defining service ports.
- * Consider running multiple marathon-lb instances. In practice, 2 or more should be used to provide high availability.
+ * Consider running multiple marathon-lb instances. In practice, 2 or more should be used to provide high availability. Note: **do not** run marathon-lb on every node in your cluster. This is considered an anti-pattern due to the implications of hammering the Marathon API and excess health checking.
  * Consider using a dedicated load balancer in front of marathon-lb to permit upgrades/changes. Common choices include an ELB (on AWS) or a hardware load balancer for on-premise installations.
  * Use separate marathon-lb groups (specified with `--group`) for internal and external load balancing. On DC/OS, the default group is `external`. A simple `options.json` for an internal load balancer would be:
 
@@ -254,28 +255,30 @@ are [documented here](Longhelp.md#templates).
   < HTTP/1.1 200 OK
   ```
 
-## Zero downtime deployments
+## Zero-downtime deployments
 
 Marathon-lb is able to perform canary style blue/green deployment with zero downtime. To execute such deployments, you must follow certain patterns when using Marathon.
 
-The deployment method is described [in this Marathon document](https://mesosphere.github.io/marathon/docs/blue-green-deploy.html). Marathon-lb provides an implementation of the aforementioned deployment method with the script [`bluegreen_deploy.py`](bluegreen_deploy.py). To perform a zero downtime deploy using `bluegreen_deploy.py`, you must:
+The deployment method is described [in this Marathon document](https://mesosphere.github.io/marathon/docs/blue-green-deploy.html). Marathon-lb provides an implementation of the aforementioned deployment method with the script [`zdd.py`](zdd.py). To perform a zero downtime deploy using `zdd.py`, you must:
 
 
 - Specify the `HAPROXY_DEPLOYMENT_GROUP` and `HAPROXY_DEPLOYMENT_ALT_PORT` labels in your app template
   - `HAPROXY_DEPLOYMENT_GROUP`: This label uniquely identifies a pair of apps belonging to a blue/green deployment, and will be used as the app name in the HAProxy configuration
   - `HAPROXY_DEPLOYMENT_ALT_PORT`: An alternate service port is required because Marathon requires service ports to be unique across all apps
 - Only use 1 service port: multiple ports are not yet implemented
-- Use the provided `bluegreen_deploy.py` script to orchestrate the deploy: the script will make API calls to Marathon, and use the HAProxy stats endpoint to gracefully terminate instances
+- Use the provided `zdd.py` script to orchestrate the deploy: the script will make API calls to Marathon, and use the HAProxy stats endpoint to gracefully terminate instances
 - The marathon-lb container must be run in privileged mode (to execute `iptables` commands) due to the issues outlined in the excellent blog post by the [Yelp engineering team found here](http://engineeringblog.yelp.com/2015/04/true-zero-downtime-haproxy-reloads.html)
 - If you have long-lived TCP connections using the same HAProxy instances, it may cause the deploy to take longer than necessary. The script will wait up to 5 minutes (by default) for connections to drain from HAProxy between steps, but any long-lived TCP connections will cause old instances of HAProxy to stick around.
 
 An example minimal configuration for a [test instance of nginx is included here](tests/1-nginx.json). You might execute a deployment from a CI tool like Jenkins with:
 
 ```
-./bluegreen_deploy.py -j 1-nginx.json -m http://master.mesos:8080 -f -l http://marathon-lb.marathon.mesos:9090 --syslog-socket /dev/null
+./zdd.py -j 1-nginx.json -m http://master.mesos:8080 -f -l http://marathon-lb.marathon.mesos:9090 --syslog-socket /dev/null
 ```
 
 Zero downtime deployments are accomplished through the use of a Lua module, which reports the number of HAProxy processes which are currently running by hitting the stats endpoint at the `/_haproxy_getpids`. After a restart, there will be multiple HAProxy PIDs until all remaining connections have gracefully terminated. By waiting for all connections to complete, you may safely and deterministically drain tasks. A caveat of this, however, is that if you have any long-lived connections on the same LB, HAProxy will continue to run and serve those connections until they complete, thereby breaking this technique.
+
+The ZDD script includes the ability to specify a pre-kill hook, which is executed before draining tasks are terminated. This allows you to run your own automated checks against the old and new app before the deploy continues.
 
 ## Mesos with IP-per-task support
 

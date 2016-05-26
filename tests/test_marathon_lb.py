@@ -24,7 +24,7 @@ DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:\
 DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:\
 EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:\
 AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS
-  ssl-default-bind-options no-sslv3 no-tls-tickets
+  ssl-default-bind-options no-sslv3 no-tlsv10 no-tls-tickets
   ssl-default-server-ciphers ECDHE-ECDSA-CHACHA20-POLY1305:\
 ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:\
 ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:\
@@ -36,7 +36,7 @@ DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:\
 DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:\
 EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:\
 AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS
-  ssl-default-server-options no-sslv3 no-tls-tickets
+  ssl-default-server-options no-sslv3 no-tlsv10 no-tls-tickets
   stats socket /var/run/haproxy/socket
   server-state-file global
   server-state-base /var/state/haproxy/
@@ -1178,9 +1178,9 @@ backend nginx_10000
 '''
         self.assertMultiLineEqual(config, expected)
 
-    def test_bluegreen_app(self):
-        with open('tests/bluegreen_apps.json') as data_file:
-            bluegreen_apps = json.load(data_file)
+    def test_zdd_app(self):
+        with open('tests/zdd_apps.json') as data_file:
+            zdd_apps = json.load(data_file)
 
         class Marathon:
             def __init__(self, data):
@@ -1196,7 +1196,7 @@ backend nginx_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
-        apps = marathon_lb.get_apps(Marathon(bluegreen_apps['apps']))
+        apps = marathon_lb.get_apps(Marathon(zdd_apps['apps']))
         config = marathon_lb.config(apps, groups, bind_http_https,
                                     ssl_certs, templater)
         expected = self.base_config + '''

@@ -2,3 +2,4 @@
 templates/
 __pycache__
 *.pyc
+.env
