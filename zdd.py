@@ -207,13 +207,8 @@ def _get_task_ipaddress(task):
 
 def get_svnames_from_task(task):
     prefix = task['host'].replace('.', '_')
-    task_ip = _get_task_ipaddress(task)
-    if task['host'] == task_ip:
-        for port in task['ports']:
-            yield('{}_{}'.format(prefix, port))
-    else:
-        for port in task['ports']:
-            yield('{}_{}_{}'.format(prefix, task_ip.replace('.', '_'), port))
+    for port in task['ports']:
+        yield(prefix + '_{}'.format(port))
 
 
 def get_svnames_from_tasks(tasks):

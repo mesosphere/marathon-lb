@@ -452,19 +452,11 @@ def config(apps, groups, bind_http_https, ssl_certs, templater):
                 backendServer.host)
 
             # Create a unique, friendly name for the backend server.  We concat
-            # the host, task IP and task port together.  If the host and task
-            # IP are actually the same then omit one for clarity.
-            if backendServer.host != backendServer.ip:
-                serverName = re.sub(
-                    r'[^a-zA-Z0-9\-]', '_',
-                    (backendServer.host + '_' +
-                     backendServer.ip + '_' +
-                     str(backendServer.port)))
-            else:
-                serverName = re.sub(
-                    r'[^a-zA-Z0-9\-]', '_',
-                    (backendServer.ip + '_' +
-                     str(backendServer.port)))
+            serverName = re.sub(
+                r'[^a-zA-Z0-9\-]', '_',
+                (backendServer.host + '_' +
+                    str(backendServer.port)))
+
             shortHashedServerName = hashlib.sha1(serverName.encode()) \
                 .hexdigest()[:10]
 
