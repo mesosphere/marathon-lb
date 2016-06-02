@@ -2,15 +2,13 @@
 
 from common import *
 from datetime import datetime
-from collections import namedtuple, defaultdict
-from itertools import groupby
+from collections import namedtuple
 
 import argparse
 import json
 import requests
 import csv
 import time
-import re
 import math
 import six.moves.urllib as urllib
 import socket
