@@ -658,6 +658,52 @@ Example:
 This option glues the backend to the frontend.
     '''))
 
+        self.add_template(
+            ConfigTemplate(name='HTTP_BACKEND_NETWORK_ALLOWED_ACL',
+                           value='''\
+  acl network_allowed src {network_allowed}
+''',
+                           overridable=True,
+                           description='''\
+This option set the IPs (or IP ranges) having access to the HTTP backend.
+'''))
+
+        self.add_template(
+            ConfigTemplate(name='HTTP_BACKEND_ACL_ALLOW_DENY',
+                           value='''\
+  http-request allow if network_allowed
+  http-request deny
+''',
+                           overridable=False,
+                           description='''\
+This option denies all IPs (or IP ranges) not explicitly allowed to access\
+ the HTTP backend.
+Use with HAPROXY_HTTP_BACKEND_NETWORK_ALLOWED_ACL.
+'''))
+
+        self.add_template(
+            ConfigTemplate(name='TCP_BACKEND_NETWORK_ALLOWED_ACL',
+                           value='''\
+  acl network_allowed src {network_allowed}
+''',
+                           overridable=True,
+                           description='''\
+This option set the IPs (or IP ranges) having access to the TCP backend.
+'''))
+
+        self.add_template(
+            ConfigTemplate(name='TCP_BACKEND_ACL_ALLOW_DENY',
+                           value='''\
+  tcp-request content accept if network_allowed
+  tcp-request content reject
+''',
+                           overridable=False,
+                           description='''\
+This option denies all IPs (or IP ranges) not explicitly allowed to access\
+ the TCP backend.
+Use with HAPROXY_TCP_BACKEND_ACL_ALLOW_DENY.
+'''))
+
     def __init__(self, directory='templates'):
         self.__template_directory = directory
         self.t = dict()
@@ -756,6 +802,14 @@ Specified as {specifiedAs}.
     @property
     def haproxy_http_frontend_appid_head(self):
         return self.t['HTTP_FRONTEND_APPID_HEAD'].value
+
+    @property
+    def haproxy_http_backend_acl_allow_deny(self):
+        return self.t['HTTP_BACKEND_ACL_ALLOW_DENY'].value
+
+    @property
+    def haproxy_tcp_backend_acl_allow_deny(self):
+        return self.t['TCP_BACKEND_ACL_ALLOW_DENY'].value
 
     @property
     def haproxy_https_frontend_head(self):
@@ -953,6 +1007,16 @@ Specified as {specifiedAs}.
             return app.labels['HAPROXY_{0}_FRONTEND_BACKEND_GLUE']
         return self.t['FRONTEND_BACKEND_GLUE'].value
 
+    def haproxy_http_backend_network_allowed_acl(self, app):
+        if 'HAPROXY_{0}_HTTP_BACKEND_NETWORK_ALLOWED_ACL' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTP_BACKEND_NETWORK_ALLOWED_ACL']
+        return self.t['HTTP_BACKEND_NETWORK_ALLOWED_ACL'].value
+
+    def haproxy_tcp_backend_network_allowed_acl(self, app):
+        if 'HAPROXY_{0}_TCP_BACKEND_NETWORK_ALLOWED_ACL' in app.labels:
+            return app.labels['HAPROXY_{0}_TCP_BACKEND_NETWORK_ALLOWED_ACL']
+        return self.t['TCP_BACKEND_NETWORK_ALLOWED_ACL'].value
+
     def __blank_prefix_or_empty(self, s):
         if s:
             return ' ' + s
@@ -1036,6 +1100,10 @@ def set_revproxypath(x, k, v):
 
 def set_redirpath(x, k, v):
     x.redirpath = v
+
+
+def set_network_allowed(x, k, v):
+    x.network_allowed = v
 
 
 class Label:
@@ -1255,6 +1323,15 @@ By default, any backends which use `HAPROXY_{n}_PATH` will have a
 weight of 1, if the default weight is used (which is 0).
 
 Ex: `HAPROXY_0_BACKEND_WEIGHT = 1`
+                    '''))
+
+labels.append(Label(name='BACKEND_NETWORK_ALLOWED_ACL',
+                    func=set_network_allowed,
+                    description='''\
+Set the IPs (or IP ranges) having access to the backend. \
+By default every IP is allowed.
+
+Ex: `HAPROXY_0_BACKEND_NETWORK_ALLOWED_ACL = '127.0.0.1/8, 10.1.55.43'`
                     '''))
 
 labels.append(Label(name='FRONTEND_HEAD',

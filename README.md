@@ -191,7 +191,6 @@ path from where the script is run. Some templates can also be
 [overridden _per app service port_](#overridable-templates). You may add your
 own templates to the Docker image, or provide them at startup.
 
-
 See [the configuration doc for the full list](Longhelp.md#templates)
 of templates.
 
@@ -287,7 +286,7 @@ feature, whereby each task is assigned unique, accessible, IP addresses.  For th
 tasks services are directly accessible via the configured discovery ports and there
 is no host port mapping.  Note, that due to limitations with Marathon (see
 [mesosphere/marathon#3636](https://github.com/mesosphere/marathon/issues/3636))
-configured service ports are not exposed to marathon-lb for IP-per-task apps.  
+configured service ports are not exposed to marathon-lb for IP-per-task apps.
 
 For these apps, if the service ports are missing from the Marathon app data,
 marathon-lb will automatically assign port values from a configurable range.  The range
