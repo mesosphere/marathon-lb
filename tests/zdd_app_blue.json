@@ -158,12 +158,6 @@
         {
           "id":"nginx-green.23532518-c931-11e5-9836-026ee08d9f6f",
           "host":"10.0.6.25",
-          "ipAddresses":[
-            {
-              "ipAddress":"10.0.6.25",
-              "protocol":"IPv4"
-            }
-          ],
           "ports":[
             23336
           ],

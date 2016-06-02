@@ -199,9 +199,17 @@ def select_drained_listeners(listeners):
     return [l for l in draining_listeners if not _has_pending_requests(l)]
 
 
+def _get_task_ip(task):
+    task_ipaddresses = task.get('ipAddresses')
+    if task_ipaddresses:
+        return task_ipaddresses[0]['ipAddress']
+    else:
+        return task['host']
+
+
 def get_svnames_from_task(task):
     prefix = task['host'].replace('.', '_')
-    task_ip = task['ipAddresses'][0]['ipAddress']
+    task_ip = _get_task_ip(task)
     if task['host'] == task_ip:
         for port in task['ports']:
             yield('{}_{}'.format(prefix, port))
