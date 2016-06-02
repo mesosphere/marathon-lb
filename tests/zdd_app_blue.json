@@ -160,7 +160,7 @@
           "host":"10.0.6.25",
           "ipAddresses":[
             {
-              "ipAddress":"172.17.1.73",
+              "ipAddress":"10.0.6.25",
               "protocol":"IPv4"
             }
           ],
