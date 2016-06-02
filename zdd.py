@@ -2,15 +2,13 @@
 
 from common import *
 from datetime import datetime
-from collections import namedtuple, defaultdict
-from itertools import groupby
+from collections import namedtuple
 
 import argparse
 import json
 import requests
 import csv
 import time
-import re
 import math
 import six.moves.urllib as urllib
 import socket
@@ -199,10 +197,23 @@ def select_drained_listeners(listeners):
     return [l for l in draining_listeners if not _has_pending_requests(l)]
 
 
+def _get_task_ipaddress(task):
+    task_ipaddresses = task.get('ipAddresses')
+    if task_ipaddresses:
+        return task_ipaddresses[0]['ipAddress']
+    else:
+        return task['host']
+
+
 def get_svnames_from_task(task):
     prefix = task['host'].replace('.', '_')
-    for port in task['ports']:
-        yield(prefix + '_{}'.format(port))
+    task_ip = _get_task_ipaddress(task)
+    if task['host'] == task_ip:
+        for port in task['ports']:
+            yield('{}_{}'.format(prefix, port))
+    else:
+        for port in task['ports']:
+            yield('{}_{}_{}'.format(prefix, task_ip.replace('.', '_'), port))
 
 
 def get_svnames_from_tasks(tasks):

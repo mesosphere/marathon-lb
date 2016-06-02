@@ -110,8 +110,9 @@ class TestBluegreenDeploy(unittest.TestCase):
 
         task_svnames = zdd.get_svnames_from_tasks(tasks)
 
-        assert '10_0_6_25_16916' in task_svnames
-        assert '10_0_6_25_31184' in task_svnames
+        assert '10_0_6_25_172_17_1_72_16916' in task_svnames
+        assert '10_0_6_25_172_17_1_71_31184' in task_svnames
+        assert '10_0_6_25_23336' in task_svnames
 
     def test_parse_haproxy_stats(self):
         with open('tests/haproxy_stats.csv') as f:
