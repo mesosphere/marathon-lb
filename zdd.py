@@ -201,8 +201,13 @@ def select_drained_listeners(listeners):
 
 def get_svnames_from_task(task):
     prefix = task['host'].replace('.', '_')
-    for port in task['ports']:
-        yield(prefix + '_{}'.format(port))
+    task_ip = task['ipAddresses'][0]['ipAddress']
+    if task['host'] == task_ip:
+        for port in task['ports']:
+            yield('{}_{}'.format(prefix, port))
+    else:
+        for port in task['ports']:
+            yield('{}_{}_{}'.format(prefix, task_ip.replace('.', '_'), port))
 
 
 def get_svnames_from_tasks(tasks):
