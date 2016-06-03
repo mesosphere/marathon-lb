@@ -1,7 +1,7 @@
 import unittest
 import common
 from mock import Mock
-from pprint import pprint
+
 
 class TestCommon(unittest.TestCase):
 
