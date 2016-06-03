@@ -677,7 +677,7 @@ def process_arguments():
 if __name__ == '__main__':
     args = process_arguments()
     set_request_retries()
-    setup_logging(logger, args.syslog_socket, args.log_format)
+    setup_logging(logger, args.syslog_socket, args.log_format, args.log_level)
 
     if do_zdd(args):
         sys.exit(0)

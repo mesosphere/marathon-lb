@@ -6,8 +6,8 @@ import sys
 import logging
 
 
-def setup_logging(logger, syslog_socket, log_format):
-    logger.setLevel(logging.DEBUG)
+def setup_logging(logger, syslog_socket, log_format, log_level='DEBUG'):
+    logger.setLevel(getattr(logger, log_level.upper()))
 
     formatter = logging.Formatter(log_format)
 
@@ -67,5 +67,9 @@ def set_logging_args(parser):
     parser.add_argument("--log-format",
                         help="Set log message format",
                         default="%(name)s: %(message)s"
+                        )
+    parser.add_argument("--log-level",
+                        help="Set log level",
+                        default="DEBUG"
                         )
     return parser
