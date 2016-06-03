@@ -1,17 +1,16 @@
 import unittest
 import common
-from mock import Mock
+from mock import Mock, mock
 
 
 class TestCommon(unittest.TestCase):
 
     def test_setup_logging_log_level(self):
         logger = Mock()
-        logger.INFO = 'BAR'
         common.setup_logging(logger, '/dev/null',
                              '%(name)s: %(message)s', 'info')
 
-        logger.setLevel.assert_called_with('BAR')
+        logger.setLevel.assert_called_with(20)
 
     def test_setup_logging_invalid_log_level(self):
         logger = Mock()

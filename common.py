@@ -13,7 +13,7 @@ def setup_logging(logger, syslog_socket, log_format, log_level='DEBUG'):
                          'INFO', 'DEBUG', 'NOTSET']:
         raise Exception('Invalid log level: {}'.format(log_level.upper()))
 
-    logger.setLevel(getattr(logger, log_level))
+    logger.setLevel(getattr(logging, log_level))
 
     formatter = logging.Formatter(log_format)
 
