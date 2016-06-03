@@ -10,7 +10,7 @@ def setup_logging(logger, syslog_socket, log_format, log_level='DEBUG'):
     log_level = log_level.upper()
 
     if log_level not in ['CRITICAL', 'ERROR', 'WARNING',
-                                 'INFO', 'DEBUG', 'NOTSET']:
+                         'INFO', 'DEBUG', 'NOTSET']:
         raise Exception('Invalid log level: {}'.format(log_level.upper()))
 
     logger.setLevel(getattr(logger, log_level))
