@@ -1407,7 +1407,7 @@ if __name__ == '__main__':
     s.mount('http://', a)
 
     # Setup logging
-    setup_logging(logger, args.syslog_socket, args.log_format)
+    setup_logging(logger, args.syslog_socket, args.log_format, args.log_level)
 
     # initialize health check LRU cache
     if args.health_check:
