@@ -18,7 +18,7 @@ tar xf haproxy-*.tar.gz
 cd haproxy-*
 make -j4 \
   TARGET=custom \
-  CPU=native \
+  CPU=x86_64 \
   USE_PCRE=1 \
   USE_PCRE_JIT=1 \
   USE_LIBCRYPT=1 \
