@@ -14,6 +14,7 @@ import six.moves.urllib as urllib
 import socket
 import sys
 import subprocess
+from utils import *
 
 
 logger = logging.getLogger('zdd')
@@ -197,35 +198,21 @@ def select_drained_listeners(listeners):
     return [l for l in draining_listeners if not _has_pending_requests(l)]
 
 
-def _get_task_ipaddress(task):
-    task_ipaddresses = task.get('ipAddresses')
-    if task_ipaddresses:
-        return task_ipaddresses[0]['ipAddress']
-    else:
-        return task['host']
-
-
-def get_svnames_from_task(args, task):
+def get_svnames_from_task(app, task):
     prefix = task['host'].replace('.', '_')
-    task_ip = _get_task_ipaddress(task)
+    task_ip, task_port = get_task_ip_and_ports(app, task)
     if task['host'] == task_ip:
         for port in task['ports']:
             yield('{}_{}'.format(prefix, port))
     else:
-        if not (hasattr(args, 'no_ip_per_container') and
-                args.no_ip_per_container):
-            for port in task['ports']:
-                yield('{}_{}_{}'.format(prefix, task_ip.replace('.', '_'),
-                                        port))
-        else:
-            for port in task['ports']:
-                yield('{}_{}'.format(prefix, port))
+        for port in task['ports']:
+            yield('{}_{}_{}'.format(prefix, task_ip.replace('.', '_'), port))
 
 
-def get_svnames_from_tasks(args, tasks):
+def get_svnames_from_tasks(app, tasks):
     svnames = []
     for task in tasks:
-        svnames += get_svnames_from_task(args, task)
+        svnames += get_svnames_from_task(app, task)
     return svnames
 
 
@@ -233,11 +220,11 @@ def _has_pending_requests(listener):
     return int(listener.qcur or 0) > 0 or int(listener.scur or 0) > 0
 
 
-def find_drained_task_ids(args, app, listeners, haproxy_count):
+def find_drained_task_ids(app, listeners, haproxy_count):
     """Return app tasks which have all haproxy listeners down and draining
        of any pending sessions or connections
     """
-    tasks = zip(get_svnames_from_tasks(args, app['tasks']), app['tasks'])
+    tasks = zip(get_svnames_from_tasks(app, app['tasks']), app['tasks'])
     drained_listeners = select_drained_listeners(listeners)
 
     drained_task_ids = []
@@ -249,10 +236,10 @@ def find_drained_task_ids(args, app, listeners, haproxy_count):
     return drained_task_ids
 
 
-def find_draining_task_ids(args, app, listeners, haproxy_count):
+def find_draining_task_ids(app, listeners, haproxy_count):
     """Return app tasks which have all haproxy listeners draining
     """
-    tasks = zip(get_svnames_from_tasks(args, app['tasks']), app['tasks'])
+    tasks = zip(get_svnames_from_tasks(app, app['tasks']), app['tasks'])
     draining_listeners = select_draining_listeners(listeners)
 
     draining_task_ids = []
@@ -302,12 +289,12 @@ def find_tasks_to_kill(args, new_app, old_app, timestamp):
         if waiting_for_drained_listeners(listeners):
             continue
 
-        return find_drained_task_ids(args, old_app, listeners, haproxy_count)
+        return find_drained_task_ids(old_app, listeners, haproxy_count)
 
     logger.info('Timed out waiting for tasks to fully drain, find any draining'
                 ' tasks and continue with deployment...')
 
-    return find_draining_task_ids(args, old_app, listeners, haproxy_count)
+    return find_draining_task_ids(old_app, listeners, haproxy_count)
 
 
 def deployment_in_progress(app):
@@ -441,7 +428,7 @@ def get_service_port(app):
 def set_service_port(app, servicePort):
     try:
         app['container']['docker']['portMappings'][0]['servicePort'] = \
-            int(servicePort)
+          int(servicePort)
     except KeyError:
         app['ports'][0] = int(servicePort)
 
@@ -476,7 +463,7 @@ def set_service_ports(app, servicePort):
     app['labels']['HAPROXY_0_PORT'] = str(get_service_port(app))
     try:
         app['container']['docker']['portMappings'][0]['servicePort'] = \
-            int(servicePort)
+          int(servicePort)
         return app
     except KeyError:
         app['ports'][0] = int(servicePort)
@@ -629,13 +616,6 @@ def get_arg_parser():
                         help="Initial number of app instances to launch",
                         type=int, default=1
                         )
-    parser.add_argument("--no-ip-per-container", "-n",
-                        help="Set this to False if marathon lb is "
-                        "generating listener/backend names in the form of "
-                        "'mesos_slave_ip_container_ip_port', set this to true "
-                        "if marathon lb is generating listener/backend names "
-                        "in the form 'mesos_slave_ip_port'",
-                        default=False, action="store_true")
     parser.add_argument("--resume", "-r",
                         help="Resume from a previous deployment",
                         action="store_true"

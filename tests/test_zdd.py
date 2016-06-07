@@ -79,9 +79,9 @@ class TestBluegreenDeploy(unittest.TestCase):
         haproxy_instance_count = 2
         apps = json.loads(open('tests/zdd_app_blue.json').read())
         app = apps['apps'][0]
-        args = Arguments()
+
         results = \
-            zdd.find_drained_task_ids(args, app,
+            zdd.find_drained_task_ids(app,
                                       listeners,
                                       haproxy_instance_count)
 
@@ -94,9 +94,9 @@ class TestBluegreenDeploy(unittest.TestCase):
         haproxy_instance_count = 2
         apps = json.loads(open('tests/zdd_app_blue.json').read())
         app = apps['apps'][0]
-        args = Arguments()
+
         results = \
-            zdd.find_draining_task_ids(args, app,
+            zdd.find_draining_task_ids(app,
                                        listeners,
                                        haproxy_instance_count)
 
@@ -107,15 +107,8 @@ class TestBluegreenDeploy(unittest.TestCase):
     def test_get_svnames_from_tasks(self):
         apps = json.loads(open('tests/zdd_app_blue.json').read())
         tasks = apps['apps'][0]['tasks']
-        args = Arguments()
-        task_svnames = zdd.get_svnames_from_tasks(args, tasks)
 
-        assert '10_0_6_25_172_17_1_72_16916' in task_svnames
-        assert '10_0_6_25_172_17_1_71_31184' in task_svnames
-        assert '10_0_6_25_23336' in task_svnames
-
-        args.no_ip_per_container = True
-        task_svnames = zdd.get_svnames_from_tasks(args, tasks)
+        task_svnames = zdd.get_svnames_from_tasks(apps, tasks)
         assert '10_0_6_25_16916' in task_svnames
         assert '10_0_6_25_31184' in task_svnames
         assert '10_0_6_25_23336' in task_svnames
