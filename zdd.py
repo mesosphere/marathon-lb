@@ -212,7 +212,8 @@ def get_svnames_from_task(args, task):
         for port in task['ports']:
             yield('{}_{}'.format(prefix, port))
     else:
-        if not args.no_ip_per_container:
+        if not (hasattr(args, 'no_ip_per_container') and
+                args.no_ip_per_container):
             for port in task['ports']:
                 yield('{}_{}_{}'.format(prefix, task_ip.replace('.', '_'),
                                         port))
@@ -248,7 +249,7 @@ def find_drained_task_ids(args, app, listeners, haproxy_count):
     return drained_task_ids
 
 
-def find_draining_task_ids(app, listeners, haproxy_count):
+def find_draining_task_ids(args, app, listeners, haproxy_count):
     """Return app tasks which have all haproxy listeners draining
     """
     tasks = zip(get_svnames_from_tasks(args, app['tasks']), app['tasks'])
