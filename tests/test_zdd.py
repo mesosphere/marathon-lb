@@ -108,10 +108,9 @@ class TestBluegreenDeploy(unittest.TestCase):
         apps = json.loads(open('tests/zdd_app_blue.json').read())
         tasks = apps['apps'][0]['tasks']
 
-        task_svnames = zdd.get_svnames_from_tasks(tasks)
-
-        assert '10_0_6_25_172_17_1_72_16916' in task_svnames
-        assert '10_0_6_25_172_17_1_71_31184' in task_svnames
+        task_svnames = zdd.get_svnames_from_tasks(apps, tasks)
+        assert '10_0_6_25_16916' in task_svnames
+        assert '10_0_6_25_31184' in task_svnames
         assert '10_0_6_25_23336' in task_svnames
 
     def test_parse_haproxy_stats(self):

@@ -14,6 +14,7 @@ import six.moves.urllib as urllib
 import socket
 import sys
 import subprocess
+from utils import *
 
 
 logger = logging.getLogger('zdd')
@@ -197,17 +198,9 @@ def select_drained_listeners(listeners):
     return [l for l in draining_listeners if not _has_pending_requests(l)]
 
 
-def _get_task_ipaddress(task):
-    task_ipaddresses = task.get('ipAddresses')
-    if task_ipaddresses:
-        return task_ipaddresses[0]['ipAddress']
-    else:
-        return task['host']
-
-
-def get_svnames_from_task(task):
+def get_svnames_from_task(app, task):
     prefix = task['host'].replace('.', '_')
-    task_ip = _get_task_ipaddress(task)
+    task_ip, task_port = get_task_ip_and_ports(app, task)
     if task['host'] == task_ip:
         for port in task['ports']:
             yield('{}_{}'.format(prefix, port))
@@ -216,10 +209,10 @@ def get_svnames_from_task(task):
             yield('{}_{}_{}'.format(prefix, task_ip.replace('.', '_'), port))
 
 
-def get_svnames_from_tasks(tasks):
+def get_svnames_from_tasks(app, tasks):
     svnames = []
     for task in tasks:
-        svnames += get_svnames_from_task(task)
+        svnames += get_svnames_from_task(app, task)
     return svnames
 
 
@@ -231,7 +224,7 @@ def find_drained_task_ids(app, listeners, haproxy_count):
     """Return app tasks which have all haproxy listeners down and draining
        of any pending sessions or connections
     """
-    tasks = zip(get_svnames_from_tasks(app['tasks']), app['tasks'])
+    tasks = zip(get_svnames_from_tasks(app, app['tasks']), app['tasks'])
     drained_listeners = select_drained_listeners(listeners)
 
     drained_task_ids = []
@@ -246,7 +239,7 @@ def find_drained_task_ids(app, listeners, haproxy_count):
 def find_draining_task_ids(app, listeners, haproxy_count):
     """Return app tasks which have all haproxy listeners draining
     """
-    tasks = zip(get_svnames_from_tasks(app['tasks']), app['tasks'])
+    tasks = zip(get_svnames_from_tasks(app, app['tasks']), app['tasks'])
     draining_listeners = select_draining_listeners(listeners)
 
     draining_task_ids = []
