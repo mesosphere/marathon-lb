@@ -258,8 +258,7 @@ def max_wait_not_exceeded(max_wait, timestamp):
 def find_tasks_to_kill(args, new_app, old_app, timestamp):
     marathon_lb_urls = get_marathon_lb_urls(args)
     haproxy_count = len(marathon_lb_urls)
-    listeners = []
-
+    listeners = fetch_app_listeners(new_app, marathon_lb_urls)
     while max_wait_not_exceeded(args.max_wait, timestamp):
         time.sleep(args.step_delay)
 
