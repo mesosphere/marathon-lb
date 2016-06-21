@@ -150,6 +150,14 @@ You can skip the configuration file validation (via calling HAProxy service) pro
 $ ./marathon_lb.py --marathon http://localhost:8080 --group external --skip-validation
 ```
 
+### Using Haproxy maps for backends.
+You can use haproxy maps to map web application to backends to speed up this lookup. This can be very useful for large installations where web application to backend lookup can take considerable time.This can be done by using --haproxy-map flag.
+
+```console 
+$ ./marathon_lb.py --marathon http://localhost:8080 --group external --haproxy-map
+```
+Currently it creates a lookup dictionary only for host headers(both http and https), for path based routing and auth, it uses the usual backend rules.
+
 ### API endpoints
 
 Marathon-lb exposes a few endpoints on port 9090 (by default). They are:

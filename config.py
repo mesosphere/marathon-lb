@@ -223,6 +223,17 @@ of the `HAPROXY_HTTP_FRONTEND_HEAD`
 '''))
 
         self.add_template(
+            ConfigTemplate(name='MAP_HTTP_FRONTEND_ACL',
+                           value='''\
+  use_backend %[req.hdr(host),lower,map_dom({haproxy_dir}/domain2backend.map)]
+''',
+                           overridable=True,
+                           description='''\
+The ACL that glues a backend to the corresponding virtual host
+of the `HAPROXY_HTTP_FRONTEND_HEAD` using haproxy maps.
+'''))
+
+        self.add_template(
             ConfigTemplate(name='HTTP_FRONTEND_ACL_WITH_AUTH',
                            value='''\
   acl host_{cleanedUpHostname} hdr(host) -i {hostname}
@@ -248,6 +259,17 @@ Define the ACL matching a particular hostname, but unlike
 `HAPROXY_HTTP_FRONTEND_ACL`, only do the ACL portion. Does not glue
 the ACL to the backend. This is useful only in the case of multiple
 vhosts routing to the same backend.
+'''))
+
+        self.add_template(
+            ConfigTemplate(name='MAP_HTTP_FRONTEND_ACL_ONLY',
+                           value='''\
+  use_backend %[req.hdr(host),lower,map_dom({haproxy_dir}/domain2backend.map)]
+''',
+                           overridable=True,
+                           description='''\
+Define the ACL matching a particular hostname, This is useful only in the case
+ of multiple vhosts routing to the same backend in haproxy map.
 '''))
 
         self.add_template(
@@ -392,6 +414,18 @@ of the `HAPROXY_HTTP_FRONTEND_APPID_HEAD`.
 '''))
 
         self.add_template(
+            ConfigTemplate(name='MAP_HTTP_FRONTEND_APPID_ACL',
+                           value='''\
+  use_backend %[req.hdr(x-marathon-app-id),lower,\
+map_str({haproxy_dir}/domain2backend.map)]
+''',
+                           overridable=True,
+                           description='''\
+The ACL that glues a backend to the corresponding app
+of the `HAPROXY_HTTP_FRONTEND_APPID_HEAD` using haproxy maps.
+'''))
+
+        self.add_template(
             ConfigTemplate(name='HTTPS_FRONTEND_ACL',
                            value='''\
   use_backend {backend} if {{ ssl_fc_sni {hostname} }}
@@ -400,6 +434,17 @@ of the `HAPROXY_HTTP_FRONTEND_APPID_HEAD`.
                            description='''\
 The ACL that performs the SNI based hostname matching
 for the `HAPROXY_HTTPS_FRONTEND_HEAD` template.
+'''))
+
+        self.add_template(
+            ConfigTemplate(name='MAP_HTTPS_FRONTEND_ACL',
+                           value='''\
+  use_backend %[ssl_fc_sni,lower,map_dom({haproxy_dir}/domain2backend.map)]
+''',
+                           overridable=True,
+                           description='''\
+The ACL that performs the SNI based hostname matching
+for the `HAPROXY_HTTPS_FRONTEND_HEAD` template using haproxy maps
 '''))
 
         self.add_template(
@@ -874,10 +919,20 @@ Specified as {specifiedAs}.
             return app.labels['HAPROXY_{0}_HTTP_FRONTEND_ACL']
         return self.t['HTTP_FRONTEND_ACL'].value
 
+    def haproxy_map_http_frontend_acl(self, app):
+        if 'HAPROXY_{0}_HTTP_FRONTEND_ACL' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTP_FRONTEND_ACL']
+        return self.t['MAP_HTTP_FRONTEND_ACL'].value
+
     def haproxy_http_frontend_acl_only(self, app):
         if 'HAPROXY_{0}_HTTP_FRONTEND_ACL_ONLY' in app.labels:
             return app.labels['HAPROXY_{0}_HTTP_FRONTEND_ACL_ONLY']
         return self.t['HTTP_FRONTEND_ACL_ONLY'].value
+
+    def haproxy_map_http_frontend_acl_only(self, app):
+        if 'HAPROXY_{0}_HTTP_FRONTEND_ACL_ONLY' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTP_FRONTEND_ACL_ONLY']
+        return self.t['MAP_HTTP_FRONTEND_ACL_ONLY'].value
 
     def haproxy_http_frontend_routing_only(self, app):
         if 'HAPROXY_{0}_HTTP_FRONTEND_ROUTING_ONLY' in app.labels:
@@ -933,10 +988,20 @@ Specified as {specifiedAs}.
             return app.labels['HAPROXY_{0}_HTTP_FRONTEND_APPID_ACL']
         return self.t['HTTP_FRONTEND_APPID_ACL'].value
 
+    def haproxy_map_http_frontend_appid_acl(self, app):
+        if 'HAPROXY_{0}_HTTP_FRONTEND_APPID_ACL' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTP_FRONTEND_APPID_ACL']
+        return self.t['MAP_HTTP_FRONTEND_APPID_ACL'].value
+
     def haproxy_https_frontend_acl(self, app):
         if 'HAPROXY_{0}_HTTPS_FRONTEND_ACL' in app.labels:
             return app.labels['HAPROXY_{0}_HTTPS_FRONTEND_ACL']
         return self.t['HTTPS_FRONTEND_ACL'].value
+
+    def haproxy_map_https_frontend_acl(self, app):
+        if 'HAPROXY_{0}_HTTPS_FRONTEND_ACL' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTPS_FRONTEND_ACL']
+        return self.t['MAP_HTTPS_FRONTEND_ACL'].value
 
     def haproxy_https_frontend_acl_with_path(self, app):
         if 'HAPROXY_{0}_HTTPS_FRONTEND_ACL_WITH_PATH' in app.labels:
@@ -1349,7 +1414,13 @@ labels.append(Label(name='BACKEND_HEAD',
 labels.append(Label(name='HTTP_FRONTEND_ACL',
                     func=set_label,
                     description=''))
+labels.append(Label(name='MAP_HTTP_FRONTEND_ACL',
+                    func=set_label,
+                    description=''))
 labels.append(Label(name='HTTP_FRONTEND_ACL_ONLY',
+                    func=set_label,
+                    description=''))
+labels.append(Label(name='MAP_HTTP_FRONTEND_ACL_ONLY',
                     func=set_label,
                     description=''))
 labels.append(Label(name='HTTP_FRONTEND_ROUTING_ONLY',
@@ -1379,7 +1450,13 @@ labels.append(Label(name='HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH',
 labels.append(Label(name='HTTP_FRONTEND_APPID_ACL',
                     func=set_label,
                     description=''))
+labels.append(Label(name='MAP_HTTP_FRONTEND_APPID_ACL',
+                    func=set_label,
+                    description=''))
 labels.append(Label(name='HTTPS_FRONTEND_ACL',
+                    func=set_label,
+                    description=''))
+labels.append(Label(name='MAP_HTTPS_FRONTEND_ACL',
                     func=set_label,
                     description=''))
 labels.append(Label(name='HTTPS_FRONTEND_ACL_WITH_AUTH',
