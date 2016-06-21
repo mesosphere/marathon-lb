@@ -267,9 +267,13 @@ def has_group(groups, app_groups):
 
 
 def config(apps, groups, bind_http_https, ssl_certs, templater,
-           haproxy_map=False, map_array=[], config_file="/etc/haproxy.cfg"):
+           haproxy_map=False, map_array=[],
+           config_file="/etc/haproxy/haproxy.cfg"):
     logger.info("generating config")
-    config = templater.haproxy_head
+    if haproxy_map:
+        config = templater.haproxy_head_with_map
+    else:
+        config = templater.haproxy_head
     groups = frozenset(groups)
     duplicate_map = {}
     # donot repeat use backend multiple times since map file is same.
@@ -289,6 +293,8 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
     apps_with_http_appid_backend = []
     http_frontend_list = []
     https_frontend_list = []
+    haproxy_dir = os.path.dirname(config_file)
+    logger.debug("HAProxy dir is %s", haproxy_dir)
 
     for app in sorted(apps, key=attrgetter('appId', 'servicePort')):
         # App only applies if we have it's group
@@ -344,9 +350,13 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
         # service
         if bind_http_https and app.hostname:
             backend_weight, p_fe, s_fe = \
-                generateHttpVhostAcl(templater, app, backend,
-                                     haproxy_map, map_array,
-                                     config_file, duplicate_map)
+                generateHttpVhostAcl(templater,
+                                     app,
+                                     backend,
+                                     haproxy_map,
+                                     map_array,
+                                     haproxy_dir,
+                                     duplicate_map)
             http_frontend_list.append((backend_weight, p_fe))
             https_frontend_list.append((backend_weight, s_fe))
 
@@ -364,7 +374,7 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
                     http_appid_frontend_acl = templater \
                         .haproxy_map_http_frontend_appid_acl(app)
                     http_appid_frontends += http_appid_frontend_acl.format(
-                        haproxy_dir="/".join(config_file.split("/")[:-1])
+                        haproxy_dir=haproxy_dir
                     )
                     duplicate_map['map_http_frontend_appid_acl'] = 1
                 map_element = {}
@@ -605,7 +615,7 @@ def reloadConfig():
 
 def generateHttpVhostAcl(
         templater, app, backend, haproxy_map, map_array,
-        config_file, duplicate_map):
+        haproxy_dir, duplicate_map):
     # If the hostname contains the delimiter ',', then the marathon app is
     # requesting multiple hostname matches for the same backend, and we need
     # to use alternate templates from the default one-acl/one-use_backend.
@@ -666,7 +676,7 @@ def generateHttpVhostAcl(
                     http_frontend_acl = templater.\
                         haproxy_map_http_frontend_acl_only(app)
                     staging_http_frontends += http_frontend_acl.format(
-                        haproxy_dir="/".join(config_file.split("/")[:-1])
+                        haproxy_dir=haproxy_dir
                     )
                     duplicate_map['map_http_frontend_acl'] = 1
                 map_element = {}
@@ -721,8 +731,7 @@ def generateHttpVhostAcl(
                             staging_https_frontends += https_frontend_acl.\
                                 format(
                                     hostname=vhost_hostname,
-                                    haproxy_dir="/".
-                                    join(config_file.split("/")[:-1])
+                                    haproxy_dir=haproxy_dir
                                 )
                             duplicate_map['map_https_frontend_acl'] = 1
                         map_element = {}
@@ -912,8 +921,7 @@ def generateHttpVhostAcl(
                             http_frontend_acl = \
                                 templater.haproxy_map_http_frontend_acl(app)
                             staging_http_frontends += http_frontend_acl.format(
-                                haproxy_dir="/".
-                                join(config_file.split("/")[:-1])
+                                haproxy_dir=haproxy_dir
                             )
                             duplicate_map['map_http_frontend_acl'] = 1
                         map_element = {}
@@ -946,7 +954,7 @@ def generateHttpVhostAcl(
                             haproxy_map_https_frontend_acl(app)
                         staging_https_frontends += https_frontend_acl.format(
                             hostname=app.hostname,
-                            haproxy_dir="/".join(config_file.split("/")[:-1])
+                            haproxy_dir=haproxy_dir
                         )
                         duplicate_map['map_https_frontend_acl'] = 1
                     map_element = {}
@@ -1051,7 +1059,7 @@ def compareWriteAndReloadConfig(config, config_file, map_array, haproxy_map):
         except IOError:
             logger.warning("couldn't open map file for reading")
         for element in map_array:
-            for key, value in element.iteritems():
+            for key, value in list(element.items()):
                 map_string = map_string + str(key) + " " + str(value) + "\n"
 
         if runningConfig != config or runningmap != map_string:
@@ -1319,7 +1327,8 @@ class MarathonEventProcessor(object):
                                       self.__groups,
                                       self.__bind_http_https,
                                       self.__ssl_certs,
-                                      self.__templater, self.__haproxy_map)
+                                      self.__templater,
+                                      self.__haproxy_map)
 
                     logger.debug("updating tasks finished, took %s seconds",
                                  time.time() - start_time)
@@ -1398,7 +1407,7 @@ def get_arg_parser():
                         type=int, default=1000
                         )
     parser.add_argument("--haproxy-map",
-                        help="Use haproxy maps for domain name to backend"
+                        help="Use HAProxy maps for domain name to backend"
                         "mapping.", action="store_true")
     parser.add_argument("--dont-bind-http-https",
                         help="Don't bind to HTTP and HTTPS frontends.",
@@ -1571,7 +1580,8 @@ if __name__ == '__main__':
                                    args.haproxy_config,
                                    args.group,
                                    not args.dont_bind_http_https,
-                                   args.ssl_certs, args.haproxy_map)
+                                   args.ssl_certs,
+                                   args.haproxy_map)
             except:
                 logger.exception("Caught exception")
                 backoff = backoff * 1.5
@@ -1584,6 +1594,10 @@ if __name__ == '__main__':
             time.sleep(random.random() * backoff)
     else:
         # Generate base config
-        regenerate_config(get_apps(marathon), args.haproxy_config, args.group,
+        regenerate_config(get_apps(marathon),
+                          args.haproxy_config,
+                          args.group,
                           not args.dont_bind_http_https,
-                          args.ssl_certs, ConfigTemplater(), args.haproxy_map)
+                          args.ssl_certs,
+                          ConfigTemplater(),
+                          args.haproxy_map)

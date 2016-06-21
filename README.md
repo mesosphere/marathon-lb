@@ -151,7 +151,7 @@ $ ./marathon_lb.py --marathon http://localhost:8080 --group external --skip-vali
 ```
 
 ### Using Haproxy maps for backend lookup.
-You can use haproxy maps to speed up web application (vhosts) to backend lookup. This is very useful for large installations where the traditional vhost to backend rules comparison takes considerable time since it sequentially compares each rule. Haproxy map creates a hash based lookup table so its fast compared to the other approach, this is supported in marathon-lb using --haproxy-map flag.
+You can use haproxy maps to speed up web application (vhosts) to backend lookup. This is very useful for large installations where the traditional vhost to backend rules comparison takes considerable time since it sequentially compares each rule. Haproxy map creates a hash based lookup table so its fast compared to the other approach, this is supported in marathon-lb using `--haproxy-map` flag.
 
 ```console 
 $ ./marathon_lb.py --marathon http://localhost:8080 --group external --haproxy-map
@@ -168,6 +168,7 @@ Marathon-lb exposes a few endpoints on port 9090 (by default). They are:
 | `:9090/haproxy?stats;csv`     | This is a CSV version of the stats above, which can be consumed by other tools. For example, it's used in the [`zdd.py`](zdd.py) script.                                                                                                                                                        |
 | `:9090/_haproxy_health_check` | HAProxy health check endpoint. Returns `200 OK` if HAProxy is healthy.                                                                                                                                                                                                                                                    |
 | `:9090/_haproxy_getconfig`    | Returns the HAProxy config file as it was when HAProxy was started. Implemented in [`getconfig.lua`](getconfig.lua).                                                                                                                                                                                                      |
+| `:9090/_haproxy_getvhostmap`    | Returns the HAProxy vhost to backend map. This endpoint is exposed only when `--haproxy-map` flag is used . Implemented in [`getvhostmap.lua`](getvhostmap.lua).                                                                                                                                                                                                      |
 | `:9090/_haproxy_getpids`      | Returns the PIDs for all HAProxy instances within the current process namespace. This literally returns `$(pidof haproxy)`. Implemented in [`getpids.lua`](getpids.lua). This is also used by the [`zdd.py`](zdd.py) script to determine if connections have finished draining during a deploy. |
 
 
