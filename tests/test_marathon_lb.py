@@ -1825,3 +1825,207 @@ backend nginx3_10000
   timeout check 10s
 '''
         self.assertMultiLineEqual(config, expected)
+
+    def test_config_haproxy_map(self):
+        apps = dict()
+        groups = ['external']
+        bind_http_https = True
+        ssl_certs = ""
+        templater = marathon_lb.ConfigTemplater()
+
+        healthCheck = {}
+        healthCheck = {
+            "path": "/",
+            "protocol": "HTTP",
+            "portIndex": 0,
+            "gracePeriodSeconds": 15,
+            "intervalSeconds": 3,
+            "timeoutSeconds": 15,
+            "maxConsecutiveFailures": 10,
+            "ignoreHttp1xx": False
+        }
+
+        app1 = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app1.hostname = "server.nginx.net,server.nginx1.net"
+        app1.haproxy_groups = ['external']
+        app1.add_backend("agent1", "1.1.1.1", 1024, False)
+        app2 = marathon_lb.MarathonService('/apache', 10001, healthCheck)
+        app2.hostname = "server.apache.net"
+        app2.haproxy_groups = ['external']
+        app2.add_backend("agent2", "2.2.2.2", 1025, False)
+        apps = [app1, app2]
+        haproxy_map = True
+        map_array = []
+        config_file = "/etc/haproxy/haproxy.cfg"
+        config = marathon_lb.config(apps, groups, bind_http_https, ssl_certs,
+                                    templater, haproxy_map, map_array,
+                                    config_file)
+        expected = self.base_config + '''
+frontend marathon_http_in
+  bind *:80
+  mode http
+  use_backend %[req.hdr(host),lower,map_dom(/etc/haproxy/domain2backend.map)]
+
+frontend marathon_http_appid_in
+  bind *:9091
+  mode http
+  use_backend %[req.hdr(x-marathon-app-id),lower,\
+map_str(/etc/haproxy/domain2backend.map)]
+
+frontend marathon_https_in
+  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  mode http
+  use_backend %[ssl_fc_sni,lower,map_dom(/etc/haproxy/domain2backend.map)]
+
+frontend apache_10001
+  bind *:10001
+  mode http
+  use_backend apache_10001
+
+frontend nginx_10000
+  bind *:10000
+  mode http
+  use_backend nginx_10000
+
+backend apache_10001
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  option  httpchk GET /
+  timeout check 15s
+  server agent2_2_2_2_2_1025 2.2.2.2:1025 check inter 3s fall 11
+
+backend nginx_10000
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  option  httpchk GET /
+  timeout check 15s
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 3s fall 11
+'''
+        self.assertMultiLineEqual(config, expected)
+        expected_map_array = []
+        map_element = {}
+        map_element["server.nginx.net"] = "nginx_10000"
+        expected_map_array.append(map_element)
+        map_element = {}
+        map_element["server.nginx1.net"] = "nginx_10000"
+        expected_map_array.append(map_element)
+        map_element = {}
+        map_element["server.apache.net"] = "apache_10001"
+        expected_map_array.append(map_element)
+        map_element = {}
+        map_element["/apache"] = "apache_10001"
+        expected_map_array.append(map_element)
+        map_element = {}
+        map_element["/nginx"] = "nginx_10000"
+        expected_map_array.append(map_element)
+        self.assertEqual(sorted(map_array), sorted(expected_map_array))
+
+    def test_config_haproxy_map_hybrid(self):
+        apps = dict()
+        groups = ['external']
+        bind_http_https = True
+        ssl_certs = ""
+        templater = marathon_lb.ConfigTemplater()
+
+        healthCheck = {}
+        healthCheck = {
+            "path": "/",
+            "protocol": "HTTP",
+            "portIndex": 0,
+            "gracePeriodSeconds": 15,
+            "intervalSeconds": 3,
+            "timeoutSeconds": 15,
+            "maxConsecutiveFailures": 10,
+            "ignoreHttp1xx": False
+        }
+
+        app1 = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app1.hostname = "server.nginx.net,server.nginx1.net"
+        app1.haproxy_groups = ['external']
+        app1.add_backend("agent1", "1.1.1.1", 1024, False)
+        app2 = marathon_lb.MarathonService('/apache', 10001, healthCheck)
+        app2.hostname = "server.apache.net"
+        app2.path = "/apache"
+        app2.haproxy_groups = ['external']
+        app2.add_backend("agent2", "2.2.2.2", 1025, False)
+        apps = [app1, app2]
+        haproxy_map = True
+        map_array = []
+        config_file = "/etc/haproxy/haproxy.cfg"
+        config = marathon_lb.config(apps, groups, bind_http_https, ssl_certs,
+                                    templater, haproxy_map, map_array,
+                                    config_file)
+        expected = self.base_config + '''
+frontend marathon_http_in
+  bind *:80
+  mode http
+  acl host_server_apache_net_apache hdr(host) -i server.apache.net
+  acl path_apache_10001 path_beg /apache
+  use_backend apache_10001 if host_server_apache_net_apache path_apache_10001
+  use_backend %[req.hdr(host),lower,map_dom(/etc/haproxy/domain2backend.map)]
+
+frontend marathon_http_appid_in
+  bind *:9091
+  mode http
+  use_backend %[req.hdr(x-marathon-app-id),lower,\
+map_str(/etc/haproxy/domain2backend.map)]
+
+frontend marathon_https_in
+  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  mode http
+  acl path_apache_10001 path_beg /apache
+  use_backend apache_10001 if { ssl_fc_sni server.apache.net } \
+path_apache_10001
+  use_backend %[ssl_fc_sni,lower,map_dom(/etc/haproxy/domain2backend.map)]
+
+frontend apache_10001
+  bind *:10001
+  mode http
+  use_backend apache_10001
+
+frontend nginx_10000
+  bind *:10000
+  mode http
+  use_backend nginx_10000
+
+backend apache_10001
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  option  httpchk GET /
+  timeout check 15s
+  server agent2_2_2_2_2_1025 2.2.2.2:1025 check inter 3s fall 11
+
+backend nginx_10000
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  option  httpchk GET /
+  timeout check 15s
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 3s fall 11
+'''
+        self.assertMultiLineEqual(config, expected)
+        expected_map_array = []
+        map_element = {}
+        map_element["server.nginx.net"] = "nginx_10000"
+        expected_map_array.append(map_element)
+        map_element = {}
+        map_element["server.nginx1.net"] = "nginx_10000"
+        expected_map_array.append(map_element)
+        map_element = {}
+        map_element["/apache"] = "apache_10001"
+        expected_map_array.append(map_element)
+        map_element = {}
+        map_element["/nginx"] = "nginx_10000"
+        expected_map_array.append(map_element)
+        self.assertEqual(sorted(map_array), sorted(expected_map_array))
