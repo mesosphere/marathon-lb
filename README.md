@@ -151,12 +151,12 @@ $ ./marathon_lb.py --marathon http://localhost:8080 --group external --skip-vali
 ```
 
 ### Using Haproxy maps for backend lookup.
-You can use haproxy maps to speed up web application (vhosts) to backend lookup. This can be very useful for large installations where vhost to backend lookup can take considerable time.This can be done by using --haproxy-map flag.
+You can use haproxy maps to speed up web application (vhosts) to backend lookup. This can be very useful for large installations where vhost to backend lookup can take considerable time. This can be done by using --haproxy-map flag.
 
 ```console 
 $ ./marathon_lb.py --marathon http://localhost:8080 --group external --haproxy-map
 ```
-Currently it creates a lookup dictionary only for host header(both http and https) and x-marathon-app-id header.But for path based routing and auth, it uses the usual backend rules comparison.
+Currently it creates a lookup dictionary only for host header(both http and https) and x-marathon-app-id header. But for path based routing and auth, it uses the usual backend rules comparison.
 
 ### API endpoints
 
