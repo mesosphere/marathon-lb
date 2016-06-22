@@ -13,7 +13,8 @@ function read_config_file(cmdline)
       found = true
     elseif found then
       filename = s
-      filename=filename:match("(.*[\\/])").."domain2backend.map"
+      sep = package.config:sub(1,1)
+      filename=filename:match("(.*"..sep..")").."domain2backend.map"
       if not check_file_exists(filename) then
         filename = s
       end
