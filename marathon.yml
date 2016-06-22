@@ -10,7 +10,7 @@ args: [
     ]
 container:
   docker:
-    image: registry.nutmeg.co.uk:8443/{{app_name}}:{{version}}
+    image: registry.nutmeg.co.uk:8443/marathon-lb:{{version}}
     forcePullImage: true
     network: HOST
     parameters:
