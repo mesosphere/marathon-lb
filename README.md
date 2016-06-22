@@ -150,13 +150,13 @@ You can skip the configuration file validation (via calling HAProxy service) pro
 $ ./marathon_lb.py --marathon http://localhost:8080 --group external --skip-validation
 ```
 
-### Using Haproxy maps for backend lookup.
-You can use haproxy maps to speed up web application (vhosts) to backend lookup. This is very useful for large installations where the traditional vhost to backend rules comparison takes considerable time since it sequentially compares each rule. Haproxy map creates a hash based lookup table so its fast compared to the other approach, this is supported in marathon-lb using `--haproxy-map` flag.
+### Using HAProxy maps for backend lookup.
+You can use HAProxy maps to speed up web application (vhosts) to backend lookup. This is very useful for large installations where the traditional vhost to backend rules comparison takes considerable time since it sequentially compares each rule. HAProxy map creates a hash based lookup table so its fast compared to the other approach, this is supported in marathon-lb using `--haproxy-map` flag.
 
 ```console 
 $ ./marathon_lb.py --marathon http://localhost:8080 --group external --haproxy-map
 ```
-Currently it creates a lookup dictionary only for host header(both http and https) and x-marathon-app-id header. But for path based routing and auth, it uses the usual backend rules comparison.
+Currently it creates a lookup dictionary only for host header (both HTTP and HTTPS) and X-Marathon-App-Id header. But for path based routing and auth, it uses the usual backend rules comparison.
 
 ### API endpoints
 

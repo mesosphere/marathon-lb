@@ -270,10 +270,7 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
            haproxy_map=False, map_array=[],
            config_file="/etc/haproxy/haproxy.cfg"):
     logger.info("generating config")
-    if haproxy_map:
-        config = templater.haproxy_head_with_map
-    else:
-        config = templater.haproxy_head
+    config = templater.haproxy_head
     groups = frozenset(groups)
     duplicate_map = {}
     # donot repeat use backend multiple times since map file is same.
@@ -1013,6 +1010,9 @@ def writeConfigAndValidate(
                      config_file)
         move(haproxyTempConfigFile, config_file)
         if haproxy_map:
+            logger.debug("Moving temp file %s to %s",
+                         haproxyTempMapFile,
+                         map_file)
             move(haproxyTempMapFile, map_file)
         return True
 
@@ -1027,6 +1027,9 @@ def writeConfigAndValidate(
                      config_file)
         move(haproxyTempConfigFile, config_file)
         if haproxy_map:
+            logger.debug("moving temp file %s to %s",
+                         haproxyTempMapFile,
+                         map_file)
             move(haproxyTempMapFile, map_file)
         return True
     else:
@@ -1073,6 +1076,12 @@ def compareWriteAndReloadConfig(config, config_file, map_array, haproxy_map):
                 logger.warning("skipping reload: config not valid")
 
     else:
+        if os.path.isfile(map_file):
+                logger.debug("Truncating map file as haproxy-map flag "
+                             "is disabled %s", map_file)
+                fd = os.open(map_file, os.O_RDWR)
+                os.ftruncate(fd, 0)
+                os.close(fd)
         if runningConfig != config:
             logger.info(
                 "running config is different from generated config"
