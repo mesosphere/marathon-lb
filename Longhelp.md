@@ -28,7 +28,7 @@ usage: marathon_lb.py [-h] [--longhelp] [--marathon MARATHON [MARATHON ...]]
                       [--min-serv-port-ip-per-task MIN_SERV_PORT_IP_PER_TASK]
                       [--max-serv-port-ip-per-task MAX_SERV_PORT_IP_PER_TASK]
                       [--syslog-socket SYSLOG_SOCKET]
-                      [--log-format LOG_FORMAT]
+                      [--log-format LOG_FORMAT] [--log-level LOG_LEVEL]
                       [--marathon-auth-credential-file MARATHON_AUTH_CREDENTIAL_FILE]
                       [--auth-credentials AUTH_CREDENTIALS]
 
@@ -83,10 +83,12 @@ optional arguments:
                         ports for IP-per-task applications (default: 10100)
   --syslog-socket SYSLOG_SOCKET
                         Socket to write syslog messages to. Use '/dev/null' to
-                        disable logging to syslog (default: /dev/log)
+                        disable logging to syslog (default: /var/run/syslog)
   --log-format LOG_FORMAT
                         Set log message format (default: %(name)s:
                         %(message)s)
+  --log-level LOG_LEVEL
+                        Set log level (default: DEBUG)
   --marathon-auth-credential-file MARATHON_AUTH_CREDENTIAL_FILE
                         Path to file containing a user/pass for the Marathon
                         HTTP API in the format of 'user:pass'. (default: None)

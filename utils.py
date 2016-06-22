@@ -111,7 +111,11 @@ class ServicePortAssigner(object):
         :return: The list of ports.    Note that if auto-assigning and ports
         become exhausted, a port may be returned as None.
         """
-        ports = app['ports']
+        ports = filter(lambda p: p is not None,
+                       map(lambda p: p.get('port', None),
+                           app.get('portDefinitions', []))
+                       )
+        ports = list(ports)  # wtf python?
         if not ports and is_ip_per_task(app) and self.can_assign:
             logger.warning("Auto assigning service port for "
                            "IP-per-container task")

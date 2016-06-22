@@ -186,12 +186,13 @@ def _get_app(idx=1, num_ports=3, num_tasks=1, ip_per_task=True,
     app = {
         "id": "app-%d" % idx,
         "tasks": [_get_task(idx*10 + idx2) for idx2 in range(num_tasks)],
-        "ports": [],
+        "portDefinitions": [],
         "ipAddress": None,
     }
 
     if inc_service_ports:
-        app["ports"] = list(range(100, 100 + num_ports))
+        app["portDefinitions"] = \
+          [{'port': p} for p in list(range(100, 100 + num_ports))]
 
     if ip_per_task:
         app["ipAddress"] = {
