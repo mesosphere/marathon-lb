@@ -668,7 +668,7 @@ def generateHttpVhostAcl(
 
         for vhost_hostname in vhosts:
             logger.debug("processing vhost %s", vhost_hostname)
-            if haproxy_map:
+            if haproxy_map and not app.path and not app.authRealm:
                 if 'map_http_frontend_acl' not in duplicate_map:
                     http_frontend_acl = templater.\
                         haproxy_map_http_frontend_acl_only(app)
