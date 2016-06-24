@@ -23,12 +23,12 @@ usage: marathon_lb.py [-h] [--longhelp] [--marathon MARATHON [MARATHON ...]]
                       [--haproxy-config HAPROXY_CONFIG] [--group GROUP]
                       [--command COMMAND] [--sse] [--health-check]
                       [--lru-cache-capacity LRU_CACHE_CAPACITY]
-                      [--dont-bind-http-https] [--ssl-certs SSL_CERTS]
-                      [--skip-validation] [--dry]
+                      [--haproxy-map] [--dont-bind-http-https]
+                      [--ssl-certs SSL_CERTS] [--skip-validation] [--dry]
                       [--min-serv-port-ip-per-task MIN_SERV_PORT_IP_PER_TASK]
                       [--max-serv-port-ip-per-task MAX_SERV_PORT_IP_PER_TASK]
                       [--syslog-socket SYSLOG_SOCKET]
-                      [--log-format LOG_FORMAT]
+                      [--log-format LOG_FORMAT] [--log-level LOG_LEVEL]
                       [--marathon-auth-credential-file MARATHON_AUTH_CREDENTIAL_FILE]
                       [--auth-credentials AUTH_CREDENTIALS]
 
@@ -65,6 +65,8 @@ optional arguments:
                         LRU cache size (in number of items). This should be at
                         least as large as the number of tasks exposed via
                         marathon-lb. (default: 1000)
+  --haproxy-map         Use HAProxy maps for domain name to backendmapping.
+                        (default: False)
   --dont-bind-http-https
                         Don't bind to HTTP and HTTPS frontends. (default:
                         False)
@@ -83,10 +85,12 @@ optional arguments:
                         ports for IP-per-task applications (default: 10100)
   --syslog-socket SYSLOG_SOCKET
                         Socket to write syslog messages to. Use '/dev/null' to
-                        disable logging to syslog (default: /dev/log)
+                        disable logging to syslog (default: /var/run/syslog)
   --log-format LOG_FORMAT
                         Set log message format (default: %(name)s:
                         %(message)s)
+  --log-level LOG_LEVEL
+                        Set log level (default: DEBUG)
   --marathon-auth-credential-file MARATHON_AUTH_CREDENTIAL_FILE
                         Path to file containing a user/pass for the Marathon
                         HTTP API in the format of 'user:pass'. (default: None)
@@ -368,6 +372,7 @@ global
   server-state-base /var/state/haproxy/
   lua-load /marathon-lb/getpids.lua
   lua-load /marathon-lb/getconfig.lua
+  lua-load /marathon-lb/getvhostmap.lua
 defaults
   load-server-state-from-file global
   log               global
@@ -393,6 +398,8 @@ listen stats
   monitor-uri /_haproxy_health_check
   acl getpid path /_haproxy_getpids
   http-request use-service lua.getpids if getpid
+  acl getvhostmap path /_haproxy_getvhostmap
+  http-request use-service lua.getvhostmap if getvhostmap
   acl getconfig path /_haproxy_getconfig
   http-request use-service lua.getconfig if getconfig
 ```
@@ -802,6 +809,58 @@ glues the acl names to the appropriate backend
 ```
   http-request auth realm "{realm}" if host_{cleanedUpHostname} path_{backend} !auth_{cleanedUpHostname}
   use_backend {backend} if host_{cleanedUpHostname} path_{backend}
+```
+## `HAPROXY_MAP_HTTPS_FRONTEND_ACL`
+  *Overridable*
+
+Specified as `HAPROXY_MAP_HTTPS_FRONTEND_ACL` template or with label `HAPROXY_{n}_MAP_HTTPS_FRONTEND_ACL`.
+
+The ACL that performs the SNI based hostname matching
+for the `HAPROXY_HTTPS_FRONTEND_HEAD` template using haproxy maps
+
+
+**Default template for `HAPROXY_MAP_HTTPS_FRONTEND_ACL`:**
+```
+  use_backend %[ssl_fc_sni,lower,map_dom({haproxy_dir}/domain2backend.map)]
+```
+## `HAPROXY_MAP_HTTP_FRONTEND_ACL`
+  *Overridable*
+
+Specified as `HAPROXY_MAP_HTTP_FRONTEND_ACL` template or with label `HAPROXY_{n}_MAP_HTTP_FRONTEND_ACL`.
+
+The ACL that glues a backend to the corresponding virtual host
+of the `HAPROXY_HTTP_FRONTEND_HEAD` using haproxy maps.
+
+
+**Default template for `HAPROXY_MAP_HTTP_FRONTEND_ACL`:**
+```
+  use_backend %[req.hdr(host),lower,map_dom({haproxy_dir}/domain2backend.map)]
+```
+## `HAPROXY_MAP_HTTP_FRONTEND_ACL_ONLY`
+  *Overridable*
+
+Specified as `HAPROXY_MAP_HTTP_FRONTEND_ACL_ONLY` template or with label `HAPROXY_{n}_MAP_HTTP_FRONTEND_ACL_ONLY`.
+
+Define the ACL matching a particular hostname, This is useful only in the case
+ of multiple vhosts routing to the same backend in haproxy map.
+
+
+**Default template for `HAPROXY_MAP_HTTP_FRONTEND_ACL_ONLY`:**
+```
+  use_backend %[req.hdr(host),lower,map_dom({haproxy_dir}/domain2backend.map)]
+```
+## `HAPROXY_MAP_HTTP_FRONTEND_APPID_ACL`
+  *Overridable*
+
+Specified as `HAPROXY_MAP_HTTP_FRONTEND_APPID_ACL` template or with label `HAPROXY_{n}_MAP_HTTP_FRONTEND_APPID_ACL`.
+
+The ACL that glues a backend to the corresponding app
+of the `HAPROXY_HTTP_FRONTEND_APPID_HEAD` using haproxy maps.
+
+
+**Default template for `HAPROXY_MAP_HTTP_FRONTEND_APPID_ACL`:**
+```
+  use_backend %[req.hdr(x-marathon-app-id),lower,map_str({haproxy_dir}/domain2backend.map)]
 ```
 ## `HAPROXY_TCP_BACKEND_ACL_ALLOW_DENY`
   *Global*
