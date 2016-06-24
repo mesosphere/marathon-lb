@@ -2151,7 +2151,6 @@ backend nginx_10000
         app1.add_backend("agent1", "1.1.1.1", 1024, False)
         app2 = marathon_lb.MarathonService('/apache', 10001, healthCheck)
         app2.hostname = "server.apache.net,server.apache1.net"
-        app2.path = "/apache"
         app2.haproxy_groups = ['external']
         app2.add_backend("agent2", "2.2.2.2", 1025, False)
         app2.redirectHttpToHttps = True
@@ -2166,11 +2165,9 @@ backend nginx_10000
 frontend marathon_http_in
   bind *:80
   mode http
-  acl path_apache_10001 path_beg /apache
   acl host_server_apache_net_apache hdr(host) -i server.apache.net
   acl host_server_apache_net_apache hdr(host) -i server.apache1.net
-  redirect scheme https code 301 if !{ ssl_fc } host_server_apache_net_apache \
-path_apache_10001
+  redirect scheme https code 301 if !{ ssl_fc } host_server_apache_net_apache
   use_backend %[req.hdr(host),lower,map_dom(/etc/haproxy/domain2backend.map)]
 
 frontend marathon_http_appid_in
@@ -2182,11 +2179,6 @@ map_str(/etc/haproxy/domain2backend.map)]
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
   mode http
-  acl path_apache_10001 path_beg /apache
-  use_backend apache_10001 if { ssl_fc_sni server.apache.net } \
-path_apache_10001
-  use_backend apache_10001 if { ssl_fc_sni server.apache1.net } \
-path_apache_10001
   use_backend %[ssl_fc_sni,lower,map_dom(/etc/haproxy/domain2backend.map)]
 
 frontend apache_10001
@@ -2227,6 +2219,8 @@ backend nginx_10000
         expected_map = {}
         expected_map["server.nginx.net"] = "nginx_10000"
         expected_map["server.nginx1.net"] = "nginx_10000"
+        expected_map["server.apache.net"] = "apache_10001"
+        expected_map["server.apache1.net"] = "apache_10001"
         expected_map["/apache"] = "apache_10001"
         expected_map["/nginx"] = "nginx_10000"
         self.assertEqual(config_map, expected_map)
