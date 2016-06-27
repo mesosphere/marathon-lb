@@ -2,7 +2,7 @@ FROM debian:stretch
 
 ENTRYPOINT [ "/marathon-lb/run" ]
 CMD        [ "sse", "-m", "http://master.mesos:8080", "--health-check", "--group", "external" ]
-EXPOSE     80 81 443 9090
+EXPOSE     80 443 9090 9091
 
 COPY requirements.txt /marathon-lb/requirements.txt
 COPY build-haproxy.sh /marathon-lb/build-haproxy.sh
