@@ -1,4 +1,4 @@
-FROM debian:sid
+FROM registry.nutmeg.co.uk:8443/docker.io/library/debian:sid
 
 ENTRYPOINT [ "/marathon-lb/run" ]
 CMD        [ "sse", "-m", "http://master.mesos:8080", "--health-check", "--group", "external" ]
