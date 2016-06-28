@@ -513,10 +513,13 @@ def prepare_deploy(args, previous_deploys, app):
     if len(previous_deploys) > 0:
         last_deploy = select_last_deploy(previous_deploys)
 
-        app['instances'] = args.initial_instances
         next_colour = select_next_colour(last_deploy)
         next_port = select_next_port(last_deploy)
         deployment_target_instances = last_deploy['instances']
+        if args.initial_instances > deployment_target_instances:
+            app['instances'] = deployment_target_instances
+        else:
+            app['instances'] = args.initial_instances
     else:
         next_colour = 'blue'
         next_port = get_service_port(app)
@@ -612,7 +615,10 @@ def get_arg_parser():
                         type=int, default=5
                         )
     parser.add_argument("--initial-instances", "-i",
-                        help="Initial number of app instances to launch",
+                        help="Initial number of app instances to launch."
+                        " If this number is greater than total number of"
+                        " existing instances, then this will be overridden"
+                        " by the latter number",
                         type=int, default=1
                         )
     parser.add_argument("--resume", "-r",
