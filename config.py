@@ -228,7 +228,8 @@ of the `HAPROXY_HTTP_FRONTEND_HEAD`
         self.add_template(
             ConfigTemplate(name='MAP_HTTP_FRONTEND_ACL',
                            value='''\
-  use_backend %[req.hdr(host),lower,map({haproxy_dir}/domain2backend.map)]
+  use_backend %[req.hdr(host),lower,regsub(:.*$,,),\
+map({haproxy_dir}/domain2backend.map)]
 ''',
                            overridable=True,
                            description='''\
@@ -267,7 +268,8 @@ vhosts routing to the same backend.
         self.add_template(
             ConfigTemplate(name='MAP_HTTP_FRONTEND_ACL_ONLY',
                            value='''\
-  use_backend %[req.hdr(host),lower,map({haproxy_dir}/domain2backend.map)]
+  use_backend %[req.hdr(host),lower,regsub(:.*$,,),\
+map({haproxy_dir}/domain2backend.map)]
 ''',
                            overridable=True,
                            description='''\

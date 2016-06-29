@@ -1867,7 +1867,8 @@ backend nginx3_10000
 frontend marathon_http_in
   bind *:80
   mode http
-  use_backend %[req.hdr(host),lower,map(/etc/haproxy/domain2backend.map)]
+  use_backend %[req.hdr(host),lower,regsub(:.*$,,),\
+map(/etc/haproxy/domain2backend.map)]
 
 frontend marathon_http_appid_in
   bind *:9091
@@ -1965,7 +1966,8 @@ frontend marathon_http_in
   acl host_server_apache_net_apache hdr(host) -i server.apache.net
   acl path_apache_10001 path_beg /apache
   use_backend apache_10001 if host_server_apache_net_apache path_apache_10001
-  use_backend %[req.hdr(host),lower,map(/etc/haproxy/domain2backend.map)]
+  use_backend %[req.hdr(host),lower,regsub(:.*$,,),\
+map(/etc/haproxy/domain2backend.map)]
 
 frontend marathon_http_appid_in
   bind *:9091
@@ -2066,7 +2068,8 @@ frontend marathon_http_in
   acl host_server_apache_net_apache hdr(host) -i server.apache.net
   acl host_server_apache_net_apache hdr(host) -i server.apache1.net
   use_backend apache_10001 if host_server_apache_net_apache path_apache_10001
-  use_backend %[req.hdr(host),lower,map(/etc/haproxy/domain2backend.map)]
+  use_backend %[req.hdr(host),lower,regsub(:.*$,,),\
+map(/etc/haproxy/domain2backend.map)]
 
 frontend marathon_http_appid_in
   bind *:9091
@@ -2168,7 +2171,8 @@ frontend marathon_http_in
   acl host_server_apache_net_apache hdr(host) -i server.apache.net
   acl host_server_apache_net_apache hdr(host) -i server.apache1.net
   redirect scheme https code 301 if !{ ssl_fc } host_server_apache_net_apache
-  use_backend %[req.hdr(host),lower,map(/etc/haproxy/domain2backend.map)]
+  use_backend %[req.hdr(host),lower,regsub(:.*$,,),\
+map(/etc/haproxy/domain2backend.map)]
 
 frontend marathon_http_appid_in
   bind *:9091
