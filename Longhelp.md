@@ -910,7 +910,7 @@ These labels may be used to configure other app settings.
 
 Specified as `HAPROXY_{n}_AUTH`.
 
-                        The http basic auth definition. For details on configuring auth, see: https://github.com/mesosphere/marathon-lb/wiki/HTTP-Basic-Auth
+The http basic auth definition. For details on configuring auth, see: https://github.com/mesosphere/marathon-lb/wiki/HTTP-Basic-Auth
 
 Ex: `HAPROXY_0_AUTH = realm:username:encryptedpassword`
 
