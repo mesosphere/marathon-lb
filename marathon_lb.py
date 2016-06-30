@@ -220,7 +220,7 @@ class Marathon(object):
                 params={'callbackUrl': callbackUrl})
 
     def get_event_stream(self):
-        url = self.host+"/v2/events"
+        url = self.host + "/v2/events"
         logger.info(
             "SSE Active, trying fetch events from {0}".format(url))
 
@@ -229,8 +229,11 @@ class Marathon(object):
             'Accept': 'text/event-stream'
         }
 
-        resp = requests.get(url, stream=True,
-                            headers=headers, auth=self.__auth)
+        resp = requests.get(url,
+                            stream=True,
+                            headers=headers,
+                            timeout=(3.05, 46),
+                            auth=self.__auth)
 
         class Event(object):
             def __init__(self, data):
