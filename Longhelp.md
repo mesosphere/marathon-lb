@@ -42,8 +42,9 @@ optional arguments:
                         http://marathon1:8080 -m http://marathon2:8080
                         (default: None)
   --listening LISTENING, -l LISTENING
-                        The address this script listens on for marathon events
-                        (e.g., http://0.0.0.0:8080) (default: None)
+                        (deprecated) The address this script listens on for
+                        marathon events (e.g., http://0.0.0.0:8080) (default:
+                        None)
   --callback-url CALLBACK_URL, -u CALLBACK_URL
                         The HTTP address that Marathon can call this script
                         back at (http://lb1:8080) (default: None)
@@ -821,7 +822,7 @@ for the `HAPROXY_HTTPS_FRONTEND_HEAD` template using haproxy maps
 
 **Default template for `HAPROXY_MAP_HTTPS_FRONTEND_ACL`:**
 ```
-  use_backend %[ssl_fc_sni,lower,map_dom({haproxy_dir}/domain2backend.map)]
+  use_backend %[ssl_fc_sni,lower,map({haproxy_dir}/domain2backend.map)]
 ```
 ## `HAPROXY_MAP_HTTP_FRONTEND_ACL`
   *Overridable*
@@ -834,7 +835,7 @@ of the `HAPROXY_HTTP_FRONTEND_HEAD` using haproxy maps.
 
 **Default template for `HAPROXY_MAP_HTTP_FRONTEND_ACL`:**
 ```
-  use_backend %[req.hdr(host),lower,map_dom({haproxy_dir}/domain2backend.map)]
+  use_backend %[req.hdr(host),lower,regsub(:.*$,,),map({haproxy_dir}/domain2backend.map)]
 ```
 ## `HAPROXY_MAP_HTTP_FRONTEND_ACL_ONLY`
   *Overridable*
@@ -847,7 +848,7 @@ Define the ACL matching a particular hostname, This is useful only in the case
 
 **Default template for `HAPROXY_MAP_HTTP_FRONTEND_ACL_ONLY`:**
 ```
-  use_backend %[req.hdr(host),lower,map_dom({haproxy_dir}/domain2backend.map)]
+  use_backend %[req.hdr(host),lower,regsub(:.*$,,),map({haproxy_dir}/domain2backend.map)]
 ```
 ## `HAPROXY_MAP_HTTP_FRONTEND_APPID_ACL`
   *Overridable*
@@ -860,7 +861,7 @@ of the `HAPROXY_HTTP_FRONTEND_APPID_HEAD` using haproxy maps.
 
 **Default template for `HAPROXY_MAP_HTTP_FRONTEND_APPID_ACL`:**
 ```
-  use_backend %[req.hdr(x-marathon-app-id),lower,map_str({haproxy_dir}/domain2backend.map)]
+  use_backend %[req.hdr(x-marathon-app-id),lower,map({haproxy_dir}/domain2backend.map)]
 ```
 ## `HAPROXY_TCP_BACKEND_ACL_ALLOW_DENY`
   *Global*

@@ -86,6 +86,8 @@ newer versions.
 Syntax: `docker run mesosphere/marathon-lb sse [other args]`
 
 #### `event` mode
+**NOTE**: `event` mode is deprecated and will be removed from marathon-lb in future releases.
+
 In event mode, the script registers a HTTP callback in marathon to get
 notified when state changes.
 
@@ -104,12 +106,12 @@ environment variable.
 You can also run the update script directly.
 To generate an HAProxy configuration from Marathon running at `localhost:8080` with the `marathon_lb.py` script, run:
 
-``` console
+```console
 $ ./marathon_lb.py --marathon http://localhost:8080 --group external
 ```
 
 It is possible to pass `--auth-credentials=` option if your Marathon requires authentication:
-```
+```console
 $ ./marathon_lb.py --marathon http://localhost:8080 --auth-credentials=admin:password
 ```
 
@@ -153,7 +155,7 @@ $ ./marathon_lb.py --marathon http://localhost:8080 --group external --skip-vali
 ### Using HAProxy maps for backend lookup.
 You can use HAProxy maps to speed up web application (vhosts) to backend lookup. This is very useful for large installations where the traditional vhost to backend rules comparison takes considerable time since it sequentially compares each rule. HAProxy map creates a hash based lookup table so its fast compared to the other approach, this is supported in marathon-lb using `--haproxy-map` flag.
 
-```console 
+```console
 $ ./marathon_lb.py --marathon http://localhost:8080 --group external --haproxy-map
 ```
 Currently it creates a lookup dictionary only for host header (both HTTP and HTTPS) and X-Marathon-App-Id header. But for path based routing and auth, it uses the usual backend rules comparison.

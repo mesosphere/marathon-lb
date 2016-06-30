@@ -1384,7 +1384,7 @@ def get_arg_parser():
                              "http://marathon1:8080 -m http://marathon2:8080"
                         )
     parser.add_argument("--listening", "-l",
-                        help="The address this script listens on for " +
+                        help="(deprecated) The address this script listens on for " +
                         "marathon events (e.g., http://0.0.0.0:8080)"
                         )
     parser.add_argument("--callback-url", "-u",
@@ -1576,6 +1576,8 @@ if __name__ == '__main__':
     # If in listening mode, spawn a webserver waiting for events. Otherwise
     # just write the config.
     if args.listening:
+        logger.warning("The event callback mode is deprecated "
+                       "and will be removed in future releases")
         callback_url = args.callback_url or args.listening
         try:
             run_server(marathon, args.listening, callback_url,
