@@ -228,7 +228,8 @@ of the `HAPROXY_HTTP_FRONTEND_HEAD`
         self.add_template(
             ConfigTemplate(name='MAP_HTTP_FRONTEND_ACL',
                            value='''\
-  use_backend %[req.hdr(host),lower,map_dom({haproxy_dir}/domain2backend.map)]
+  use_backend %[req.hdr(host),lower,regsub(:.*$,,),\
+map({haproxy_dir}/domain2backend.map)]
 ''',
                            overridable=True,
                            description='''\
@@ -267,7 +268,8 @@ vhosts routing to the same backend.
         self.add_template(
             ConfigTemplate(name='MAP_HTTP_FRONTEND_ACL_ONLY',
                            value='''\
-  use_backend %[req.hdr(host),lower,map_dom({haproxy_dir}/domain2backend.map)]
+  use_backend %[req.hdr(host),lower,regsub(:.*$,,),\
+map({haproxy_dir}/domain2backend.map)]
 ''',
                            overridable=True,
                            description='''\
@@ -420,7 +422,7 @@ of the `HAPROXY_HTTP_FRONTEND_APPID_HEAD`.
             ConfigTemplate(name='MAP_HTTP_FRONTEND_APPID_ACL',
                            value='''\
   use_backend %[req.hdr(x-marathon-app-id),lower,\
-map_str({haproxy_dir}/domain2backend.map)]
+map({haproxy_dir}/domain2backend.map)]
 ''',
                            overridable=True,
                            description='''\
@@ -442,7 +444,7 @@ for the `HAPROXY_HTTPS_FRONTEND_HEAD` template.
         self.add_template(
             ConfigTemplate(name='MAP_HTTPS_FRONTEND_ACL',
                            value='''\
-  use_backend %[ssl_fc_sni,lower,map_dom({haproxy_dir}/domain2backend.map)]
+  use_backend %[ssl_fc_sni,lower,map({haproxy_dir}/domain2backend.map)]
 ''',
                            overridable=True,
                            description='''\

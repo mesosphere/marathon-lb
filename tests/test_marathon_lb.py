@@ -1867,18 +1867,19 @@ backend nginx3_10000
 frontend marathon_http_in
   bind *:80
   mode http
-  use_backend %[req.hdr(host),lower,map_dom(/etc/haproxy/domain2backend.map)]
+  use_backend %[req.hdr(host),lower,regsub(:.*$,,),\
+map(/etc/haproxy/domain2backend.map)]
 
 frontend marathon_http_appid_in
   bind *:9091
   mode http
   use_backend %[req.hdr(x-marathon-app-id),lower,\
-map_str(/etc/haproxy/domain2backend.map)]
+map(/etc/haproxy/domain2backend.map)]
 
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
   mode http
-  use_backend %[ssl_fc_sni,lower,map_dom(/etc/haproxy/domain2backend.map)]
+  use_backend %[ssl_fc_sni,lower,map(/etc/haproxy/domain2backend.map)]
 
 frontend apache_10001
   bind *:10001
@@ -1965,13 +1966,14 @@ frontend marathon_http_in
   acl host_server_apache_net_apache hdr(host) -i server.apache.net
   acl path_apache_10001 path_beg /apache
   use_backend apache_10001 if host_server_apache_net_apache path_apache_10001
-  use_backend %[req.hdr(host),lower,map_dom(/etc/haproxy/domain2backend.map)]
+  use_backend %[req.hdr(host),lower,regsub(:.*$,,),\
+map(/etc/haproxy/domain2backend.map)]
 
 frontend marathon_http_appid_in
   bind *:9091
   mode http
   use_backend %[req.hdr(x-marathon-app-id),lower,\
-map_str(/etc/haproxy/domain2backend.map)]
+map(/etc/haproxy/domain2backend.map)]
 
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
@@ -1979,7 +1981,7 @@ frontend marathon_https_in
   acl path_apache_10001 path_beg /apache
   use_backend apache_10001 if { ssl_fc_sni server.apache.net } \
 path_apache_10001
-  use_backend %[ssl_fc_sni,lower,map_dom(/etc/haproxy/domain2backend.map)]
+  use_backend %[ssl_fc_sni,lower,map(/etc/haproxy/domain2backend.map)]
 
 frontend apache_10001
   bind *:10001
@@ -2066,13 +2068,14 @@ frontend marathon_http_in
   acl host_server_apache_net_apache hdr(host) -i server.apache.net
   acl host_server_apache_net_apache hdr(host) -i server.apache1.net
   use_backend apache_10001 if host_server_apache_net_apache path_apache_10001
-  use_backend %[req.hdr(host),lower,map_dom(/etc/haproxy/domain2backend.map)]
+  use_backend %[req.hdr(host),lower,regsub(:.*$,,),\
+map(/etc/haproxy/domain2backend.map)]
 
 frontend marathon_http_appid_in
   bind *:9091
   mode http
   use_backend %[req.hdr(x-marathon-app-id),lower,\
-map_str(/etc/haproxy/domain2backend.map)]
+map(/etc/haproxy/domain2backend.map)]
 
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
@@ -2082,7 +2085,7 @@ frontend marathon_https_in
 path_apache_10001
   use_backend apache_10001 if { ssl_fc_sni server.apache1.net } \
 path_apache_10001
-  use_backend %[ssl_fc_sni,lower,map_dom(/etc/haproxy/domain2backend.map)]
+  use_backend %[ssl_fc_sni,lower,map(/etc/haproxy/domain2backend.map)]
 
 frontend apache_10001
   bind *:10001
@@ -2168,18 +2171,19 @@ frontend marathon_http_in
   acl host_server_apache_net_apache hdr(host) -i server.apache.net
   acl host_server_apache_net_apache hdr(host) -i server.apache1.net
   redirect scheme https code 301 if !{ ssl_fc } host_server_apache_net_apache
-  use_backend %[req.hdr(host),lower,map_dom(/etc/haproxy/domain2backend.map)]
+  use_backend %[req.hdr(host),lower,regsub(:.*$,,),\
+map(/etc/haproxy/domain2backend.map)]
 
 frontend marathon_http_appid_in
   bind *:9091
   mode http
   use_backend %[req.hdr(x-marathon-app-id),lower,\
-map_str(/etc/haproxy/domain2backend.map)]
+map(/etc/haproxy/domain2backend.map)]
 
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
   mode http
-  use_backend %[ssl_fc_sni,lower,map_dom(/etc/haproxy/domain2backend.map)]
+  use_backend %[ssl_fc_sni,lower,map(/etc/haproxy/domain2backend.map)]
 
 frontend apache_10001
   bind *:10001
