@@ -21,8 +21,8 @@ fast, efficient, battle-tested, highly available load balancer with many advance
 
 ### Getting started
 
- * [Using marathon-lb](https://docs.mesosphere.com/usage/service-discovery/marathon-lb/using-marathon-lb/)
- * [Advanced features of marathon-lb](https://docs.mesosphere.com/administration/service-discovery/service-discovery-and-load-balancing-with-marathon-lb/advanced-features-of-marathon-lb/)
+ * [Using marathon-lb](https://docs.mesosphere.com/1.7/usage/service-discovery/marathon-lb/usage/)
+ * [Advanced features of marathon-lb](https://docs.mesosphere.com/1.7/usage/service-discovery/marathon-lb/advanced/)
  * [Securing your service with TLS/SSL (blog post)](https://mesosphere.com/blog/2016/04/06/lets-encrypt-dcos/)
 
 Take a look at [the marathon-lb wiki](https://github.com/mesosphere/marathon-lb/wiki) for example usage, templates, and more.
