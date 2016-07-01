@@ -116,7 +116,8 @@ class ServicePortAssigner(object):
                            app.get('portDefinitions', []))
                        )
         ports = list(ports)  # wtf python?
-        if not ports and is_ip_per_task(app) and self.can_assign:
+        if not ports and is_ip_per_task(app) and self.can_assign \
+                and len(app['tasks']) > 0:
             logger.warning("Auto assigning service port for "
                            "IP-per-container task")
             task = app['tasks'][0]
