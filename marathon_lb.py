@@ -1154,6 +1154,17 @@ def get_apps(marathon):
                 new = prev
                 old = cur
 
+            if 'HAPROXY_DEPLOYMENT_NEW_INSTANCES' in new['labels']:
+                if int(new['labels']['HAPROXY_DEPLOYMENT_NEW_INSTANCES'] != 0):
+                    new_scale_time = dateutil.parser.parse(
+                        new['versionInfo']['lastScalingAt'])
+                    old_scale_time = dateutil.parser.parse(
+                        old['versionInfo']['lastScalingAt'])
+                    if old_scale_time > new_scale_time:
+                        temp = old
+                        old = new
+                        new = temp
+
             target_instances = \
                 int(new['labels']['HAPROXY_DEPLOYMENT_TARGET_INSTANCES'])
 
