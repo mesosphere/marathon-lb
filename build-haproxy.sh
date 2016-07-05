@@ -5,7 +5,7 @@ mkdir -p /usr/src
 
 # Build Lua
 cd /usr/src
-wget http://www.lua.org/ftp/lua-5.3.2.tar.gz
+wget http://www.lua.org/ftp/lua-5.3.3.tar.gz
 tar zxf lua-*.tar.gz
 cd lua-*
 make -j4 linux LUA_LIB_NAME=lua53
@@ -13,7 +13,7 @@ make -j4 install LUA_LIB_NAME=lua53
 
 # Build HAProxy
 cd /usr/src
-wget http://www.haproxy.org/download/1.6/src/haproxy-1.6.5.tar.gz
+wget http://www.haproxy.org/download/1.6/src/haproxy-1.6.6.tar.gz
 tar xf haproxy-*.tar.gz
 cd haproxy-*
 make -j4 \
