@@ -122,8 +122,9 @@ class ServicePortAssigner(object):
                            "IP-per-container task")
             task = app['tasks'][0]
             _, task_ports = get_task_ip_and_ports(app, task)
-            ports = [self._get_service_port(app, task_port)
-                     for task_port in task_ports]
+            if task_ports is not None:
+                ports = [self._get_service_port(app, task_port)
+                         for task_port in task_ports]
         logger.debug("Service ports: %r", ports)
         return ports
 
