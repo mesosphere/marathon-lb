@@ -291,7 +291,7 @@ Zero downtime deployments are accomplished through the use of a Lua module, whic
 The ZDD script includes the ability to specify a pre-kill hook, which is executed before draining tasks are terminated. This allows you to run your own automated checks against the old and new app before the deploy continues.
 
 
-## Traffic splitting between Blue and Green Apps.
+### Traffic splitting between Blue/Green Apps
 
 Zdd has support to split the traffic between two versions of same app(Version blue and Version green) by having instances of both versions live at the same time. This is supported with the help of `HAPROXY_DEPLOYMENT_NEW_INSTANCES` label.
 
