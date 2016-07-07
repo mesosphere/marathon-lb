@@ -704,11 +704,11 @@ def get_arg_parser():
                         " and green at the same time",
                         type=int, default=0)
     parser.add_argument("--complete-cur", "-c",
-                        help="Change hybrid app to completely"
-                        " current app's instances", action="store_true")
+                        help="Change hybrid app entirely to"
+                        " current (new) app's instances", action="store_true")
     parser.add_argument("--complete-prev", "-p",
-                        help="Change hybrid app to completely"
-                        " previous app's instances", action="store_true")
+                        help="Change hybrid app entirely to"
+                        " previous (old) app's instances", action="store_true")
     parser.add_argument("--pre-kill-hook",
                         help="A path to an executable (such as a script) "
                         "which will be called before killing any tasks marked "
