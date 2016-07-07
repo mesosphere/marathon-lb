@@ -2,7 +2,6 @@ import unittest
 import zdd
 import mock
 import json
-import time
 
 
 class Arguments:
@@ -15,6 +14,9 @@ class Arguments:
     marathon_auth_credential_file = None
     auth_credentials = None
     pre_kill_hook = None
+    new_instances = 0
+    complete_cur = False
+    complete_prev = False
 
 
 class MyResponse:
@@ -53,7 +55,7 @@ class TestBluegreenDeploy(unittest.TestCase):
         args.initial_instances = 5
         zdd.scale_new_app_instances(args, new_app, old_app)
         mock.assert_called_with(
-          args, new_app, 15)
+            args, new_app, 15)
 
     @mock.patch('zdd.scale_marathon_app_instances')
     def test_scale_new_app_instances_to_target(self, mock):
@@ -72,7 +74,27 @@ class TestBluegreenDeploy(unittest.TestCase):
         args.initial_instances = 5
         zdd.scale_new_app_instances(args, new_app, old_app)
         mock.assert_called_with(
-          args, new_app, 30)
+            args, new_app, 30)
+
+    @mock.patch('zdd.scale_marathon_app_instances')
+    def test_scale_new_app_instances_hybrid(self, mock):
+        """When scaling new instances up, if we have met or surpassed the
+           amount of instances deployed for old_app, go right to our
+           deployment target amount of instances for new_app
+        """
+        new_app = {
+            'instances': 10,
+            'labels': {
+                'HAPROXY_DEPLOYMENT_NEW_INSTANCES': 15,
+                'HAPROXY_DEPLOYMENT_TARGET_INSTANCES': 30
+            }
+        }
+        old_app = {'instances': 20}
+        args = Arguments()
+        args.initial_instances = 5
+        zdd.scale_new_app_instances(args, new_app, old_app)
+        mock.assert_called_with(
+            args, new_app, 15)
 
     def test_find_drained_task_ids(self):
         listeners = _load_listeners()
@@ -224,6 +246,7 @@ class TestBluegreenDeploy(unittest.TestCase):
     "HAPROXY_DEPLOYMENT_ALT_PORT": "10001",
     "HAPROXY_DEPLOYMENT_COLOUR": "blue",
     "HAPROXY_DEPLOYMENT_GROUP": "nginx",
+    "HAPROXY_DEPLOYMENT_NEW_INSTANCES": "0",
     "HAPROXY_DEPLOYMENT_STARTED_AT": "2016-02-01T15:51:38.184623",
     "HAPROXY_DEPLOYMENT_TARGET_INSTANCES": "3",
     "HAPROXY_GROUP": "external"
@@ -233,3 +256,80 @@ class TestBluegreenDeploy(unittest.TestCase):
 ''')
         expected['labels']['HAPROXY_DEPLOYMENT_STARTED_AT'] = ""
         self.assertEqual(output, expected)
+
+    @mock.patch('requests.get',
+                mock.Mock(side_effect=lambda k, auth:
+                          MyResponse('tests/zdd_app_blue.json')))
+    def test_hybrid(self):
+        # This test just checks the output of the program against
+        # some expected output
+        from six import StringIO
+
+        out = StringIO()
+        args = Arguments()
+        args.new_instances = 1
+        zdd.do_zdd(args, out)
+        output = json.loads(out.getvalue())
+        output['labels']['HAPROXY_DEPLOYMENT_STARTED_AT'] = ""
+
+        expected = json.loads('''{
+  "acceptedResourceRoles": [
+    "*",
+    "slave_public"
+  ],
+  "container": {
+    "docker": {
+      "forcePullImage": true,
+      "image": "brndnmtthws/nginx-echo-sleep",
+      "network": "BRIDGE",
+      "portMappings": [
+        {
+          "containerPort": 8080,
+          "hostPort": 0,
+          "servicePort": 10001
+        }
+      ]
+    },
+    "type": "DOCKER"
+  },
+  "cpus": 0.1,
+  "healthChecks": [
+    {
+      "gracePeriodSeconds": 15,
+      "intervalSeconds": 3,
+      "maxConsecutiveFailures": 10,
+      "path": "/",
+      "portIndex": 0,
+      "protocol": "HTTP",
+      "timeoutSeconds": 15
+    }
+  ],
+  "id": "/nginx-blue",
+  "instances": 1,
+  "labels": {
+    "HAPROXY_0_PORT": "10000",
+    "HAPROXY_APP_ID": "nginx",
+    "HAPROXY_DEPLOYMENT_ALT_PORT": "10001",
+    "HAPROXY_DEPLOYMENT_COLOUR": "blue",
+    "HAPROXY_DEPLOYMENT_GROUP": "nginx",
+    "HAPROXY_DEPLOYMENT_NEW_INSTANCES": "1",
+    "HAPROXY_DEPLOYMENT_STARTED_AT": "2016-02-01T15:51:38.184623",
+    "HAPROXY_DEPLOYMENT_TARGET_INSTANCES": "3",
+    "HAPROXY_GROUP": "external"
+  },
+  "mem": 65
+}
+''')
+        expected['labels']['HAPROXY_DEPLOYMENT_STARTED_AT'] = ""
+        self.assertEqual(output, expected)
+
+    @mock.patch('requests.get',
+                mock.Mock(side_effect=lambda k, auth:
+                          MyResponse('tests/zdd_app_blue.json')))
+    def test_complete_cur_exception(self):
+        # This test just checks the output of the program against
+        # some expected output
+
+        args = Arguments()
+        args.complete_cur = True
+        self.assertRaises(Exception, zdd.do_zdd, args)

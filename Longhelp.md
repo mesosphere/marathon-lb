@@ -1017,6 +1017,20 @@ The target number of app instances to seek during deployment. You
 generally do not need to modify this unless you implement your
 own deployment orchestrator.
                     
+## `HAPROXY_DEPLOYMENT_NEW_INSTANCES`
+  *per app*
+
+Specified as `HAPROXY_DEPLOYMENT_NEW_INSTANCES`.
+
+The number of instances to be created in new group while doing 
+blue-green deployments. You generally do not need to modify this
+unless you implement your own blue green deployment orchestrator.
+
+Ex: In zdd , if `haproxy_deployment_target_instances` is 10 and current
+deployment color is `blue`,  if you run zdd with `--new-instances` as 2,
+there will be 2 instances created in `green` group and 2 deleted from `blue`.
+So it will be blue:green with 80:20 ratio.
+
 
 ## `HAPROXY_{n}_GROUP`
   *per service port*
@@ -1149,6 +1163,3 @@ evaluated in the order it appears in the configuration.
 Ex: `HAPROXY_0_VHOST = 'marathon.mesosphere.com'`
 
 Ex: `HAPROXY_0_VHOST = 'marathon.mesosphere.com,marathon'`
-                    
-
-
