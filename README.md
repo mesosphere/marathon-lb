@@ -152,7 +152,7 @@ You can skip the configuration file validation (via calling HAProxy service) pro
 $ ./marathon_lb.py --marathon http://localhost:8080 --group external --skip-validation
 ```
 
-### Using HAProxy maps for backend lookup.
+### Using HAProxy maps for backend lookup
 You can use HAProxy maps to speed up web application (vhosts) to backend lookup. This is very useful for large installations where the traditional vhost to backend rules comparison takes considerable time since it sequentially compares each rule. HAProxy map creates a hash based lookup table so its fast compared to the other approach, this is supported in marathon-lb using `--haproxy-map` flag.
 
 ```console
@@ -232,7 +232,7 @@ Here is an example for a service called `http-service` which requires that
 The full list of per service port templates which can be specified
 are [documented here](Longhelp.md#templates).
 
-## Operational Best Practices
+## Operational best practices
 
  * Use service ports within the reserved range (which is 10000 to 10100 by default). This will prevent port conflicts, and ensure reloads don't result in connection errors.
  * Avoid using the `HAPROXY_{n}_PORT` label; prefer defining service ports.
