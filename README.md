@@ -317,7 +317,7 @@ $ ./zdd.py -j 1-nginx.json -m http://master.mesos:8080 -f -l http://marathon-lb.
 
 Similarly you can use `--complete-prev` flag to convert all instances to old version (and this is essentially a rollback) so that traffic split ratio becomes 100:0 (old:new) and it deletes the new app.
 
-Currently only one hop of traffic split is supported, so you can specify the number of new instances (directly proportional to traffic split ratio) only when app is having all instances of same version (completely blue or completely green). This implies `--new-instances` flag cannot be specified in hybrid mode to change traffic split ratio (instance ratio) as updating Marathon label (`HAPROXY_DEPLOYMENT_NEW_INSTANCES`) currently triggers new deployment in marathon which will not be graceful. Currently for the example mentioned, the traffic split ratio is `100:0` -> `80:20` -> `0:100`, where there is only one hop when both versions get traffic simultaneously.
+Currently only one hop of traffic split is supported, so you can specify the number of new instances (directly proportional to traffic split ratio) only when app is having all instances of same version (completely blue or completely green). This implies `--new-instances` flag cannot be specified in hybrid mode to change traffic split ratio (instance ratio) as updating Marathon label (`HAPROXY_DEPLOYMENT_NEW_INSTANCES`) currently triggers new deployment in marathon which will not be graceful. Currently for the example mentioned, the traffic split ratio is 100:0 -> 80:20 -> 0:100, where there is only one hop when both versions get traffic simultaneously.
 
 ## Mesos with IP-per-task Support
 
