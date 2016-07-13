@@ -4,6 +4,7 @@ import mock
 import json
 from zdd_exceptions import *
 
+
 class Arguments:
     json = 'tests/1-nginx.json'
     force = False
