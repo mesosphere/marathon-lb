@@ -189,6 +189,8 @@ App labels are specified in the Marathon app definition. These can be used to ov
 }
 ```
 
+The virtual host name specified here must be in lower case.
+
 Some labels are specified _per service port_. These are denoted with the `{n}` parameter in the label key, where `{n}` corresponds to the service port index, beginning at `0`.
 
 See [the configuration doc for the full list](Longhelp.md#other-labels)
