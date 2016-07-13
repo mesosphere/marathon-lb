@@ -2,6 +2,7 @@ import unittest
 import zdd
 import mock
 import json
+from zdd_exceptions import *
 
 
 class Arguments:
@@ -332,4 +333,4 @@ class TestBluegreenDeploy(unittest.TestCase):
 
         args = Arguments()
         args.complete_cur = True
-        self.assertRaises(Exception, zdd.do_zdd, args)
+        self.assertRaises(InvalidArgException, zdd.do_zdd, args)
