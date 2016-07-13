@@ -309,7 +309,7 @@ This state where you have instances of both old and new versions of same app liv
 
 When a deployment group is in hybrid state, it needs to be converted into completely current version or completely previous version before deploying any further versions, this could be done with the help of `--complete-cur` and `--complete-prev` flags in zdd.
 
-When you run the below command to convert all instances to new version so that traffic split ratio becomes 0:100 (old:new) and it deletes the old app. This is graceful as it follows usual zdd procedure of waiting for tasks/instances to drain before deleting them.
+When you run the below command, it converts all instances to new version so that traffic split ratio becomes 0:100 (old:new) and it deletes the old app. This is graceful as it follows usual zdd procedure of waiting for tasks/instances to drain before deleting them.
 
 ```console
 $ ./zdd.py -j 1-nginx.json -m http://master.mesos:8080 -f -l http://marathon-lb.marathon.mesos:9090 --syslog-socket /dev/null --complete-cur
