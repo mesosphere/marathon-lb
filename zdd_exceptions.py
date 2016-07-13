@@ -1,7 +1,7 @@
 """ Exit Status 1 is already used in the script.
     Zdd returns with exit status 1 when app is not force
     deleted either through argument or through prompt.
-    Exit Status 2 is used for Unknown Generic Exceptions.
+    Exit Status 2 is used for Unknown Exceptions.
 """
 
 

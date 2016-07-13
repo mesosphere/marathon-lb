@@ -64,7 +64,7 @@ def marathon_get_request(args, path):
         response.raise_for_status()
     except requests.exceptions.RequestException:
         raise MarathonEndpointException(
-            "Error while quering marathon", url, traceback.print_exc())
+            "Error while quering marathon", url, traceback.format_exc())
     return response
 
 
@@ -285,7 +285,7 @@ def find_tasks_to_kill(args, new_app, old_app, timestamp):
         raise MarathonLbEndpointException(
             "Error while querying Marathon-LB",
             marathon_lb_urls,
-            traceback.print_exc())
+            traceback.format_exc())
     while max_wait_not_exceeded(args.max_wait, timestamp):
         time.sleep(args.step_delay)
 
@@ -429,7 +429,7 @@ def delete_marathon_app(args, app):
         response.raise_for_status()
     except requests.exceptions.RequestException:
         raise AppDeleteException(
-            "Error while deleting the app", url, traceback.print_exc())
+            "Error while deleting the app", url, traceback.format_exc())
     return response
 
 
@@ -444,7 +444,7 @@ def kill_marathon_tasks(args, ids):
     except requests.exceptions.RequestException:
         # This is App Scale Down, so raising AppScale Exception
         raise AppScaleException(
-            "Error while scaling the app", url, data, traceback.print_exc())
+            "Error while scaling the app", url, data, traceback.format_exc())
     return response
 
 
@@ -459,7 +459,7 @@ def scale_marathon_app_instances(args, app, instances):
     except requests.exceptions.RequestException:
         # This is App Scale Up, so raising AppScale Exception
         raise AppScaleException(
-            "Error while scaling the app", url, data, traceback.print_exc())
+            "Error while scaling the app", url, data, traceback.format_exc())
     return response
 
 
@@ -473,7 +473,7 @@ def deploy_marathon_app(args, app):
         response.raise_for_status()
     except requests.exceptions.RequestException:
         raise AppCreateException(
-            "Error while creating the app", url, data, traceback.print_exc())
+            "Error while creating the app", url, data, traceback.format_exc())
     return response
 
 
@@ -794,8 +794,13 @@ if __name__ == '__main__':
         else:
             sys.exit(1)
     except Exception as e:
-        logger.exception(traceback.print_exc())
         if hasattr(e, 'zdd_exit_status'):
+            if hasattr(e, 'error'):
+                logger.exception(str(e.error))
+            else:
+                logger.exception(traceback.print_exc())
             sys.exit(e.zdd_exit_status)
         else:
+            # For Unknown Exceptions
+            logger.exception(traceback.print_exc())
             sys.exit(2)
