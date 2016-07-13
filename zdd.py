@@ -64,7 +64,7 @@ def marathon_get_request(args, path):
         response.raise_for_status()
     except requests.exceptions.RequestException:
         raise MarathonEndpointException(
-            "Error while quering marathon", url, traceback.format_exc())
+            "Error while querying marathon", url, traceback.format_exc())
     return response
 
 
