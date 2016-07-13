@@ -15,6 +15,8 @@ import socket
 import sys
 import subprocess
 from utils import *
+from zdd_exceptions import *
+import traceback
 
 
 logger = logging.getLogger('zdd')
@@ -57,8 +59,12 @@ def query_yes_no(question, default="yes"):
 
 def marathon_get_request(args, path):
     url = args.marathon + path
-    response = requests.get(url, auth=get_marathon_auth_params(args))
-    response.raise_for_status()
+    try:
+        response = requests.get(url, auth=get_marathon_auth_params(args))
+        response.raise_for_status()
+    except requests.exceptions.RequestException:
+        raise MarathonEndpointException(
+            "Error while quering marathon", url, traceback.print_exc())
     return response
 
 
@@ -273,7 +279,13 @@ def max_wait_not_exceeded(max_wait, timestamp):
 def find_tasks_to_kill(args, new_app, old_app, timestamp):
     marathon_lb_urls = get_marathon_lb_urls(args)
     haproxy_count = len(marathon_lb_urls)
-    listeners = fetch_app_listeners(new_app, marathon_lb_urls)
+    try:
+        listeners = fetch_app_listeners(new_app, marathon_lb_urls)
+    except requests.exceptions.RequestException:
+        raise MarathonLbEndpointException(
+            "Error while querying Marathon-LB",
+            marathon_lb_urls,
+            traceback.print_exc())
     while max_wait_not_exceeded(args.max_wait, timestamp):
         time.sleep(args.step_delay)
 
@@ -411,9 +423,13 @@ def safe_delete_app(args, app, new_app):
 
 def delete_marathon_app(args, app):
     url = args.marathon + '/v2/apps' + app['id']
-    response = requests.delete(url,
-                               auth=get_marathon_auth_params(args))
-    response.raise_for_status()
+    try:
+        response = requests.delete(url,
+                                   auth=get_marathon_auth_params(args))
+        response.raise_for_status()
+    except requests.exceptions.RequestException:
+        raise AppDeleteException(
+            "Error while deleting the app", url, traceback.print_exc())
     return response
 
 
@@ -421,9 +437,14 @@ def kill_marathon_tasks(args, ids):
     data = json.dumps({'ids': ids})
     url = args.marathon + "/v2/tasks/delete?scale=true"
     headers = {'Content-Type': 'application/json'}
-    response = requests.post(url, headers=headers, data=data,
-                             auth=get_marathon_auth_params(args))
-    response.raise_for_status()
+    try:
+        response = requests.post(url, headers=headers, data=data,
+                                 auth=get_marathon_auth_params(args))
+        response.raise_for_status()
+    except requests.exceptions.RequestException:
+        # This is App Scale Down, so raising AppScale Exception
+        raise AppScaleException(
+            "Error while scaling the app", url, data, traceback.print_exc())
     return response
 
 
@@ -431,11 +452,14 @@ def scale_marathon_app_instances(args, app, instances):
     url = args.marathon + "/v2/apps" + app['id']
     data = json.dumps({'instances': instances})
     headers = {'Content-Type': 'application/json'}
-
-    response = requests.put(url, headers=headers, data=data,
-                            auth=get_marathon_auth_params(args))
-
-    response.raise_for_status()
+    try:
+        response = requests.put(url, headers=headers, data=data,
+                                auth=get_marathon_auth_params(args))
+        response.raise_for_status()
+    except requests.exceptions.RequestException:
+        # This is App Scale Up, so raising AppScale Exception
+        raise AppScaleException(
+            "Error while scaling the app", url, data, traceback.print_exc())
     return response
 
 
@@ -443,9 +467,13 @@ def deploy_marathon_app(args, app):
     url = args.marathon + "/v2/apps"
     data = json.dumps(app)
     headers = {'Content-Type': 'application/json'}
-    response = requests.post(url, headers=headers, data=data,
-                             auth=get_marathon_auth_params(args))
-    response.raise_for_status()
+    try:
+        response = requests.post(url, headers=headers, data=data,
+                                 auth=get_marathon_auth_params(args))
+        response.raise_for_status()
+    except requests.exceptions.RequestException:
+        raise AppCreateException(
+            "Error while creating the app", url, data, traceback.print_exc())
     return response
 
 
@@ -469,16 +497,20 @@ def set_service_port(app, servicePort):
 
 def validate_app(app):
     if app['id'] is None:
-        raise Exception("App doesn't contain a valid App ID")
+        raise MissingFieldException("App doesn't contain a valid App ID",
+                                    'id')
     if 'labels' not in app:
-        raise Exception("No labels found. Please define the"
-                        "HAPROXY_DEPLOYMENT_GROUP label")
+        raise MissingFieldException("No labels found. Please define the"
+                                    " HAPROXY_DEPLOYMENT_GROUP label",
+                                    'label')
     if 'HAPROXY_DEPLOYMENT_GROUP' not in app['labels']:
-        raise Exception("Please define the "
-                        "HAPROXY_DEPLOYMENT_GROUP label")
+        raise MissingFieldException("Please define the "
+                                    "HAPROXY_DEPLOYMENT_GROUP label",
+                                    'HAPROXY_DEPLOYMENT_GROUP')
     if 'HAPROXY_DEPLOYMENT_ALT_PORT' not in app['labels']:
-        raise Exception("Please define the "
-                        "HAPROXY_DEPLOYMENT_ALT_PORT label")
+        raise MissingFieldException("Please define the "
+                                    "HAPROXY_DEPLOYMENT_ALT_PORT label",
+                                    'HAPROXY_DEPLOYMENT_ALT_PORT')
 
 
 def set_app_ids(app, colour):
@@ -621,12 +653,12 @@ def do_zdd(args, out=sys.stdout):
     previous_deploys = fetch_previous_deploys(args, app)
 
     if len(previous_deploys) > 1:
-        # There is a stuck deploy
+        # There is a stuck deploy or hybrid deploy
         return safe_resume_deploy(args, previous_deploys)
 
     if args.complete_cur or args.complete_prev:
-        raise Exception("Cannot use --complete-cur, --complete-prev"
-                        " flags when config is not hybrid")
+        raise InvalidArgException("Cannot use --complete-cur, --complete-prev"
+                                  " flags when config is not hybrid")
 
     new_app = prepare_deploy(args, previous_deploys, app)
 
@@ -756,7 +788,14 @@ if __name__ == '__main__':
     set_request_retries()
     setup_logging(logger, args.syslog_socket, args.log_format, args.log_level)
 
-    if do_zdd(args):
-        sys.exit(0)
-    else:
-        sys.exit(1)
+    try:
+        if do_zdd(args):
+            sys.exit(0)
+        else:
+            sys.exit(1)
+    except Exception as e:
+        logger.exception(traceback.print_exc())
+        if hasattr(e, 'zdd_exit_status'):
+            sys.exit(e.zdd_exit_status)
+        else:
+            sys.exit(2)
