@@ -1391,8 +1391,8 @@ def get_arg_parser():
                         )
     parser.add_argument("--marathon", "-m",
                         nargs="+",
-                        help="[required] Marathon endpoint, eg. -m " +
-                             "http://marathon1:8080 -m http://marathon2:8080"
+                        help="[required] Marathon endpoint, eg. " +
+                             "-m http://marathon1:8080 http://marathon2:8080"
                         )
     parser.add_argument("--listening", "-l",
                         help="(deprecated) The address this script listens " +
