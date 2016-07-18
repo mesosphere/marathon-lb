@@ -39,8 +39,8 @@ optional arguments:
   --longhelp            Print out configuration details (default: False)
   --marathon MARATHON [MARATHON ...], -m MARATHON [MARATHON ...]
                         [required] Marathon endpoint, eg. -m
-                        http://marathon1:8080 -m http://marathon2:8080
-                        (default: None)
+                        http://marathon1:8080 http://marathon2:8080 (default:
+                        None)
   --listening LISTENING, -l LISTENING
                         (deprecated) The address this script listens on for
                         marathon events (e.g., http://0.0.0.0:8080) (default:
