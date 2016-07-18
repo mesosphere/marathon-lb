@@ -554,16 +554,15 @@ This option set the IPs (or IP ranges) having access to the HTTP backend.
 ```
   acl network_allowed src {network_allowed}
 ```
-## `HAPROXY_HTTP_BACKEND_PROXYPASS`
+## `HAPROXY_HTTP_BACKEND_PROXYPASS_GLUE`
   *Overridable*
 
-Specified as `HAPROXY_HTTP_BACKEND_PROXYPASS` template or with label `HAPROXY_{n}_HTTP_BACKEND_PROXYPASS`.
+Specified as `HAPROXY_HTTP_BACKEND_PROXYPASS_GLUE` template or with label `HAPROXY_{n}_HTTP_BACKEND_PROXYPASS_GLUE`.
 
-Set the location to use for mapping local server URLs to remote servers + URL.
-Ex: HAPROXY_0_HTTP_BACKEND_PROXYPASS = '/path/to/redirect
+Backend glue for `HAPROXY_{n}_HTTP_BACKEND_PROXYPASS_PATH`.
 
 
-**Default template for `HAPROXY_HTTP_BACKEND_PROXYPASS`:**
+**Default template for `HAPROXY_HTTP_BACKEND_PROXYPASS_GLUE`:**
 ```
   http-request set-header Host {hostname}
   reqirep  "^([^ :]*)\ {proxypath}(.*)" "\1\ /\2"
@@ -583,16 +582,15 @@ Ex: HAPROXY_0_HTTP_BACKEND_REDIR = '/my/content'
   acl is_domain hdr(host) -i {hostname}
   redirect code 301 location {redirpath} if is_domain is_root
 ```
-## `HAPROXY_HTTP_BACKEND_REVPROXY`
+## `HAPROXY_HTTP_BACKEND_REVPROXY_GLUE`
   *Overridable*
 
-Specified as `HAPROXY_HTTP_BACKEND_REVPROXY` template or with label `HAPROXY_{n}_HTTP_BACKEND_REVPROXY`.
+Specified as `HAPROXY_HTTP_BACKEND_REVPROXY_GLUE` template or with label `HAPROXY_{n}_HTTP_BACKEND_REVPROXY_GLUE`.
 
-Set the URL in HTTP response headers sent from a reverse proxied server. It only updates Location, Content-Location and URL.
-Ex: HAPROXY_0_HTTP_BACKEND_REVPROXY = '/my/content'
+Backend glue for `HAPROXY_{n}_HTTP_BACKEND_REVPROXY_PATH`.
 
 
-**Default template for `HAPROXY_HTTP_BACKEND_REVPROXY`:**
+**Default template for `HAPROXY_HTTP_BACKEND_REVPROXY_GLUE`:**
 ```
   acl hdr_location res.hdr(Location) -m found
   rspirep "^Location: (https?://{hostname}(:[0-9]+)?)?(/.*)" "Location:   {rootpath} if hdr_location"
@@ -1053,6 +1051,24 @@ it falls back to default `HAPROXY_GROUP` and gets associated with
 
 Load balancers with the group '*' will collect all groups.
     
+
+## `HAPROXY_{n}_HTTP_BACKEND_PROXYPASS_PATH`
+  *per service port*
+
+Specified as `HAPROXY_{n}_HTTP_BACKEND_PROXYPASS_PATH`.
+
+Set the location to use for mapping local server URLs to remote servers + URL.
+Ex: `HAPROXY_0_HTTP_BACKEND_PROXYPASS_PATH = '/path/to/redirect`
+                    
+
+## `HAPROXY_{n}_HTTP_BACKEND_REVPROXY_PATH`
+  *per service port*
+
+Specified as `HAPROXY_{n}_HTTP_BACKEND_REVPROXY_PATH`.
+
+Set the URL in HTTP response headers sent from a reverse proxied server. It only updates Location, Content-Location and URL.
+Ex: `HAPROXY_0_HTTP_BACKEND_REVPROXY_PATH = '/my/content'`
+                    
 
 ## `HAPROXY_{n}_MODE`
   *per service port*

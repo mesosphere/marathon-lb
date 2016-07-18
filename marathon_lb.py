@@ -396,14 +396,14 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
                 backends += templater.haproxy_backend_hsts_options(app)
             backends += templater.haproxy_backend_http_options(app)
             backend_http_backend_proxypass = templater \
-                .haproxy_http_backend_proxypass(app)
+                .haproxy_http_backend_proxypass_glue(app)
             if app.proxypath:
                 backends += backend_http_backend_proxypass.format(
                     hostname=app.hostname,
                     proxypath=app.proxypath
                 )
             backend_http_backend_revproxy = templater \
-                .haproxy_http_backend_revproxy(app)
+                .haproxy_http_backend_revproxy_glue(app)
             if app.revproxypath:
                 backends += backend_http_backend_revproxy.format(
                     hostname=app.hostname,

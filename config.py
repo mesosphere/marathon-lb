@@ -525,19 +525,18 @@ Sets HTTP headers, for example X-Forwarded-For and X-Forwarded-Proto.
 '''))
 
         self.add_template(
-            ConfigTemplate(name='HTTP_BACKEND_PROXYPASS',
+            ConfigTemplate(name='HTTP_BACKEND_PROXYPASS_GLUE',
                            value='''\
   http-request set-header Host {hostname}
   reqirep  "^([^ :]*)\ {proxypath}(.*)" "\\1\ /\\2"
 ''',
                            overridable=True,
                            description='''\
-Set the location to use for mapping local server URLs to remote servers + URL.
-Ex: HAPROXY_0_HTTP_BACKEND_PROXYPASS = '/path/to/redirect
+Backend glue for `HAPROXY_{n}_HTTP_BACKEND_PROXYPASS_PATH`.
 '''))
 
         self.add_template(
-            ConfigTemplate(name='HTTP_BACKEND_REVPROXY',
+            ConfigTemplate(name='HTTP_BACKEND_REVPROXY_GLUE',
                            value='''\
   acl hdr_location res.hdr(Location) -m found
   rspirep "^Location: (https?://{hostname}(:[0-9]+)?)?(/.*)" "Location: \
@@ -545,9 +544,7 @@ Ex: HAPROXY_0_HTTP_BACKEND_PROXYPASS = '/path/to/redirect
 ''',
                            overridable=True,
                            description='''\
-Set the URL in HTTP response headers sent from a reverse proxied server. \
-It only updates Location, Content-Location and URL.
-Ex: HAPROXY_0_HTTP_BACKEND_REVPROXY = '/my/content'
+Backend glue for `HAPROXY_{n}_HTTP_BACKEND_REVPROXY_PATH`.
 '''))
 
         self.add_template(
@@ -1038,15 +1035,15 @@ Specified as {specifiedAs}.
             return app.labels['HAPROXY_{0}_BACKEND_SERVER_OPTIONS']
         return self.t['BACKEND_SERVER_OPTIONS'].value
 
-    def haproxy_http_backend_proxypass(self, app):
-        if 'HAPROXY_{0}_HTTP_BACKEND_PROXYPASS' in app.labels:
-            return app.labels['HAPROXY_{0}_HTTP_BACKEND_PROXYPASS']
-        return self.t['HTTP_BACKEND_PROXYPASS'].value
+    def haproxy_http_backend_proxypass_glue(self, app):
+        if 'HAPROXY_{0}_HTTP_BACKEND_PROXYPASS_GLUE' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTP_BACKEND_PROXYPASS_GLUE']
+        return self.t['HTTP_BACKEND_PROXYPASS_GLUE'].value
 
-    def haproxy_http_backend_revproxy(self, app):
-        if 'HAPROXY_{0}_HTTP_BACKEND_REVPROXY' in app.labels:
-            return app.labels['HAPROXY_{0}_HTTP_BACKEND_REVPROXY']
-        return self.t['HTTP_BACKEND_REVPROXY'].value
+    def haproxy_http_backend_revproxy_glue(self, app):
+        if 'HAPROXY_{0}_HTTP_BACKEND_REVPROXY_GLUE' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTP_BACKEND_REVPROXY_GLUE']
+        return self.t['HTTP_BACKEND_REVPROXY_GLUE'].value
 
     def haproxy_http_backend_redir(self, app):
         if 'HAPROXY_{0}_HTTP_BACKEND_REDIR' in app.labels:
@@ -1361,19 +1358,19 @@ roundrobin.
 Ex: `HAPROXY_0_BALANCE = 'leastconn'`
                     '''))
 
-labels.append(Label(name='HTTP_BACKEND_PROXYPASS',
+labels.append(Label(name='HTTP_BACKEND_PROXYPASS_PATH',
                     func=set_proxypath,
                     description='''\
 Set the location to use for mapping local server URLs to remote servers + URL.
-Ex: `HAPROXY_0_HTTP_BACKEND_PROXYPASS = '/path/to/redirect`
+Ex: `HAPROXY_0_HTTP_BACKEND_PROXYPASS_PATH = '/path/to/redirect`
                     '''))
 
-labels.append(Label(name='HTTP_BACKEND_REVPROXY',
+labels.append(Label(name='HTTP_BACKEND_REVPROXY_PATH',
                     func=set_revproxypath,
                     description='''\
 Set the URL in HTTP response headers sent from a reverse proxied server. \
 It only updates Location, Content-Location and URL.
-Ex: `HAPROXY_0_HTTP_BACKEND_REVPROXY = '/my/content'`
+Ex: `HAPROXY_0_HTTP_BACKEND_REVPROXY_PATH = '/my/content'`
                     '''))
 
 labels.append(Label(name='HTTP_BACKEND_REDIR',
