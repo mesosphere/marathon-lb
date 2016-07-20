@@ -562,12 +562,12 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
 
 def get_haproxy_pids():
     try:
-        return subprocess.check_output(
+        return set(map(lambda i: int(i), subprocess.check_output(
             "pidof haproxy",
             stderr=subprocess.STDOUT,
-            shell=True)
+            shell=True).split()))
     except subprocess.CalledProcessError as ex:
-        return ''
+        return set()
 
 
 def reloadConfig():
@@ -596,10 +596,10 @@ def reloadConfig():
         logger.info("reloading using %s", " ".join(reloadCommand))
         try:
             start_time = time.time()
-            pids = get_haproxy_pids()
+            old_pids = get_haproxy_pids()
             subprocess.check_call(reloadCommand, close_fds=True)
-            # Wait until the reload actually occurs
-            while pids == get_haproxy_pids():
+            # Wait until the reload actually occurs and there's a new PID
+            while len(get_haproxy_pids() - old_pids) < 1:
                 time.sleep(0.1)
             logger.debug("reload finished, took %s seconds",
                          time.time() - start_time)
