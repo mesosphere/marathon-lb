@@ -1096,7 +1096,7 @@ def string_to_bool(s):
 
 
 def set_hostname(x, k, v):
-    x.hostname = v
+    x.hostname = v.lower()
 
 
 def set_path(x, k, v):
