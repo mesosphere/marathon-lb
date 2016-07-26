@@ -581,6 +581,7 @@ def reloadConfig():
             logger.debug("we seem to be running on an Upstart based system")
             reloadCommand = ['reload', 'haproxy']
         elif (os.path.isfile('/usr/lib/systemd/system/haproxy.service') or
+              os.path.isfile('/lib/systemd/system/haproxy.service') or
               os.path.isfile('/etc/systemd/system/haproxy.service')):
             logger.debug("we seem to be running on systemd based system")
             reloadCommand = ['systemctl', 'reload', 'haproxy']
