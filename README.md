@@ -19,10 +19,10 @@ fast, efficient, battle-tested, highly available load balancer with many advance
  * Global HAProxy templates which can be supplied at launch
  * Supports IP-per-task integration, such as [Project Calico](https://github.com/projectcalico/calico-containers)
 
-### Getting started
+### Getting Started
 
- * [Using marathon-lb](https://docs.mesosphere.com/usage/service-discovery/marathon-lb/using-marathon-lb/)
- * [Advanced features of marathon-lb](https://docs.mesosphere.com/administration/service-discovery/service-discovery-and-load-balancing-with-marathon-lb/advanced-features-of-marathon-lb/)
+ * [Using marathon-lb](https://docs.mesosphere.com/1.7/usage/service-discovery/marathon-lb/usage/)
+ * [Advanced features of marathon-lb](https://docs.mesosphere.com/1.7/usage/service-discovery/marathon-lb/advanced/)
  * [Securing your service with TLS/SSL (blog post)](https://mesosphere.com/blog/2016/04/06/lets-encrypt-dcos/)
 
 Take a look at [the marathon-lb wiki](https://github.com/mesosphere/marathon-lb/wiki) for example usage, templates, and more.
@@ -86,6 +86,8 @@ newer versions.
 Syntax: `docker run mesosphere/marathon-lb sse [other args]`
 
 #### `event` mode
+**NOTE**: `event` mode is deprecated and will be removed from marathon-lb in future releases.
+
 In event mode, the script registers a HTTP callback in marathon to get
 notified when state changes.
 
@@ -100,16 +102,16 @@ Syntax: `docker run mesosphere/marathon-lb poll [other args]`
 To change the poll interval (defaults to 60s), you can set the `POLL_INTERVAL`
 environment variable.
 
-### Direct invocation
+### Direct Invocation
 You can also run the update script directly.
 To generate an HAProxy configuration from Marathon running at `localhost:8080` with the `marathon_lb.py` script, run:
 
-``` console
+```console
 $ ./marathon_lb.py --marathon http://localhost:8080 --group external
 ```
 
 It is possible to pass `--auth-credentials=` option if your Marathon requires authentication:
-```
+```console
 $ ./marathon_lb.py --marathon http://localhost:8080 --auth-credentials=admin:password
 ```
 
@@ -124,7 +126,7 @@ To get the full documentation run:
 $ ./marathon_lb.py --help
 ```
 
-### Providing SSL certificates
+### Providing SSL Certificates
 You can provide your SSL certificate paths to be placed in frontend marathon_https_in section with `--ssl-certs`.
 
 ``` console
@@ -143,14 +145,22 @@ If you are using the provided `run` script or Docker image, you have three optio
  * Provide nothing and it will create self-signed certificate on `/etc/ssl/cert.pem` and config will use it.
 
 
-### Skipping configuration validation
+### Skipping Configuration Validation
 You can skip the configuration file validation (via calling HAProxy service) process if you don't have HAProxy installed. This is especially useful if you are running HAProxy on Docker containers.
 
 ``` console
 $ ./marathon_lb.py --marathon http://localhost:8080 --group external --skip-validation
 ```
 
-### API endpoints
+### Using HAProxy Maps for Backend Lookup
+You can use HAProxy maps to speed up web application (vhosts) to backend lookup. This is very useful for large installations where the traditional vhost to backend rules comparison takes considerable time since it sequentially compares each rule. HAProxy map creates a hash based lookup table so its fast compared to the other approach, this is supported in marathon-lb using `--haproxy-map` flag.
+
+```console
+$ ./marathon_lb.py --marathon http://localhost:8080 --group external --haproxy-map
+```
+Currently it creates a lookup dictionary only for host header (both HTTP and HTTPS) and X-Marathon-App-Id header. But for path based routing and auth, it uses the usual backend rules comparison.
+
+### API Endpoints
 
 Marathon-lb exposes a few endpoints on port 9090 (by default). They are:
 
@@ -160,12 +170,13 @@ Marathon-lb exposes a few endpoints on port 9090 (by default). They are:
 | `:9090/haproxy?stats;csv`     | This is a CSV version of the stats above, which can be consumed by other tools. For example, it's used in the [`zdd.py`](zdd.py) script.                                                                                                                                                        |
 | `:9090/_haproxy_health_check` | HAProxy health check endpoint. Returns `200 OK` if HAProxy is healthy.                                                                                                                                                                                                                                                    |
 | `:9090/_haproxy_getconfig`    | Returns the HAProxy config file as it was when HAProxy was started. Implemented in [`getconfig.lua`](getconfig.lua).                                                                                                                                                                                                      |
+| `:9090/_haproxy_getvhostmap`    | Returns the HAProxy vhost to backend map. This endpoint returns HAProxy map file only when `--haproxy-map` flag is enabled, it returns a empty string otherwise. Implemented in [`getvhostmap.lua`](getvhostmap.lua).                                                                                                                                                                                                      |
 | `:9090/_haproxy_getpids`      | Returns the PIDs for all HAProxy instances within the current process namespace. This literally returns `$(pidof haproxy)`. Implemented in [`getpids.lua`](getpids.lua). This is also used by the [`zdd.py`](zdd.py) script to determine if connections have finished draining during a deploy. |
 
 
-## HAProxy configuration
+## HAProxy Configuration
 
-### App labels
+### App Labels
 App labels are specified in the Marathon app definition. These can be used to override HAProxy behaviour. For example, to specify the `external` group for an app with a virtual host named `service.mesosphere.com`:
 
 ```json
@@ -191,11 +202,10 @@ path from where the script is run. Some templates can also be
 [overridden _per app service port_](#overridable-templates). You may add your
 own templates to the Docker image, or provide them at startup.
 
-
 See [the configuration doc for the full list](Longhelp.md#templates)
 of templates.
 
-#### Overridable templates
+#### Overridable Templates
 
 Some templates may be overridden using app labels,
 as per the [labels section](#app-labels). Strings are interpreted as literal
@@ -255,7 +265,7 @@ are [documented here](Longhelp.md#templates).
   < HTTP/1.1 200 OK
   ```
 
-## Zero-downtime deployments
+## Zero-downtime Deployments
 
 Marathon-lb is able to perform canary style blue/green deployment with zero downtime. To execute such deployments, you must follow certain patterns when using Marathon.
 
@@ -280,14 +290,43 @@ Zero downtime deployments are accomplished through the use of a Lua module, whic
 
 The ZDD script includes the ability to specify a pre-kill hook, which is executed before draining tasks are terminated. This allows you to run your own automated checks against the old and new app before the deploy continues.
 
-## Mesos with IP-per-task support
+
+### Traffic Splitting Between Blue/Green Apps
+
+Zdd has support to split the traffic between two versions of same app (version 'blue' and version 'green') by having instances of both versions live at the same time. This is supported with the help of the `HAPROXY_DEPLOYMENT_NEW_INSTANCES` label.
+
+When you run zdd with the `--new-instances` flag, it creates only the specified number of instances of the new app, and deletes the same number of instances from the old app (instead of the normal, create all instances in new and delete all from old approach), to ensure that the number of instances in new app and old app together is equal to `HAPROXY_DEPLOYMENT_TARGET_INSTANCES`.
+
+Example: Consider the same nginx app example where there are 10 instances of nginx running image version v1, now we can use zdd to create 2 instances of version v2, and retain 8 instances of V1 so that traffic is split in ratio 80:20 (old:new).
+
+Creating 2 instances with new version automatically deletes 2 instances in existing version. You could do this using the following command:
+
+```console
+$ ./zdd.py -j 1-nginx.json -m http://master.mesos:8080 -f -l http://marathon-lb.marathon.mesos:9090 --syslog-socket /dev/null --new-instances 2
+```
+
+This state where you have instances of both old and new versions of same app live at the same time is called hybrid state.
+
+When a deployment group is in hybrid state, it needs to be converted into completely current version or completely previous version before deploying any further versions, this could be done with the help of the `--complete-cur` and `--complete-prev` flags in zdd.
+
+When you run the below command, it converts all instances to new version so that traffic split ratio becomes 0:100 (old:new) and it deletes the old app. This is graceful as it follows usual zdd procedure of waiting for tasks/instances to drain before deleting them.
+
+```console
+$ ./zdd.py -j 1-nginx.json -m http://master.mesos:8080 -f -l http://marathon-lb.marathon.mesos:9090 --syslog-socket /dev/null --complete-cur
+```
+
+Similarly you can use `--complete-prev` flag to convert all instances to old version (and this is essentially a rollback) so that traffic split ratio becomes 100:0 (old:new) and it deletes the new app.
+
+Currently only one hop of traffic split is supported, so you can specify the number of new instances (directly proportional to traffic split ratio) only when app is having all instances of same version (completely blue or completely green). This implies `--new-instances` flag cannot be specified in hybrid mode to change traffic split ratio (instance ratio) as updating Marathon label (`HAPROXY_DEPLOYMENT_NEW_INSTANCES`) currently triggers new deployment in marathon which will not be graceful. Currently for the example mentioned, the traffic split ratio is 100:0 -> 80:20 -> 0:100, where there is only one hop when both versions get traffic simultaneously.
+
+## Mesos with IP-per-task Support
 
 Marathon-lb supports load balancing for applications that use the Mesos IP-per-task
 feature, whereby each task is assigned unique, accessible, IP addresses.  For these
 tasks services are directly accessible via the configured discovery ports and there
 is no host port mapping.  Note, that due to limitations with Marathon (see
 [mesosphere/marathon#3636](https://github.com/mesosphere/marathon/issues/3636))
-configured service ports are not exposed to marathon-lb for IP-per-task apps.  
+configured service ports are not exposed to marathon-lb for IP-per-task apps.
 
 For these apps, if the service ports are missing from the Marathon app data,
 marathon-lb will automatically assign port values from a configurable range.  The range

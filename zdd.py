@@ -2,20 +2,21 @@
 
 from common import *
 from datetime import datetime
-from collections import namedtuple, defaultdict
-from itertools import groupby
+from collections import namedtuple
 
 import argparse
 import json
 import requests
 import csv
 import time
-import re
 import math
 import six.moves.urllib as urllib
 import socket
 import sys
 import subprocess
+from utils import *
+from zdd_exceptions import *
+import traceback
 
 
 logger = logging.getLogger('zdd')
@@ -58,8 +59,12 @@ def query_yes_no(question, default="yes"):
 
 def marathon_get_request(args, path):
     url = args.marathon + path
-    response = requests.get(url, auth=get_marathon_auth_params(args))
-    response.raise_for_status()
+    try:
+        response = requests.get(url, auth=get_marathon_auth_params(args))
+        response.raise_for_status()
+    except requests.exceptions.RequestException:
+        raise MarathonEndpointException(
+            "Error while querying marathon", url, traceback.format_exc())
     return response
 
 
@@ -183,6 +188,13 @@ def get_deployment_target(app):
     return int(app['labels']['HAPROXY_DEPLOYMENT_TARGET_INSTANCES'])
 
 
+def get_new_instance_count(app):
+    if 'HAPROXY_DEPLOYMENT_NEW_INSTANCES' in app['labels']:
+        return int(app['labels']['HAPROXY_DEPLOYMENT_NEW_INSTANCES'])
+    else:
+        return 0
+
+
 def waiting_for_up_listeners(app, listeners, haproxy_count):
     up_listeners = [l for l in listeners if l.status == 'UP']
     up_listener_count = (len(up_listeners) / haproxy_count)
@@ -199,16 +211,21 @@ def select_drained_listeners(listeners):
     return [l for l in draining_listeners if not _has_pending_requests(l)]
 
 
-def get_svnames_from_task(task):
+def get_svnames_from_task(app, task):
     prefix = task['host'].replace('.', '_')
-    for port in task['ports']:
-        yield(prefix + '_{}'.format(port))
+    task_ip, task_port = get_task_ip_and_ports(app, task)
+    if task['host'] == task_ip:
+        for port in task['ports']:
+            yield('{}_{}'.format(prefix, port))
+    else:
+        for port in task['ports']:
+            yield('{}_{}_{}'.format(prefix, task_ip.replace('.', '_'), port))
 
 
-def get_svnames_from_tasks(tasks):
+def get_svnames_from_tasks(app, tasks):
     svnames = []
     for task in tasks:
-        svnames += get_svnames_from_task(task)
+        svnames += get_svnames_from_task(app, task)
     return svnames
 
 
@@ -216,11 +233,19 @@ def _has_pending_requests(listener):
     return int(listener.qcur or 0) > 0 or int(listener.scur or 0) > 0
 
 
+def is_hybrid_deployment(args, app):
+    if (get_new_instance_count(app) != 0 and not args.complete_cur and
+            not args.complete_prev):
+        return True
+    else:
+        return False
+
+
 def find_drained_task_ids(app, listeners, haproxy_count):
     """Return app tasks which have all haproxy listeners down and draining
        of any pending sessions or connections
     """
-    tasks = zip(get_svnames_from_tasks(app['tasks']), app['tasks'])
+    tasks = zip(get_svnames_from_tasks(app, app['tasks']), app['tasks'])
     drained_listeners = select_drained_listeners(listeners)
 
     drained_task_ids = []
@@ -235,7 +260,7 @@ def find_drained_task_ids(app, listeners, haproxy_count):
 def find_draining_task_ids(app, listeners, haproxy_count):
     """Return app tasks which have all haproxy listeners draining
     """
-    tasks = zip(get_svnames_from_tasks(app['tasks']), app['tasks'])
+    tasks = zip(get_svnames_from_tasks(app, app['tasks']), app['tasks'])
     draining_listeners = select_draining_listeners(listeners)
 
     draining_task_ids = []
@@ -254,8 +279,13 @@ def max_wait_not_exceeded(max_wait, timestamp):
 def find_tasks_to_kill(args, new_app, old_app, timestamp):
     marathon_lb_urls = get_marathon_lb_urls(args)
     haproxy_count = len(marathon_lb_urls)
-    listeners = []
-
+    try:
+        listeners = fetch_app_listeners(new_app, marathon_lb_urls)
+    except requests.exceptions.RequestException:
+        raise MarathonLbEndpointException(
+            "Error while querying Marathon-LB",
+            marathon_lb_urls,
+            traceback.format_exc())
     while max_wait_not_exceeded(args.max_wait, timestamp):
         time.sleep(args.step_delay)
 
@@ -317,8 +347,8 @@ def swap_zdd_apps(args, new_app, old_app):
 
     tasks_to_kill = find_tasks_to_kill(args, new_app, old_app, time.time())
 
-    if ready_to_delete_old_app(new_app, old_app, tasks_to_kill):
-        return safe_delete_app(args, old_app)
+    if ready_to_delete_old_app(args, new_app, old_app, tasks_to_kill):
+        return safe_delete_app(args, old_app, new_app)
 
     if len(tasks_to_kill) > 0:
         execute_pre_kill_hook(args, old_app, tasks_to_kill, new_app)
@@ -335,15 +365,25 @@ def swap_zdd_apps(args, new_app, old_app):
         else:
             return False
 
-    if new_app['instances'] < get_deployment_target(new_app):
-        scale_new_app_instances(args, new_app, old_app)
+    if is_hybrid_deployment(args, new_app):
+        if new_app['instances'] < get_new_instance_count(new_app):
+            scale_new_app_instances(args, new_app, old_app)
+    else:
+        if new_app['instances'] < get_deployment_target(new_app):
+            scale_new_app_instances(args, new_app, old_app)
 
     return swap_zdd_apps(args, new_app, old_app)
 
 
-def ready_to_delete_old_app(new_app, old_app, draining_task_ids):
-    return (int(new_app['instances']) == get_deployment_target(new_app) and
-            len(draining_task_ids) == int(old_app['instances']))
+def ready_to_delete_old_app(args, new_app, old_app, draining_task_ids):
+    new_instances = get_new_instance_count(new_app)
+    if is_hybrid_deployment(args, new_app):
+        return (int(new_app['instances']) == new_instances and
+                int(old_app['instances']) == (
+                    get_deployment_target(old_app) - new_instances))
+    else:
+        return (int(new_app['instances']) == get_deployment_target(new_app) and
+                len(draining_task_ids) == int(old_app['instances']))
 
 
 def waiting_for_drained_listeners(listeners):
@@ -357,27 +397,39 @@ def scale_new_app_instances(args, new_app, old_app):
     """
     instances = (math.floor(new_app['instances'] +
                  (new_app['instances'] + 1) / 2))
-    if instances >= old_app['instances']:
-        instances = get_deployment_target(new_app)
+    if is_hybrid_deployment(args, new_app):
+        if instances > get_new_instance_count(new_app):
+            instances = get_new_instance_count(new_app)
+    else:
+        if instances >= old_app['instances']:
+            instances = get_deployment_target(new_app)
 
     logger.info("Scaling new app up to {} instances".format(instances))
     return scale_marathon_app_instances(args, new_app, instances)
 
 
-def safe_delete_app(args, app):
-    logger.info("About to delete old app {}".format(app['id']))
-    if args.force or query_yes_no("Continue?"):
-        delete_marathon_app(args, app)
+def safe_delete_app(args, app, new_app):
+    if is_hybrid_deployment(args, new_app):
+        logger.info("Not deleting old app, as its hybrid configuration")
         return True
     else:
-        return False
+        logger.info("About to delete old app {}".format(app['id']))
+        if args.force or query_yes_no("Continue?"):
+            delete_marathon_app(args, app)
+            return True
+        else:
+            return False
 
 
 def delete_marathon_app(args, app):
     url = args.marathon + '/v2/apps' + app['id']
-    response = requests.delete(url,
-                               auth=get_marathon_auth_params(args))
-    response.raise_for_status()
+    try:
+        response = requests.delete(url,
+                                   auth=get_marathon_auth_params(args))
+        response.raise_for_status()
+    except requests.exceptions.RequestException:
+        raise AppDeleteException(
+            "Error while deleting the app", url, traceback.format_exc())
     return response
 
 
@@ -385,9 +437,14 @@ def kill_marathon_tasks(args, ids):
     data = json.dumps({'ids': ids})
     url = args.marathon + "/v2/tasks/delete?scale=true"
     headers = {'Content-Type': 'application/json'}
-    response = requests.post(url, headers=headers, data=data,
-                             auth=get_marathon_auth_params(args))
-    response.raise_for_status()
+    try:
+        response = requests.post(url, headers=headers, data=data,
+                                 auth=get_marathon_auth_params(args))
+        response.raise_for_status()
+    except requests.exceptions.RequestException:
+        # This is App Scale Down, so raising AppScale Exception
+        raise AppScaleException(
+            "Error while scaling the app", url, data, traceback.format_exc())
     return response
 
 
@@ -395,11 +452,14 @@ def scale_marathon_app_instances(args, app, instances):
     url = args.marathon + "/v2/apps" + app['id']
     data = json.dumps({'instances': instances})
     headers = {'Content-Type': 'application/json'}
-
-    response = requests.put(url, headers=headers, data=data,
-                            auth=get_marathon_auth_params(args))
-
-    response.raise_for_status()
+    try:
+        response = requests.put(url, headers=headers, data=data,
+                                auth=get_marathon_auth_params(args))
+        response.raise_for_status()
+    except requests.exceptions.RequestException:
+        # This is App Scale Up, so raising AppScale Exception
+        raise AppScaleException(
+            "Error while scaling the app", url, data, traceback.format_exc())
     return response
 
 
@@ -407,9 +467,13 @@ def deploy_marathon_app(args, app):
     url = args.marathon + "/v2/apps"
     data = json.dumps(app)
     headers = {'Content-Type': 'application/json'}
-    response = requests.post(url, headers=headers, data=data,
-                             auth=get_marathon_auth_params(args))
-    response.raise_for_status()
+    try:
+        response = requests.post(url, headers=headers, data=data,
+                                 auth=get_marathon_auth_params(args))
+        response.raise_for_status()
+    except requests.exceptions.RequestException:
+        raise AppCreateException(
+            "Error while creating the app", url, data, traceback.format_exc())
     return response
 
 
@@ -433,16 +497,20 @@ def set_service_port(app, servicePort):
 
 def validate_app(app):
     if app['id'] is None:
-        raise Exception("App doesn't contain a valid App ID")
+        raise MissingFieldException("App doesn't contain a valid App ID",
+                                    'id')
     if 'labels' not in app:
-        raise Exception("No labels found. Please define the"
-                        "HAPROXY_DEPLOYMENT_GROUP label")
+        raise MissingFieldException("No labels found. Please define the"
+                                    " HAPROXY_DEPLOYMENT_GROUP label",
+                                    'label')
     if 'HAPROXY_DEPLOYMENT_GROUP' not in app['labels']:
-        raise Exception("Please define the "
-                        "HAPROXY_DEPLOYMENT_GROUP label")
+        raise MissingFieldException("Please define the "
+                                    "HAPROXY_DEPLOYMENT_GROUP label",
+                                    'HAPROXY_DEPLOYMENT_GROUP')
     if 'HAPROXY_DEPLOYMENT_ALT_PORT' not in app['labels']:
-        raise Exception("Please define the "
-                        "HAPROXY_DEPLOYMENT_ALT_PORT label")
+        raise MissingFieldException("Please define the "
+                                    "HAPROXY_DEPLOYMENT_ALT_PORT label",
+                                    'HAPROXY_DEPLOYMENT_ALT_PORT')
 
 
 def set_app_ids(app, colour):
@@ -510,14 +578,28 @@ def prepare_deploy(args, previous_deploys, app):
     if len(previous_deploys) > 0:
         last_deploy = select_last_deploy(previous_deploys)
 
-        app['instances'] = args.initial_instances
         next_colour = select_next_colour(last_deploy)
         next_port = select_next_port(last_deploy)
         deployment_target_instances = last_deploy['instances']
+        if args.new_instances > deployment_target_instances:
+            args.new_instances = deployment_target_instances
+        if args.new_instances and args.new_instances > 0:
+            if args.initial_instances > args.new_instances:
+                app['instances'] = args.new_instances
+            else:
+                app['instances'] = args.initial_instances
+        else:
+            if args.initial_instances > deployment_target_instances:
+                app['instances'] = deployment_target_instances
+            else:
+                app['instances'] = args.initial_instances
+        app['labels']['HAPROXY_DEPLOYMENT_NEW_INSTANCES'] = str(
+            args.new_instances)
     else:
         next_colour = 'blue'
         next_port = get_service_port(app)
         deployment_target_instances = app['instances']
+        app['labels']['HAPROXY_DEPLOYMENT_NEW_INSTANCES'] = "0"
 
     app = set_app_ids(app, next_colour)
     app = set_service_ports(app, next_port)
@@ -535,7 +617,27 @@ def load_app_json(args):
 
 
 def safe_resume_deploy(args, previous_deploys):
-    if args.resume:
+    if args.complete_cur:
+        logger.info("Coverting all instances to current config")
+        new_app, old_app = select_last_two_deploys(previous_deploys)
+        logger.info("Current config color is %s" % new_app[
+            'labels']['HAPROXY_DEPLOYMENT_COLOUR'])
+        logger.info("Considering %s color as existing app"
+                    % old_app['labels']['HAPROXY_DEPLOYMENT_COLOUR'] +
+                    " and %s color as new app"
+                    % new_app['labels']['HAPROXY_DEPLOYMENT_COLOUR'])
+        return swap_zdd_apps(args, new_app, old_app)
+    elif args.complete_prev:
+        logger.info("Coverting all instances to previous config")
+        old_app, new_app = select_last_two_deploys(previous_deploys)
+        logger.info("Previous config color is %s" % new_app[
+            'labels']['HAPROXY_DEPLOYMENT_COLOUR'])
+        logger.info("Considering %s color as existing app"
+                    % old_app['labels']['HAPROXY_DEPLOYMENT_COLOUR'] +
+                    " and %s color as new app"
+                    % new_app['labels']['HAPROXY_DEPLOYMENT_COLOUR'])
+        return swap_zdd_apps(args, new_app, old_app)
+    elif args.resume:
         logger.info("Found previous deployment, resuming")
         new_app, old_app = select_last_two_deploys(previous_deploys)
         return swap_zdd_apps(args, new_app, old_app)
@@ -551,8 +653,12 @@ def do_zdd(args, out=sys.stdout):
     previous_deploys = fetch_previous_deploys(args, app)
 
     if len(previous_deploys) > 1:
-        # There is a stuck deploy
+        # There is a stuck deploy or hybrid deploy
         return safe_resume_deploy(args, previous_deploys)
+
+    if args.complete_cur or args.complete_prev:
+        raise InvalidArgException("Cannot use --complete-cur, --complete-prev"
+                                  " flags when config is not hybrid")
 
     new_app = prepare_deploy(args, previous_deploys, app)
 
@@ -609,7 +715,10 @@ def get_arg_parser():
                         type=int, default=5
                         )
     parser.add_argument("--initial-instances", "-i",
-                        help="Initial number of app instances to launch",
+                        help="Initial number of app instances to launch."
+                        " If this number is greater than total number of"
+                        " existing instances, then this will be overridden"
+                        " by the latter number",
                         type=int, default=1
                         )
     parser.add_argument("--resume", "-r",
@@ -621,6 +730,17 @@ def get_arg_parser():
                         " for HAProxy to drain connections",
                         type=int, default=300
                         )
+    parser.add_argument("--new-instances", "-n",
+                        help="Number of new instances to replace the existing"
+                        " instances. This is for having instances of both blue"
+                        " and green at the same time",
+                        type=int, default=0)
+    parser.add_argument("--complete-cur", "-c",
+                        help="Change hybrid app entirely to"
+                        " current (new) app's instances", action="store_true")
+    parser.add_argument("--complete-prev", "-p",
+                        help="Change hybrid app entirely to"
+                        " previous (old) app's instances", action="store_true")
     parser.add_argument("--pre-kill-hook",
                         help="A path to an executable (such as a script) "
                         "which will be called before killing any tasks marked "
@@ -666,9 +786,21 @@ def process_arguments():
 if __name__ == '__main__':
     args = process_arguments()
     set_request_retries()
-    setup_logging(logger, args.syslog_socket, args.log_format)
+    setup_logging(logger, args.syslog_socket, args.log_format, args.log_level)
 
-    if do_zdd(args):
-        sys.exit(0)
-    else:
-        sys.exit(1)
+    try:
+        if do_zdd(args):
+            sys.exit(0)
+        else:
+            sys.exit(1)
+    except Exception as e:
+        if hasattr(e, 'zdd_exit_status'):
+            if hasattr(e, 'error'):
+                logger.exception(str(e.error))
+            else:
+                logger.exception(traceback.print_exc())
+            sys.exit(e.zdd_exit_status)
+        else:
+            # For Unknown Exceptions
+            logger.exception(traceback.print_exc())
+            sys.exit(2)

@@ -22,8 +22,8 @@
       "storeUrls":[
 
       ],
-      "ports":[
-        10000
+      "portDefinitions":[
+        {"port":10000}
       ],
       "requirePorts":false,
       "backoffSeconds":1,

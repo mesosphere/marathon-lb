@@ -6,8 +6,14 @@ import sys
 import logging
 
 
-def setup_logging(logger, syslog_socket, log_format):
-    logger.setLevel(logging.DEBUG)
+def setup_logging(logger, syslog_socket, log_format, log_level='DEBUG'):
+    log_level = log_level.upper()
+
+    if log_level not in ['CRITICAL', 'ERROR', 'WARNING',
+                         'INFO', 'DEBUG', 'NOTSET']:
+        raise Exception('Invalid log level: {}'.format(log_level.upper()))
+
+    logger.setLevel(getattr(logging, log_level))
 
     formatter = logging.Formatter(log_format)
 
@@ -67,5 +73,9 @@ def set_logging_args(parser):
     parser.add_argument("--log-format",
                         help="Set log message format",
                         default="%(name)s: %(message)s"
+                        )
+    parser.add_argument("--log-level",
+                        help="Set log level",
+                        default="DEBUG"
                         )
     return parser
