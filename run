@@ -99,6 +99,7 @@ esac
 cat > $LB_SERVICE/run << EOF
 #!/bin/sh
 exec 2>&1
+cd /marathon-lb
 exec /marathon-lb/marathon_lb.py \
     --syslog-socket $SYSLOG_SOCKET \
     --haproxy-config /marathon-lb/haproxy.cfg \
