@@ -528,7 +528,7 @@ Sets HTTP headers, for example X-Forwarded-For and X-Forwarded-Proto.
             ConfigTemplate(name='HTTP_BACKEND_PROXYPASS_GLUE',
                            value='''\
   http-request set-header Host {hostname}
-  reqirep  "^([^ :]*)\ {proxypath}(.*)" "\\1\ /\\2"
+  reqirep  "^([^ :]*)\ {proxypath}/?(.*)" "\\1\ /\\2"
 ''',
                            overridable=True,
                            description='''\

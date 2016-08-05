@@ -565,7 +565,7 @@ Backend glue for `HAPROXY_{n}_HTTP_BACKEND_PROXYPASS_PATH`.
 **Default template for `HAPROXY_HTTP_BACKEND_PROXYPASS_GLUE`:**
 ```
   http-request set-header Host {hostname}
-  reqirep  "^([^ :]*)\ {proxypath}(.*)" "\1\ /\2"
+  reqirep  "^([^ :]*)\ {proxypath}/?(.*)" "\1\ /\2"
 ```
 ## `HAPROXY_HTTP_BACKEND_REDIR`
   *Overridable*
