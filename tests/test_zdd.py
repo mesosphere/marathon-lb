@@ -18,6 +18,7 @@ class Arguments:
     new_instances = 0
     complete_cur = False
     complete_prev = False
+    dcos_auth_credentials = None
 
 
 class MyResponse:
