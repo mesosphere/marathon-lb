@@ -150,13 +150,15 @@ class MarathonApp(object):
 
 
 class Marathon(object):
-
-    def __init__(self, hosts, health_check, auth):
+    def __init__(self, hosts, health_check, auth, ca_cert=None):
         # TODO(cmaloney): Support getting master list from zookeeper
         self.__hosts = hosts
         self.__health_check = health_check
         self.__auth = auth
         self.__cycle_hosts = cycle(self.__hosts)
+        self.__verify = False
+        if ca_cert:
+            self.__verify = ca_cert
 
     def api_req_raw(self, method, path, auth, body=None, **kwargs):
         for host in self.__hosts:
@@ -164,6 +166,7 @@ class Marathon(object):
 
             for path_elem in path:
                 path_str = path_str + "/" + path_elem
+
             response = requests.request(
                 method,
                 path_str,
@@ -178,15 +181,19 @@ class Marathon(object):
             logger.debug("%s %s", method, response.url)
             if response.status_code == 200:
                 break
+
+        response.raise_for_status()
+
         if 'message' in response.json():
             response.reason = "%s (%s)" % (
                 response.reason,
                 response.json()['message'])
-        response.raise_for_status()
+
         return response
 
     def api_req(self, method, path, **kwargs):
-        return self.api_req_raw(method, path, self.__auth, **kwargs).json()
+        return self.api_req_raw(method, path, self.__auth,
+                                verify=self.__verify, **kwargs).json()
 
     def create(self, app_json):
         return self.api_req('POST', ['apps'], app_json)
@@ -234,7 +241,8 @@ class Marathon(object):
                             stream=True,
                             headers=headers,
                             timeout=(3.05, 46),
-                            auth=self.__auth)
+                            auth=self.__auth,
+                            verify=self.__verify)
 
         class Event(object):
             def __init__(self, data):
@@ -1392,7 +1400,8 @@ def get_arg_parser():
     parser.add_argument("--marathon", "-m",
                         nargs="+",
                         help="[required] Marathon endpoint, eg. " +
-                             "-m http://marathon1:8080 http://marathon2:8080"
+                             "-m http://marathon1:8080 http://marathon2:8080",
+                        default=["http://master.mesos:8080"]
                         )
     parser.add_argument("--listening", "-l",
                         help="(deprecated) The address this script listens " +
@@ -1441,6 +1450,8 @@ def get_arg_parser():
                              "for frontend marathon_https_in"
                              "Ex: /etc/ssl/site1.co.pem,/etc/ssl/site2.co.pem",
                         default="/etc/ssl/mesosphere.com.pem")
+    parser.add_argument("--marathon-ca-cert",
+                        help="CA certificate for Marathon HTTPS connections")
     parser.add_argument("--skip-validation",
                         help="Skip haproxy config file validation",
                         action="store_true")
@@ -1461,7 +1472,7 @@ def get_arg_parser():
 
 
 def run_server(marathon, listen_addr, callback_url, config_file, groups,
-               bind_http_https, ssl_certs, haproxy_map):
+               bind_http_https, ssl_certs, haproxy_map, marathon_ca_cert):
     processor = MarathonEventProcessor(marathon,
                                        config_file,
                                        groups,
@@ -1582,7 +1593,8 @@ if __name__ == '__main__':
     # Marathon API connector
     marathon = Marathon(args.marathon,
                         args.health_check,
-                        get_marathon_auth_params(args))
+                        get_marathon_auth_params(args),
+                        args.marathon_ca_cert)
 
     # If in listening mode, spawn a webserver waiting for events. Otherwise
     # just write the config.

@@ -3,3 +3,5 @@ six
 python-dateutil
 pep8
 mock
+PyJWT==1.4.0
+cryptography==1.3.2

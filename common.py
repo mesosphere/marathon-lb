@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
 
-from logging.handlers import SysLogHandler
-
-import sys
+import base64
+import json
+import jwt
 import logging
+import os
+import sys
+import time
+
+
+import requests
+from logging.handlers import SysLogHandler
+from requests.auth import AuthBase
 
 
 def setup_logging(logger, syslog_socket, log_format, log_level='DEBUG'):
@@ -35,8 +43,42 @@ def set_marathon_auth_args(parser):
     parser.add_argument("--auth-credentials",
                         help="user/pass for the Marathon HTTP API in the "
                              "format of 'user:pass'.")
+    parser.add_argument("--dcos-auth-credentials",
+                        default=os.getenv('DCOS_AUTH_CREDS'),
+                        help="DC/OS service account credentials")
 
     return parser
+
+
+class DCOSAuth(AuthBase):
+    def __init__(self, credentials, ca_cert):
+        creds = json.loads(credentials)
+        self.uid = creds['uid']
+        private_key = creds['private_key']
+        private_key = base64.b64decode(private_key)
+        self.private_key = private_key.decode('ascii')
+        self.login_endpoint = creds['login_endpoint']
+        self.verify = False
+        if ca_cert:
+            self.verify = ca_cert
+
+    def __call__(self, auth_request):
+        payload = {
+            'uid': self.uid,
+            'exp': int(time.time()) + 3600,
+        }
+        token = jwt.encode(payload, self.private_key, 'RS256')
+
+        data = {
+            'uid': self.uid,
+            'token': token.decode('ascii'),
+        }
+        r = requests.post(self.login_endpoint, json=data, verify=self.verify)
+        r.raise_for_status()
+
+        auth_header = 'token=' + r.cookies['dcos-acs-auth-cookie']
+        auth_request.headers['Authorization'] = auth_header
+        return auth_request
 
 
 def get_marathon_auth_params(args):
@@ -50,6 +92,8 @@ def get_marathon_auth_params(args):
     elif args.auth_credentials:
         marathon_auth = \
             tuple(args.auth_credentials.split(':'))
+    elif args.dcos_auth_credentials:
+        return DCOSAuth(args.dcos_auth_credentials, args.marathon_ca_cert)
 
     if marathon_auth and len(marathon_auth) != 2:
         print(
