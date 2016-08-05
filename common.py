@@ -44,7 +44,7 @@ def set_marathon_auth_args(parser):
                         help="user/pass for the Marathon HTTP API in the "
                              "format of 'user:pass'.")
     parser.add_argument("--dcos-auth-credentials",
-                        default=os.getenv('DCOS_AUTH_CREDS'),
+                        default=os.getenv('DCOS_SERVICE_ACCOUNT_CREDENTIAL'),
                         help="DC/OS service account credentials")
 
     return parser
