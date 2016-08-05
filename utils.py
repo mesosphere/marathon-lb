@@ -187,13 +187,32 @@ def get_task_ip_and_ports(app, task):
         task_ports = [int(port['number'])
                       for port in discovery.get('ports', [])]
     else:
-        logger.debug("Using host port mapping")
-        task_ports = task.get('ports', [])
-        task_ip = resolve_ip(task['host'])
-        if not task_ip:
-            logger.warning("Could not resolve ip for host %s, ignoring",
+        network = app['labels'].get('HAPROXY_NETWORK','NORMAL');
+        if network == 'OVERLAY':
+            logger.debug("Using overlay network")
+            task_ports = []
+            task_ip = None
+            if 'ipAddresses' in task:
+                addrs = task['ipAddresses']
+                if len(addrs) > 0:
+                    task_ip = resolve_ip(addrs[0]['ipAddress'])
+            if task_ip == None:
+                task_ip = resolve_ip(task['host'])
+            if app['container']['type'] == 'DOCKER':
+                docker = app['container']['docker']
+                network = app['container']['docker']['network']
+                if 'portMappings' in app['container']['docker']:
+                    map_list = app['container']['docker']['portMappings']
+                    for info in map_list:
+                        task_ports.append(info['containerPort'])
+        else:
+            logger.debug("Using host port mapping")
+            task_ports = task.get('ports', [])
+            task_ip = resolve_ip(task['host'])
+            if not task_ip:
+                logger.warning("Could not resolve ip for host %s, ignoring",
                            task['host'])
-            return None, None
+                return None, None
 
     logger.debug("Returning: %r, %r", task_ip, task_ports)
     return task_ip, task_ports
