@@ -21,6 +21,9 @@ container:
       -
         key: "label"
         value: "APP_BUILD={{version}}"
+      -
+        key: "cap-add"
+        value: "NET_ADMIN"
   volumes:
   -
     containerPath: /dev/log
