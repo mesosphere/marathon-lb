@@ -933,7 +933,8 @@ behind a given service port.
 
 By default, the index will be the same as the one of the service port.
 
-Ex: An app exposes two ports, one for the application, one for its healthchecks:
+Ex: An app exposes two ports, one for the application,
+one for its healthchecks:
 
 portMappings": [
   {
