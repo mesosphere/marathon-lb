@@ -361,6 +361,11 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
                 continue
 
         logger.debug("configuring app %s", app.appId)
+        if len(app.backends) < 1:
+            logger.error("skipping app %s as it is not valid to generate" +
+                         " backend without any server entries!", app.appId)
+            continue
+
         backend = app.appId[1:].replace('/', '_') + '_' + str(app.servicePort)
 
         logger.debug("frontend at %s:%d with backend %s",
