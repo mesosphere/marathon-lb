@@ -115,6 +115,7 @@ class MarathonService(object):
         self.labels = {}
         self.backend_weight = 0
         self.network_allowed = None
+        self.healthcheck_port_index = None
         if healthCheck:
             if healthCheck['protocol'] == 'HTTP':
                 self.mode = 'http'
@@ -275,6 +276,49 @@ def has_group(groups, app_groups):
         return True
 
     return False
+
+
+def get_backend_port(apps, app, idx):
+    """
+    Return the port of the idx-th backend of the app which index in apps
+    is defined by app.healthcheck_port_index.
+
+    Example case:
+        We define an app mapping two ports: 9000 and 9001, that we
+        scaled to 3 instances.
+        The port 9000 is used for the app itself, and the port 9001
+        is used for the app healthchecks. Hence, we have 2 apps
+        at the marathon level, each with 3 backends (one for each
+        container).
+
+        If app.healthcheck_port_index is set to 1 (via the
+        HAPROXY_0_BACKEND_HEALTHCHECK_PORT_INDEX label), then
+        get_backend_port(apps, app, 3) will return the port of the 3rd
+        backend of the second app.
+
+    See https://github.com/mesosphere/marathon-lb/issues/198 for the
+    actual use case.
+
+    Note: if app.healthcheck_port_index has a out of bounds value,
+    then the app idx-th backend is returned instead.
+
+    """
+    def get_backends(app):
+        key_func = attrgetter('host', 'port')
+        return sorted(list(app.backends), key=key_func)
+
+    apps = [_app for _app in apps if _app.appId == app.appId]
+
+    # If no healthcheck port index is defined, or if its value is nonsense
+    # simply return the app port
+    if app.healthcheck_port_index is None or abs(app.healthcheck_port_index) > len(apps):
+        return get_backends(app)[idx].port
+
+    # If a healthcheck port index is defined, fetch the app corresponding
+    # to the argument app healthcheck port index, and return its idx-th backend port
+    apps = sorted(apps, key=attrgetter('appId', 'servicePort'))
+    backends = get_backends(apps[app.healthcheck_port_index])
+    return backends[idx].port
 
 
 def config(apps, groups, bind_http_https, ssl_certs, templater,
@@ -439,37 +483,6 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
                     format(network_allowed=network)
             backends += templater.haproxy_tcp_backend_acl_allow_deny
 
-        if app.healthCheck:
-            health_check_options = None
-            if app.mode == 'tcp' or app.healthCheck['protocol'] == 'TCP':
-                health_check_options = templater \
-                    .haproxy_backend_tcp_healthcheck_options(app)
-            elif app.mode == 'http':
-                health_check_options = templater \
-                    .haproxy_backend_http_healthcheck_options(app)
-            if health_check_options:
-                healthCheckPort = app.healthCheck.get('port')
-                backends += health_check_options.format(
-                    healthCheck=app.healthCheck,
-                    healthCheckPortIndex=app.healthCheck.get('portIndex'),
-                    healthCheckPort=healthCheckPort,
-                    healthCheckProtocol=app.healthCheck['protocol'],
-                    healthCheckPath=app.healthCheck.get('path', '/'),
-                    healthCheckTimeoutSeconds=app.healthCheck[
-                        'timeoutSeconds'],
-                    healthCheckIntervalSeconds=app.healthCheck[
-                        'intervalSeconds'],
-                    healthCheckIgnoreHttp1xx=app.healthCheck['ignoreHttp1xx'],
-                    healthCheckGracePeriodSeconds=app.healthCheck[
-                        'gracePeriodSeconds'],
-                    healthCheckMaxConsecutiveFailures=app.healthCheck[
-                        'maxConsecutiveFailures'],
-                    healthCheckFalls=app.healthCheck[
-                        'maxConsecutiveFailures'] + 1,
-                    healthCheckPortOptions=' port ' +
-                    str(healthCheckPort) if healthCheckPort else ''
-                )
-
         if app.sticky:
             logger.debug("turning on sticky sessions")
             backends += templater.haproxy_backend_sticky_options(app)
@@ -477,8 +490,42 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
         frontend_backend_glue = templater.haproxy_frontend_backend_glue(app)
         frontends += frontend_backend_glue.format(backend=backend)
 
+        do_healthcheck_options_once = True
         key_func = attrgetter('host', 'port')
-        for backendServer in sorted(app.backends, key=key_func):
+        for backend_service_idx, backendServer in enumerate(sorted(app.backends, key=key_func)):
+            if do_healthcheck_options_once:
+                if app.healthCheck:
+                    health_check_options = None
+                    if app.mode == 'tcp' or app.healthCheck['protocol'] == 'TCP':
+                        health_check_options = templater \
+                            .haproxy_backend_tcp_healthcheck_options(app)
+                    elif app.mode == 'http':
+                        health_check_options = templater \
+                            .haproxy_backend_http_healthcheck_options(app)
+                    if health_check_options:
+                        healthCheckPort = get_backend_port(apps, app, backend_service_idx)
+                        backends += health_check_options.format(
+                            healthCheck=app.healthCheck,
+                            healthCheckPortIndex=app.healthCheck.get('portIndex'),
+                            healthCheckPort=healthCheckPort,
+                            healthCheckProtocol=app.healthCheck['protocol'],
+                            healthCheckPath=app.healthCheck.get('path', '/'),
+                            healthCheckTimeoutSeconds=app.healthCheck[
+                                'timeoutSeconds'],
+                            healthCheckIntervalSeconds=app.healthCheck[
+                                'intervalSeconds'],
+                            healthCheckIgnoreHttp1xx=app.healthCheck['ignoreHttp1xx'],
+                            healthCheckGracePeriodSeconds=app.healthCheck[
+                                'gracePeriodSeconds'],
+                            healthCheckMaxConsecutiveFailures=app.healthCheck[
+                                'maxConsecutiveFailures'],
+                            healthCheckFalls=app.healthCheck[
+                                                 'maxConsecutiveFailures'] + 1,
+                            healthCheckPortOptions=' port ' +
+                                                   str(healthCheckPort) if healthCheckPort else ''
+                        )
+                do_healthcheck_options_once = False
+
             logger.debug(
                 "backend server %s:%d on %s",
                 backendServer.ip,
@@ -512,7 +559,7 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
                     server_health_check_options = templater \
                         .haproxy_backend_server_http_healthcheck_options(app)
                 if server_health_check_options:
-                    healthCheckPort = app.healthCheck.get('port')
+                    healthCheckPort = get_backend_port(apps, app, backend_service_idx)
                     healthCheckOptions = server_health_check_options.format(
                         healthCheck=app.healthCheck,
                         healthCheckPortIndex=app.healthCheck.get('portIndex'),
@@ -1302,6 +1349,25 @@ def get_apps(marathon):
                     func(service,
                          key_unformatted,
                          marathon_app.app['labels'][key])
+
+            # https://github.com/mesosphere/marathon-lb/issues/198
+            # Marathon app manifest which defines healthChecks is defined for a specific given
+            # service port identified by either a port or portIndex.
+            # (Marathon itself will prefer port before portIndex
+            #  https://mesosphere.github.io/marathon/docs/health-checks.html)
+            #
+            # We want to be able to instruct HAProxy to use health check defined for service port B
+            #  in marathon to indicate service port A is healthy or not for service port A in HAProxy.
+            #
+            # This is done by specifying a label:
+            #  HAPROXY_{n}_BACKEND_HEALTHCHECK_PORT_INDEX
+            #
+            # TODO(norangshol) Refactor and supply MarathonService with its labels and do this in its constructor?
+            if service.healthCheck is None and service.healthcheck_port_index is not None:
+                service.healthCheck = get_health_check(app, service.healthcheck_port_index)
+                if service.healthCheck:
+                    if service.healthCheck['protocol'] == 'HTTP':
+                        service.mode = 'http'
 
             marathon_app.services[servicePort] = service
 

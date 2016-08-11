@@ -1139,6 +1139,10 @@ def set_port(x, k, v):
     x.servicePort = int(v)
 
 
+def set_healthcheck_port_index(x, k, v):
+    x.healthcheck_port_index = int(v)
+
+
 def set_backend_weight(x, k, v):
     x.backend_weight = int(v)
 
@@ -1405,6 +1409,35 @@ By default every IP is allowed.
 Ex: `HAPROXY_0_BACKEND_NETWORK_ALLOWED_ACL = '127.0.0.1/8, 10.1.55.43'`
                     '''))
 
+labels.append(Label(name='BACKEND_HEALTHCHECK_PORT_INDEX',
+                    func=set_healthcheck_port_index,
+                    description='''\
+Set the index of the port dedicated for the healthchecks of the backends
+behind a given service port.
+
+By default, the index will be the same as the one of the service port.
+
+Ex: An app exposes two ports, one for the application, one for its healthchecks:
+
+portMappings": [
+  {
+    "containerPort": 9000,
+    "hostPort": 0,
+    "servicePort": 0,
+    "protocol": "tcp"
+  },
+  {
+    "containerPort": 9001,
+    "hostPort": 0,
+    "servicePort": 0,
+    "protocol": "tcp"
+  }
+]
+
+HAPROXY_0_BACKEND_HEALTHCHECK_PORT_INDEX=1 will make it so that the port 9001
+is used to perform the backend healthchecks.
+                    ''',
+                    ))
 labels.append(Label(name='FRONTEND_HEAD',
                     func=set_label,
                     description=''))
