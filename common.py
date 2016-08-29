@@ -55,7 +55,6 @@ class DCOSAuth(AuthBase):
         creds = json.loads(credentials)
         self.uid = creds['uid']
         private_key = creds['private_key']
-        private_key = base64.b64decode(private_key)
         self.private_key = private_key.decode('ascii')
         self.login_endpoint = creds['login_endpoint']
         self.verify = False
