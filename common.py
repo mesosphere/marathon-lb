@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import base64
 import json
 import jwt
 import logging
@@ -54,8 +53,7 @@ class DCOSAuth(AuthBase):
     def __init__(self, credentials, ca_cert):
         creds = json.loads(credentials)
         self.uid = creds['uid']
-        private_key = creds['private_key']
-        self.private_key = private_key.decode('ascii')
+        self.private_key = creds['private_key']
         self.login_endpoint = creds['login_endpoint']
         self.verify = False
         if ca_cert:
