@@ -1607,7 +1607,7 @@ if __name__ == '__main__':
             run_server(marathon, args.listening, callback_url,
                        args.haproxy_config, args.group,
                        not args.dont_bind_http_https, args.ssl_certs,
-                       args.haproxy_map)
+                       args.haproxy_map, args.marathon_ca_cert)
         finally:
             clear_callbacks(marathon, callback_url)
     elif args.sse:
