@@ -33,8 +33,7 @@ RUN set -x \
     && pip3 install -r /marathon-lb/requirements.txt \
     && rm -rf /root/.cache \
     && /marathon-lb/build-haproxy.sh \
-    && apt-get remove -yf $buildDeps \
-    && apt-get autoremove -yf
+    && apt-get purge -y --auto-remove $buildDeps
 
 COPY  . /marathon-lb
 
