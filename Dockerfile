@@ -5,11 +5,13 @@ COPY build-haproxy.sh /marathon-lb/build-haproxy.sh
 
 RUN set -x \
     && buildDeps=" \
-        build-essential \
+        gcc \
+        libc6-dev \
         libffi-dev \
         libpcre3-dev \
         libreadline-dev \
         libssl-dev \
+        make \
         python3-pip \
         wget \
     " \
