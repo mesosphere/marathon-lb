@@ -12,7 +12,9 @@ RUN set -x \
         libreadline-dev \
         libssl-dev \
         make \
+        python3-dev \
         python3-pip \
+        python3-wheel \
         wget \
     " \
     && runDeps=" \
@@ -21,10 +23,11 @@ RUN set -x \
         openssl \
         procps \
         python3 \
+        python3-setuptools \
         runit \
         socat \
     " \
-    && apt-get update && apt-get install -y $buildDeps $runDeps \
+    && apt-get update && apt-get install -y --no-install-recommends $buildDeps $runDeps \
     && pip3 install -r /marathon-lb/requirements.txt \
     && rm -rf /root/.cache \
     && /marathon-lb/build-haproxy.sh \
