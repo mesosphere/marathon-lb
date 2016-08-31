@@ -42,7 +42,7 @@ make -j4 \
   LUA_INC=/usr/local/include/ \
   USE_ZLIB=1 \
   LDFLAGS="-lcrypt  -lssl -lcrypto -L/usr/local/lib/ -llua -lm -L/usr/lib -lpcreposix -lpcre"
-make -j4 install LDFLAGS="-lcrypt  -lssl -lcrypto -L/usr/local/lib/ -llua -lm -L/usr/lib -lpcreposix -lpcre -ldl"
+make -j4 install-bin LDFLAGS="-lcrypt  -lssl -lcrypto -L/usr/local/lib/ -llua -lm -L/usr/lib -lpcreposix -lpcre -ldl"
 
 # Clean up
 cd /
