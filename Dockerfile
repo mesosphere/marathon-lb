@@ -19,7 +19,6 @@ RUN set -x \
         openssl \
         procps \
         python3 \
-        python3-dateutil \
         runit \
         socat \
     " \
