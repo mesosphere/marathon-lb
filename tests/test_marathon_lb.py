@@ -1858,11 +1858,12 @@ backend nginx3_10000
         app2.add_backend("agent2", "2.2.2.2", 1025, False)
         apps = [app1, app2]
         haproxy_map = True
-        map_array = []
+        domain_map_array = []
+        app_map_array = []
         config_file = "/etc/haproxy/haproxy.cfg"
         config = marathon_lb.config(apps, groups, bind_http_https, ssl_certs,
-                                    templater, haproxy_map, map_array,
-                                    config_file)
+                                    templater, haproxy_map, domain_map_array,
+                                    app_map_array, config_file)
         expected = self.base_config + '''
 frontend marathon_http_in
   bind *:80
@@ -1874,7 +1875,7 @@ frontend marathon_http_appid_in
   bind *:9091
   mode http
   use_backend %[req.hdr(x-marathon-app-id),lower,\
-map(/etc/haproxy/domain2backend.map)]
+map(/etc/haproxy/app2backend.map)]
 
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
@@ -1912,17 +1913,27 @@ backend nginx_10000
   server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 3s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
-        config_map = {}
-        for element in map_array:
+
+        # Check the domain map
+        domain_config_map = {}
+        for element in domain_map_array:
             for key, value in list(element.items()):
-                config_map[key] = value
-        expected_map = {}
-        expected_map["server.nginx.net"] = "nginx_10000"
-        expected_map["server.nginx1.net"] = "nginx_10000"
-        expected_map["server.apache.net"] = "apache_10001"
-        expected_map["/apache"] = "apache_10001"
-        expected_map["/nginx"] = "nginx_10000"
-        self.assertEqual(config_map, expected_map)
+                domain_config_map[key] = value
+        expected_domain_map = {}
+        expected_domain_map["server.nginx.net"] = "nginx_10000"
+        expected_domain_map["server.nginx1.net"] = "nginx_10000"
+        expected_domain_map["server.apache.net"] = "apache_10001"
+        self.assertEqual(domain_config_map, expected_domain_map)
+
+        # Check the app map
+        app_config_map = {}
+        for element in app_map_array:
+            for key, value in list(element.items()):
+                app_config_map[key] = value
+        expected_app_map = {}
+        expected_app_map["/apache"] = "apache_10001"
+        expected_app_map["/nginx"] = "nginx_10000"
+        self.assertEqual(app_config_map, expected_app_map)
 
     def test_config_haproxy_map_hybrid(self):
         apps = dict()
@@ -1954,11 +1965,12 @@ backend nginx_10000
         app2.add_backend("agent2", "2.2.2.2", 1025, False)
         apps = [app1, app2]
         haproxy_map = True
-        map_array = []
+        domain_map_array = []
+        app_map_array = []
         config_file = "/etc/haproxy/haproxy.cfg"
         config = marathon_lb.config(apps, groups, bind_http_https, ssl_certs,
-                                    templater, haproxy_map, map_array,
-                                    config_file)
+                                    templater, haproxy_map, domain_map_array,
+                                    app_map_array, config_file)
         expected = self.base_config + '''
 frontend marathon_http_in
   bind *:80
@@ -1973,7 +1985,7 @@ frontend marathon_http_appid_in
   bind *:9091
   mode http
   use_backend %[req.hdr(x-marathon-app-id),lower,\
-map(/etc/haproxy/domain2backend.map)]
+map(/etc/haproxy/app2backend.map)]
 
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
@@ -2014,16 +2026,26 @@ backend nginx_10000
   server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 3s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
-        config_map = {}
-        for element in map_array:
+
+        # Check the domain map
+        domain_config_map = {}
+        for element in domain_map_array:
             for key, value in list(element.items()):
-                config_map[key] = value
-        expected_map = {}
-        expected_map["server.nginx.net"] = "nginx_10000"
-        expected_map["server.nginx1.net"] = "nginx_10000"
-        expected_map["/apache"] = "apache_10001"
-        expected_map["/nginx"] = "nginx_10000"
-        self.assertEqual(config_map, expected_map)
+                domain_config_map[key] = value
+        expected_domain_map = {}
+        expected_domain_map["server.nginx.net"] = "nginx_10000"
+        expected_domain_map["server.nginx1.net"] = "nginx_10000"
+        self.assertEqual(domain_config_map, expected_domain_map)
+
+        # Check the app map
+        app_config_map = {}
+        for element in app_map_array:
+            for key, value in list(element.items()):
+                app_config_map[key] = value
+        expected_app_map = {}
+        expected_app_map["/apache"] = "apache_10001"
+        expected_app_map["/nginx"] = "nginx_10000"
+        self.assertEqual(app_config_map, expected_app_map)
 
     def test_config_haproxy_map_hybrid_with_vhost_path(self):
         apps = dict()
@@ -2055,11 +2077,12 @@ backend nginx_10000
         app2.add_backend("agent2", "2.2.2.2", 1025, False)
         apps = [app1, app2]
         haproxy_map = True
-        map_array = []
+        domain_map_array = []
+        app_map_array = []
         config_file = "/etc/haproxy/haproxy.cfg"
         config = marathon_lb.config(apps, groups, bind_http_https, ssl_certs,
-                                    templater, haproxy_map, map_array,
-                                    config_file)
+                                    templater, haproxy_map, domain_map_array,
+                                    app_map_array, config_file)
         expected = self.base_config + '''
 frontend marathon_http_in
   bind *:80
@@ -2075,7 +2098,7 @@ frontend marathon_http_appid_in
   bind *:9091
   mode http
   use_backend %[req.hdr(x-marathon-app-id),lower,\
-map(/etc/haproxy/domain2backend.map)]
+map(/etc/haproxy/app2backend.map)]
 
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
@@ -2118,16 +2141,26 @@ backend nginx_10000
   server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 3s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
-        config_map = {}
-        for element in map_array:
+
+        # Check the domain map
+        domain_config_map = {}
+        for element in domain_map_array:
             for key, value in list(element.items()):
-                config_map[key] = value
-        expected_map = {}
-        expected_map["server.nginx.net"] = "nginx_10000"
-        expected_map["server.nginx1.net"] = "nginx_10000"
-        expected_map["/apache"] = "apache_10001"
-        expected_map["/nginx"] = "nginx_10000"
-        self.assertEqual(config_map, expected_map)
+                domain_config_map[key] = value
+        expected_domain_map = {}
+        expected_domain_map["server.nginx.net"] = "nginx_10000"
+        expected_domain_map["server.nginx1.net"] = "nginx_10000"
+        self.assertEqual(domain_config_map, expected_domain_map)
+
+        # Check the app map
+        app_config_map = {}
+        for element in app_map_array:
+            for key, value in list(element.items()):
+                app_config_map[key] = value
+        expected_app_map = {}
+        expected_app_map["/apache"] = "apache_10001"
+        expected_app_map["/nginx"] = "nginx_10000"
+        self.assertEqual(app_config_map, expected_app_map)
 
     def test_config_haproxy_map_hybrid_httptohttps_redirect(self):
         apps = dict()
@@ -2159,11 +2192,12 @@ backend nginx_10000
         app2.redirectHttpToHttps = True
         apps = [app1, app2]
         haproxy_map = True
-        map_array = []
+        domain_map_array = []
+        app_map_array = []
         config_file = "/etc/haproxy/haproxy.cfg"
         config = marathon_lb.config(apps, groups, bind_http_https, ssl_certs,
-                                    templater, haproxy_map, map_array,
-                                    config_file)
+                                    templater, haproxy_map, domain_map_array,
+                                    app_map_array, config_file)
         expected = self.base_config + '''
 frontend marathon_http_in
   bind *:80
@@ -2178,7 +2212,7 @@ frontend marathon_http_appid_in
   bind *:9091
   mode http
   use_backend %[req.hdr(x-marathon-app-id),lower,\
-map(/etc/haproxy/domain2backend.map)]
+map(/etc/haproxy/app2backend.map)]
 
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
@@ -2216,18 +2250,28 @@ backend nginx_10000
   server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 3s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
-        config_map = {}
-        for element in map_array:
+
+        # Check the domain map
+        domain_config_map = {}
+        for element in domain_map_array:
             for key, value in list(element.items()):
-                config_map[key] = value
-        expected_map = {}
-        expected_map["server.nginx.net"] = "nginx_10000"
-        expected_map["server.nginx1.net"] = "nginx_10000"
-        expected_map["server.apache.net"] = "apache_10001"
-        expected_map["server.apache1.net"] = "apache_10001"
-        expected_map["/apache"] = "apache_10001"
-        expected_map["/nginx"] = "nginx_10000"
-        self.assertEqual(config_map, expected_map)
+                domain_config_map[key] = value
+        expected_domain_map = {}
+        expected_domain_map["server.nginx.net"] = "nginx_10000"
+        expected_domain_map["server.nginx1.net"] = "nginx_10000"
+        expected_domain_map["server.apache.net"] = "apache_10001"
+        expected_domain_map["server.apache1.net"] = "apache_10001"
+        self.assertEqual(domain_config_map, expected_domain_map)
+
+        # Check the app map
+        app_config_map = {}
+        for element in app_map_array:
+            for key, value in list(element.items()):
+                app_config_map[key] = value
+        expected_app_map = {}
+        expected_app_map["/apache"] = "apache_10001"
+        expected_app_map["/nginx"] = "nginx_10000"
+        self.assertEqual(app_config_map, expected_app_map)
 
     def test_config_simple_app_proxypass(self):
         apps = dict()

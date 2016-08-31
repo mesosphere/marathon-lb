@@ -278,7 +278,7 @@ def has_group(groups, app_groups):
 
 
 def config(apps, groups, bind_http_https, ssl_certs, templater,
-           haproxy_map=False, map_array=[],
+           haproxy_map=False, domain_map_array=[], app_map_array=[],
            config_file="/etc/haproxy/haproxy.cfg"):
     logger.info("generating config")
     config = templater.haproxy_head
@@ -362,7 +362,7 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
                                      app,
                                      backend,
                                      haproxy_map,
-                                     map_array,
+                                     domain_map_array,
                                      haproxy_dir,
                                      duplicate_map)
             http_frontend_list.append((backend_weight, p_fe))
@@ -387,8 +387,8 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
                     duplicate_map['map_http_frontend_appid_acl'] = 1
                 map_element = {}
                 map_element[app.appId] = backend
-                if map_element not in map_array:
-                    map_array.append(map_element)
+                if map_element not in app_map_array:
+                    app_map_array.append(map_element)
             else:
                 http_appid_frontend_acl = templater \
                     .haproxy_http_frontend_appid_acl(app)
@@ -986,7 +986,8 @@ def generateHttpVhostAcl(
 
 
 def writeConfigAndValidate(
-        config, config_file, map_string, map_file, haproxy_map):
+        config, config_file, domain_map_string, domain_map_file,
+        app_map_string, app_map_file, haproxy_map):
     # Test run, print to stdout and exit
     if args.dry:
         print(config)
@@ -1006,15 +1007,8 @@ def writeConfigAndValidate(
     os.chmod(haproxyTempConfigFile, perms)
 
     if haproxy_map:
-        fd, haproxyTempMapFile = mkstemp()
-        logger.debug("writing map to temp file %s", haproxyTempMapFile)
-        with os.fdopen(fd, 'w') as haproxyTempMap:
-            haproxyTempMap.write(map_string)
-
-        perms = 0o644
-        if os.path.isfile(map_file):
-            perms = stat.S_IMODE(os.lstat(map_file).st_mode)
-        os.chmod(haproxyTempMapFile, perms)
+        domain_temp_map_file = writeTempMap(domain_map_string, domain_map_file)
+        app_temp_map_file = writeTempMap(app_map_string, app_map_file)
 
     # If skip validation flag is provided, don't check.
     if args.skip_validation:
@@ -1023,10 +1017,8 @@ def writeConfigAndValidate(
                      config_file)
         move(haproxyTempConfigFile, config_file)
         if haproxy_map:
-            logger.debug("Moving temp file %s to %s",
-                         haproxyTempMapFile,
-                         map_file)
-            move(haproxyTempMapFile, map_file)
+            moveTempMapFile(domain_temp_map_file, domain_map_file)
+            moveTempMapFile(app_temp_map_file, app_map_file)
         return True
 
     # Check that config is valid
@@ -1040,22 +1032,46 @@ def writeConfigAndValidate(
                      config_file)
         move(haproxyTempConfigFile, config_file)
         if haproxy_map:
-            logger.debug("moving temp file %s to %s",
-                         haproxyTempMapFile,
-                         map_file)
-            move(haproxyTempMapFile, map_file)
+            moveTempMapFile(domain_temp_map_file, domain_map_file)
+            moveTempMapFile(app_temp_map_file, app_map_file)
         return True
     else:
         logger.error("haproxy returned non-zero when checking config")
         return False
 
 
-def compareWriteAndReloadConfig(config, config_file, map_array, haproxy_map):
+def writeTempMap(map_string, map_file):
+    # Write the map to a temporary file with the same permissions as the
+    # existing map file. Returns the path to the temporary file.
+    fd, haproxyTempMapFile = mkstemp()
+    logger.debug("writing map to temp file %s", haproxyTempMapFile)
+    with os.fdopen(fd, 'w') as haproxyTempMap:
+        haproxyTempMap.write(map_string)
+
+    perms = 0o644
+    if os.path.isfile(map_file):
+        perms = stat.S_IMODE(os.lstat(map_file).st_mode)
+    os.chmod(haproxyTempMapFile, perms)
+
+    return haproxyTempMapFile
+
+
+def moveTempMapFile(temp_map_file, map_file):
+    # Replace the old map file with the new map from its temporary location
+    logger.debug("moving temp file %s to %s", temp_map_file, map_file)
+    move(temp_map_file, map_file)
+
+
+def compareWriteAndReloadConfig(config, config_file, domain_map_array,
+                                app_map_array, haproxy_map):
     # See if the last config on disk matches this, and if so don't reload
     # haproxy
-    map_file = "/".join(config_file.split("/")[:-1]) + \
+    domain_map_file = "/".join(config_file.split("/")[:-1]) + \
         "/" + "domain2backend.map"
-    map_string = str()
+    app_map_file = "/".join(config_file.split("/")[:-1]) + \
+        "/" + "app2backend.map"
+    domain_map_string = str()
+    app_map_string = str()
     runningConfig = str()
     try:
         logger.debug("reading running config from %s", config_file)
@@ -1065,45 +1081,71 @@ def compareWriteAndReloadConfig(config, config_file, map_array, haproxy_map):
         logger.warning("couldn't open config file for reading")
 
     if haproxy_map:
-        if not os.path.isfile(map_file):
-            open(map_file, 'a').close()
-        runningmap = str()
-        try:
-            logger.debug("reading map config from %s", map_file)
-            with open(map_file, "r") as f:
-                runningmap = f.read()
-        except IOError:
-            logger.warning("couldn't open map file for reading")
-        for element in map_array:
-            for key, value in list(element.items()):
-                map_string = map_string + str(key) + " " + str(value) + "\n"
+        domain_map_string = generateMapString(domain_map_array)
+        app_map_string = generateMapString(app_map_array)
 
-        if runningConfig != config or runningmap != map_string:
+        if (runningConfig != config or
+                compareMapFile(domain_map_file, domain_map_string) or
+                compareMapFile(app_map_file, app_map_string)):
             logger.info(
                 "running config/map is different from generated"
                 " config - reloading")
             if writeConfigAndValidate(
-                    config, config_file, map_string, map_file, haproxy_map):
+                    config, config_file, domain_map_string, domain_map_file,
+                    app_map_string, app_map_file, haproxy_map):
                 reloadConfig()
             else:
                 logger.warning("skipping reload: config not valid")
 
     else:
-        if os.path.isfile(map_file):
-                logger.debug("Truncating map file as haproxy-map flag "
-                             "is disabled %s", map_file)
-                fd = os.open(map_file, os.O_RDWR)
-                os.ftruncate(fd, 0)
-                os.close(fd)
+        truncateMapFileIfExists(domain_map_file)
+        truncateMapFileIfExists(app_map_file)
         if runningConfig != config:
             logger.info(
                 "running config is different from generated config"
                 " - reloading")
             if writeConfigAndValidate(
-                    config, config_file, map_string, map_file, haproxy_map):
+                    config, config_file, domain_map_string, domain_map_file,
+                    app_map_string, app_map_file, haproxy_map):
                 reloadConfig()
             else:
                 logger.warning("skipping reload: config not valid")
+
+
+def generateMapString(map_array):
+    # Generate the string representation of the map file from a map array
+    map_string = str()
+    for element in map_array:
+        for key, value in list(element.items()):
+            map_string = map_string + str(key) + " " + str(value) + "\n"
+    return map_string
+
+
+def compareMapFile(map_file, map_string):
+    # Read the map file (creating an empty file if it does not exist) and
+    # compare its contents to the given map string. Returns true if the map
+    # string is different to the contents of the file.
+    if not os.path.isfile(map_file):
+        open(map_file, 'a').close()
+
+    runningmap = str()
+    try:
+        logger.debug("reading map config from %s", map_file)
+        with open(map_file, "r") as f:
+            runningmap = f.read()
+    except IOError:
+        logger.warning("couldn't open map file for reading")
+
+    return runningmap != map_string
+
+
+def truncateMapFileIfExists(map_file):
+    if os.path.isfile(map_file):
+        logger.debug("Truncating map file as haproxy-map flag "
+                     "is disabled %s", map_file)
+        fd = os.open(map_file, os.O_RDWR)
+        os.ftruncate(fd, 0)
+        os.close(fd)
 
 
 def get_health_check(app, portIndex):
@@ -1307,11 +1349,15 @@ def get_apps(marathon):
 
 def regenerate_config(apps, config_file, groups, bind_http_https,
                       ssl_certs, templater, haproxy_map):
-    map_array = []
-    compareWriteAndReloadConfig(config(apps, groups, bind_http_https,
-                                ssl_certs, templater, haproxy_map,
-                                map_array, config_file),
-                                config_file, map_array, haproxy_map)
+    domain_map_array = []
+    app_map_array = []
+
+    generated_config = config(apps, groups, bind_http_https, ssl_certs,
+                              templater, haproxy_map, domain_map_array,
+                              app_map_array, config_file)
+
+    compareWriteAndReloadConfig(generated_config, config_file,
+                                domain_map_array, app_map_array, haproxy_map)
 
 
 class MarathonEventProcessor(object):

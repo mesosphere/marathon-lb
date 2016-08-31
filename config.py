@@ -422,7 +422,7 @@ of the `HAPROXY_HTTP_FRONTEND_APPID_HEAD`.
             ConfigTemplate(name='MAP_HTTP_FRONTEND_APPID_ACL',
                            value='''\
   use_backend %[req.hdr(x-marathon-app-id),lower,\
-map({haproxy_dir}/domain2backend.map)]
+map({haproxy_dir}/app2backend.map)]
 ''',
                            overridable=True,
                            description='''\
