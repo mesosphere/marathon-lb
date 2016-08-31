@@ -27,13 +27,15 @@ RUN set -x \
         runit \
         socat \
     " \
-    && apt-get update && apt-get install -y --no-install-recommends $buildDeps $runDeps \
+    && apt-get update \
+        && apt-get install -y --no-install-recommends $buildDeps $runDeps \
+        && rm -rf /var/lib/apt/lists/* \
     && pip3 install -r /marathon-lb/requirements.txt \
     && rm -rf /root/.cache \
     && /marathon-lb/build-haproxy.sh \
     && apt-get remove -yf $buildDeps \
     && apt-get autoremove -yf \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    && apt-get clean
 
 COPY  . /marathon-lb
 
