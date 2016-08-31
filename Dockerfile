@@ -30,8 +30,7 @@ RUN set -x \
     && apt-get update \
         && apt-get install -y --no-install-recommends $buildDeps $runDeps \
         && rm -rf /var/lib/apt/lists/* \
-    && pip3 install -r /marathon-lb/requirements.txt \
-    && rm -rf /root/.cache \
+    && pip3 install --no-cache -r /marathon-lb/requirements.txt \
     && /marathon-lb/build-haproxy.sh \
     && apt-get purge -y --auto-remove $buildDeps
 
