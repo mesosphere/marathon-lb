@@ -34,8 +34,7 @@ RUN set -x \
     && rm -rf /root/.cache \
     && /marathon-lb/build-haproxy.sh \
     && apt-get remove -yf $buildDeps \
-    && apt-get autoremove -yf \
-    && apt-get clean
+    && apt-get autoremove -yf
 
 COPY  . /marathon-lb
 
