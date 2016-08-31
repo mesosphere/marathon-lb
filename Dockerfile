@@ -6,20 +6,20 @@ COPY build-haproxy.sh /marathon-lb/build-haproxy.sh
 RUN set -x \
     && buildDeps=" \
         build-essential \
+        libffi-dev \
         libpcre3-dev \
         libreadline-dev \
         libssl-dev \
+        python3-pip \
         wget \
     " \
     && runDeps=" \
         iptables \
-        libffi-dev \
         libpcre3 \
         openssl \
         procps \
         python3 \
         python3-dateutil \
-        python3-pip \
         runit \
         socat \
     " \
