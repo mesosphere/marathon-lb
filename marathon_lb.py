@@ -1066,10 +1066,11 @@ def compareWriteAndReloadConfig(config, config_file, domain_map_array,
                                 app_map_array, haproxy_map):
     # See if the last config on disk matches this, and if so don't reload
     # haproxy
-    domain_map_file = "/".join(config_file.split("/")[:-1]) + \
-        "/" + "domain2backend.map"
-    app_map_file = "/".join(config_file.split("/")[:-1]) + \
-        "/" + "app2backend.map"
+    domain_map_file = os.path.join(os.path.dirname(config_file),
+                                   "domain2backend.map")
+    app_map_file = os.path.join(os.path.dirname(config_file),
+                                "app2backend.map")
+
     domain_map_string = str()
     app_map_string = str()
     runningConfig = str()
