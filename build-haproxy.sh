@@ -25,7 +25,7 @@ cd /usr/src
 HAPROXY_FILENAME="haproxy-$HAPROXY_VERSION"
 wget "http://www.haproxy.org/download/$HAPROXY_MAJOR_VERSION/src/$HAPROXY_FILENAME.tar.gz"
 echo "$HAPROXY_MD5  $HAPROXY_FILENAME.tar.gz" | md5sum -c
-tar xf "$HAPROXY_FILENAME.tar.gz"
+tar zxf "$HAPROXY_FILENAME.tar.gz"
 cd "$HAPROXY_FILENAME"
 make -j4 \
   TARGET=custom \
