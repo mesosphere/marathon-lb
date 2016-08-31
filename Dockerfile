@@ -14,7 +14,6 @@ RUN set -x \
         make \
         python3-dev \
         python3-pip \
-        python3-wheel \
         wget \
     " \
     && runDeps=" \
