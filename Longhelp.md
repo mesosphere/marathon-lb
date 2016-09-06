@@ -565,7 +565,7 @@ Backend glue for `HAPROXY_{n}_HTTP_BACKEND_PROXYPASS_PATH`.
 **Default template for `HAPROXY_HTTP_BACKEND_PROXYPASS_GLUE`:**
 ```
   http-request set-header Host {hostname}
-  reqirep  "^([^ :]*)\ {proxypath}(.*)" "\1\ /\2"
+  reqirep  "^([^ :]*)\ {proxypath}/?(.*)" "\1\ /\2"
 ```
 ## `HAPROXY_HTTP_BACKEND_REDIR`
   *Overridable*
@@ -1058,7 +1058,7 @@ Load balancers with the group '*' will collect all groups.
 Specified as `HAPROXY_{n}_HTTP_BACKEND_PROXYPASS_PATH`.
 
 Set the location to use for mapping local server URLs to remote servers + URL.
-Ex: `HAPROXY_0_HTTP_BACKEND_PROXYPASS_PATH = '/path/to/redirect`
+Ex: `HAPROXY_0_HTTP_BACKEND_PROXYPASS_PATH = '/path/to/redirect'`
                     
 
 ## `HAPROXY_{n}_HTTP_BACKEND_REVPROXY_PATH`

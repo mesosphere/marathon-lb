@@ -528,7 +528,7 @@ Sets HTTP headers, for example X-Forwarded-For and X-Forwarded-Proto.
             ConfigTemplate(name='HTTP_BACKEND_PROXYPASS_GLUE',
                            value='''\
   http-request set-header Host {hostname}
-  reqirep  "^([^ :]*)\ {proxypath}(.*)" "\\1\ /\\2"
+  reqirep  "^([^ :]*)\ {proxypath}/?(.*)" "\\1\ /\\2"
 ''',
                            overridable=True,
                            description='''\
@@ -1362,7 +1362,7 @@ labels.append(Label(name='HTTP_BACKEND_PROXYPASS_PATH',
                     func=set_proxypath,
                     description='''\
 Set the location to use for mapping local server URLs to remote servers + URL.
-Ex: `HAPROXY_0_HTTP_BACKEND_PROXYPASS_PATH = '/path/to/redirect`
+Ex: `HAPROXY_0_HTTP_BACKEND_PROXYPASS_PATH = '/path/to/redirect'`
                     '''))
 
 labels.append(Label(name='HTTP_BACKEND_REVPROXY_PATH',
