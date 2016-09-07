@@ -49,11 +49,11 @@ function send_map(applet, map)
 end
 
 core.register_service("getvhostmap", "http", function(applet)
-  local haproxy_vhostmap = load_vhostmap("domain2backend.map")
+  local haproxy_vhostmap = load_map("domain2backend.map")
   send_map(applet, haproxy_vhostmap)
 end)
 
 core.register_service("getappmap", "http", function(applet)
-  local haproxy_appmap = load_vhostmap("app2backend.map")
+  local haproxy_appmap = load_map("app2backend.map")
   send_map(applet, haproxy_appmap)
 end)
