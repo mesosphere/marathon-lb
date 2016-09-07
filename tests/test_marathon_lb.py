@@ -1537,7 +1537,7 @@ backend nginx_10000
   http-request set-header X-Forwarded-Port %[dst_port]
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   http-request set-header Host test.example.com
-  reqirep  "^([^ :]*)\ /test/(.*)" "\\1\ /\\2"
+  reqirep  "^([^ :]*)\ /test//?(.*)" "\\1\ /\\2"
   server agent1_1_1_1_1_1024 1.1.1.1:1024
 '''
         self.assertMultiLineEqual(config, expected)
@@ -2327,7 +2327,7 @@ backend nginx_10000
   http-request set-header X-Forwarded-Port %[dst_port]
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   http-request set-header Host None
-  reqirep  "^([^ :]*)\ /proxy/path(.*)" "\\1\ /\\2"
+  reqirep  "^([^ :]*)\ /proxy/path/?(.*)" "\\1\ /\\2"
   option  httpchk GET /
   timeout check 10s
   server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
