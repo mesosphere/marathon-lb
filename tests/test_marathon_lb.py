@@ -42,7 +42,7 @@ AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS
   server-state-base /var/state/haproxy/
   lua-load /marathon-lb/getpids.lua
   lua-load /marathon-lb/getconfig.lua
-  lua-load /marathon-lb/getvhostmap.lua
+  lua-load /marathon-lb/getmaps.lua
 defaults
   load-server-state-from-file global
   log               global
@@ -70,6 +70,8 @@ listen stats
   http-request use-service lua.getpids if getpid
   acl getvhostmap path /_haproxy_getvhostmap
   http-request use-service lua.getvhostmap if getvhostmap
+  acl getappmap path /_haproxy_getappmap
+  http-request use-service lua.getappmap if getappmap
   acl getconfig path /_haproxy_getconfig
   http-request use-service lua.getconfig if getconfig
 '''
