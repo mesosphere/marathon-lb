@@ -1,7 +1,7 @@
 -- A simple Lua script which serves up the HAProxy
 -- vhost to backend map file.
 function check_file_exists(name)
-  local f = io.open(name,"r")
+  local f = io.open(name, "r")
   if f ~= nil then io.close(f) return true else return false end
 end
 
@@ -10,7 +10,7 @@ function read_file(filepath)
   -- exist.
   local content = ""
   if check_file_exists(filepath) then
-    local f = io.open(path, "rb")
+    local f = io.open(filepath, "rb")
     content = f:read("*all")
     f:close()
   end
