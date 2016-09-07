@@ -13,7 +13,7 @@ global
   server-state-base /var/state/haproxy/
   lua-load /marathon-lb/getpids.lua
   lua-load /marathon-lb/getconfig.lua
-  
+
 defaults
   load-server-state-from-file global
   log               global
@@ -36,7 +36,7 @@ defaults
   option            httplog
   option            splice-auto
   option            forwardfor
-  
+
 listen stats
   bind 0.0.0.0:9090
   balance
@@ -47,7 +47,7 @@ listen stats
   http-request use-service lua.getpids if getpid
   acl getconfig path /_haproxy_getconfig
   http-request use-service lua.getconfig if getconfig
-  
+
 backend mesos
   balance roundrobin
   mode http
@@ -57,7 +57,7 @@ backend mesos
   option  httpchk GET /health
   timeout check 10s
   server mesos leader.mesos:5050 check inter 5s fall 4
-  
+
 backend marathon
   balance roundrobin
   mode http
@@ -67,10 +67,8 @@ backend marathon
   option  httpchk GET /
   http-check expect status 401
   timeout check 10s
-  server marathon1 172.22.1.20:8080 check inter 5s fall 4
-  server marathon2 172.22.2.77:8080 check inter 5s fall 4
-  server marathon3 172.22.3.144:8080 check inter 5s fall 4
-  
+  server marathon1 marathon.mesos:8080 check inter 5s fall 4
+
 backend consul
   balance roundrobin
   mode http
@@ -79,11 +77,9 @@ backend consul
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server consul1 172.22.1.20:8500 check inter 1s
-  server consul2 172.22.2.77:8500 check inter 1s
-  server consul3 172.22.3.144:8500 check inter 1s
-  
-backend eremetic
+  server consul1 master.mesos:8500 check inter 1s
+
+backend singularity
   balance roundrobin
   mode http
   option forwardfor
@@ -91,5 +87,4 @@ backend eremetic
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /metrics
   timeout check 10s
-  server eremetic eremetic:8000 check inter 5s fall 4
-  
+  server singularity singularity.mesos:7099 check inter 5s fall 4
