@@ -1,40 +1,43 @@
 -- A simple Lua script which serves up the HAProxy
 -- vhost to backend map file.
 function check_file_exists(name)
-   local f=io.open(name,"r")
-   if f~=nil then io.close(f) return true else return false end
+  local f = io.open(name,"r")
+  if f ~= nil then io.close(f) return true else return false end
 end
 
-function read_map_file(filename, cmdline)
+function read_file(filepath)
+  -- Read all of the given file, returning an empty string if the file doesn't
+  -- exist.
+  local content = ""
+  if check_file_exists(filepath) then
+    local f = io.open(path, "rb")
+    content = f:read("*all")
+    f:close()
+  end
+  return content
+end
+
+function detect_config_dir()
+  -- Read the process's (HAProxy's) cmdline proc and parse the path to the
+  -- config file so that we can determine the config directory.
+  local f = io.open("/proc/self/cmdline", "rb")
+  local cmdline = f:read("*all")
+  f:close()
+
   local found = false
-  local filename = ''
-  for s in string.gmatch(cmdline, '%g+') do
-    if s == '-f' then
+  local sep = package.config:sub(1, 1)
+  for opt in string.gmatch(cmdline, "%g+") do
+    if opt == "-f" then
       found = true
     elseif found then
-      path = s
-      sep = package.config:sub(1,1)
-      path = path:match("(.*"..sep..")")..filename
-      break
+      return opt:match("(.*"..sep..")")
     end
   end
-
-  local map = ''
-  if check_file_exists(path) then
-    local f = io.open(path, "rb")
-    map = f:read("*all")
-    f:close()
-  else
-    map = ''
-  end
-  return map
 end
 
 function load_map(filename)
-  local f = io.open('/proc/self/cmdline', "rb")
-  local cmdline = f:read("*all")
-  f:close()
-  return read_map_file(filename, cmdline)
+  local config_dir = detect_config_dir()
+  return read_file(config_dir..filename)
 end
 
 function send_map(applet, map)
