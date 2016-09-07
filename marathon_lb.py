@@ -992,33 +992,34 @@ def writeConfigAndValidate(
     if args.dry:
         print(config)
         sys.exit()
-    # Write config to a temporary location
-    fd, haproxyTempConfigFile = mkstemp()
-    logger.debug("writing config to temp file %s", haproxyTempConfigFile)
-    with os.fdopen(fd, 'w') as haproxyTempConfig:
-        haproxyTempConfig.write(config)
 
-    # Ensure new config is created with the same
-    # permissions the old file had or use defaults
-    # if config file doesn't exist yet
-    perms = 0o644
-    if os.path.isfile(config_file):
-        perms = stat.S_IMODE(os.lstat(config_file).st_mode)
-    os.chmod(haproxyTempConfigFile, perms)
+    temp_config = config
 
+    # First write the new maps to temporary files
     if haproxy_map:
-        domain_temp_map_file = writeTempMap(domain_map_string, domain_map_file)
-        app_temp_map_file = writeTempMap(app_map_string, app_map_file)
+        domain_temp_map_file = writeReplacementTempFile(domain_map_string,
+                                                        domain_map_file)
+        app_temp_map_file = writeReplacementTempFile(app_map_string,
+                                                     app_map_file)
+
+        # Change the file paths in the config to (temporarily) point to the
+        # temporary map files so those can also be checked when the config is
+        # validated
+        if not args.skip_validation:
+            temp_config = config.replace(
+                domain_map_file, domain_temp_map_file
+            ).replace(app_map_file, app_temp_map_file)
+
+    # Write the new config to a temporary file
+    haproxyTempConfigFile = writeReplacementTempFile(temp_config, config_file)
 
     # If skip validation flag is provided, don't check.
     if args.skip_validation:
-        logger.debug("skipping validation. moving temp file %s to %s",
-                     haproxyTempConfigFile,
-                     config_file)
-        move(haproxyTempConfigFile, config_file)
+        logger.debug("skipping validation.")
         if haproxy_map:
-            moveTempMapFile(domain_temp_map_file, domain_map_file)
-            moveTempMapFile(app_temp_map_file, app_map_file)
+            moveTempFile(domain_temp_map_file, domain_map_file)
+            moveTempFile(app_temp_map_file, app_map_file)
+        moveTempFile(haproxyTempConfigFile, config_file)
         return True
 
     # Check that config is valid
@@ -1027,39 +1028,45 @@ def writeConfigAndValidate(
     returncode = subprocess.call(args=cmd)
     if returncode == 0:
         # Move into place
-        logger.debug("moving temp file %s to %s",
-                     haproxyTempConfigFile,
-                     config_file)
-        move(haproxyTempConfigFile, config_file)
         if haproxy_map:
-            moveTempMapFile(domain_temp_map_file, domain_map_file)
-            moveTempMapFile(app_temp_map_file, app_map_file)
+            moveTempFile(domain_temp_map_file, domain_map_file)
+            moveTempFile(app_temp_map_file, app_map_file)
+
+            # Edit the config file again to point to the actual map paths
+            with open(haproxyTempConfigFile, 'w') as tempConfig:
+                tempConfig.write(config)
+
+        moveTempFile(haproxyTempConfigFile, config_file)
         return True
     else:
         logger.error("haproxy returned non-zero when checking config")
         return False
 
 
-def writeTempMap(map_string, map_file):
-    # Write the map to a temporary file with the same permissions as the
-    # existing map file. Returns the path to the temporary file.
-    fd, haproxyTempMapFile = mkstemp()
-    logger.debug("writing map to temp file %s", haproxyTempMapFile)
-    with os.fdopen(fd, 'w') as haproxyTempMap:
-        haproxyTempMap.write(map_string)
+def writeReplacementTempFile(content, file_to_replace):
+    # Create a temporary file containing the given content that will be used to
+    # replace the given file after validation. Returns the path to the
+    # temporary file.
+    fd, tempFile = mkstemp()
+    logger.debug(
+        "writing temp file %s that will replace %s", tempFile, file_to_replace)
+    with os.fdopen(fd, 'w') as tempConfig:
+        tempConfig.write(content)
 
+    # Ensure the new file is created with the same permissions the old file had
+    # or use defaults if the file doesn't exist yet
     perms = 0o644
-    if os.path.isfile(map_file):
-        perms = stat.S_IMODE(os.lstat(map_file).st_mode)
-    os.chmod(haproxyTempMapFile, perms)
+    if os.path.isfile(file_to_replace):
+        perms = stat.S_IMODE(os.lstat(file_to_replace).st_mode)
+    os.chmod(tempFile, perms)
 
-    return haproxyTempMapFile
+    return tempFile
 
 
-def moveTempMapFile(temp_map_file, map_file):
-    # Replace the old map file with the new map from its temporary location
-    logger.debug("moving temp file %s to %s", temp_map_file, map_file)
-    move(temp_map_file, map_file)
+def moveTempFile(temp_file, dest_file):
+    # Replace the old file with the new from its temporary location
+    logger.debug("moving temp file %s to %s", temp_file, dest_file)
+    move(temp_file, dest_file)
 
 
 def compareWriteAndReloadConfig(config, config_file, domain_map_array,
