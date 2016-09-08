@@ -3,6 +3,9 @@ set -euo pipefail
 
 SYSLOG_SOCKET=${SYSLOG_SOCKET:-/dev/null}
 
+LB_SERVICE="/marathon-lb/service/lb"
+mkdir -p $LB_SERVICE
+
 HAPROXY_SERVICE="/marathon-lb/service/haproxy"
 mkdir -p $HAPROXY_SERVICE/env
 
@@ -70,12 +73,6 @@ if [ -n "${HAPROXY_SYSCTL_PARAMS-}" ]; then
   fi
 fi
 
-/usr/bin/runsv "$HAPROXY_SERVICE" &
-RUNSV=$!
-ARGS=""
-
-trap "kill $RUNSV; wait $RUNSV; exit 0" TERM INT
-
 MODE=$1; shift
 case "$MODE" in
   poll)
@@ -99,17 +96,32 @@ case "$MODE" in
     ;;
 esac
 
-while true; do
-  /marathon-lb/marathon_lb.py \
+cat > $LB_SERVICE/run << EOF
+#!/bin/sh
+exec 2>&1
+cd /marathon-lb
+exec /marathon-lb/marathon_lb.py \
     --syslog-socket $SYSLOG_SOCKET \
     --haproxy-config /marathon-lb/haproxy.cfg \
-    --ssl-certs "$SSL_CERTS" \
-    --command "sv reload $HAPROXY_SERVICE" \
-    $ARGS "$@" &
-  wait $! || exit $? # Needed for the traps to work
-  if [ "$MODE" != "poll" ]; then
-    exit 0
-  fi
-  sleep "$POLL_INTERVAL" &
-  wait $!
-done
+    --ssl-certs "${SSL_CERTS}" \
+    --command "sv reload ${HAPROXY_SERVICE}" \
+    $ARGS ${@}
+
+EOF
+chmod 755 $LB_SERVICE/run
+
+
+if [ "${MODE}" == "poll" ]; then
+
+cat > $LB_SERVICE/finish << EOF
+#!/bin/sh
+sleep ${POLL_INTERVAL}
+
+EOF
+chmod 755 $LB_SERVICE/finish
+
+fi
+
+runsvdir -P /marathon-lb/service &
+trap "kill -s 1 $!" TERM INT
+wait
