@@ -92,7 +92,7 @@ optional arguments:
                         ports for IP-per-task applications (default: 10100)
   --syslog-socket SYSLOG_SOCKET
                         Socket to write syslog messages to. Use '/dev/null' to
-                        disable logging to syslog (default: /dev/log)
+                        disable logging to syslog (default: /var/run/syslog)
   --log-format LOG_FORMAT
                         Set log message format (default: %(name)s:
                         %(message)s)
