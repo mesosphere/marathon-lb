@@ -1,6 +1,7 @@
-import unittest
 import copy
 import json
+import unittest
+
 import marathon_lb
 
 

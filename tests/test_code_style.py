@@ -1,6 +1,7 @@
-import unittest
-import pep8
 import os
+import unittest
+
+import pep8
 
 
 class TestCodeFormat(unittest.TestCase):

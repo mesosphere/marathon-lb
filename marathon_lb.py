@@ -19,35 +19,37 @@ which marathon-lb can be reached by Marathon.
 
 ### Command Line Usage
 """
-
-from operator import attrgetter
-from shutil import move
-from tempfile import mkstemp
-from wsgiref.simple_server import make_server
-from six.moves.urllib import parse
-from itertools import cycle
-from common import *
-from config import *
-from lrucache import *
-from utils import *
-
 import argparse
+import hashlib
 import json
 import logging
 import os
 import os.path
-import stat
+import random
 import re
-import requests
 import shlex
+import stat
 import subprocess
 import sys
-import time
-import dateutil.parser
 import threading
+import time
 import traceback
-import random
-import hashlib
+from itertools import cycle
+from operator import attrgetter
+from shutil import move
+from tempfile import mkstemp
+from wsgiref.simple_server import make_server
+
+import dateutil.parser
+import requests
+from six.moves.urllib import parse
+
+from common import (get_marathon_auth_params, set_logging_args,
+                    set_marathon_auth_args, setup_logging)
+from config import ConfigTemplater, label_keys
+from lrucache import LRUCache
+from utils import get_task_ip_and_ports, ServicePortAssigner, set_ip_cache
+
 
 logger = logging.getLogger('marathon_lb')
 SERVICE_PORT_ASSIGNER = ServicePortAssigner()

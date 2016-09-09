@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 
 import json
-import jwt
 import logging
 import os
 import sys
 import time
-
-
-import requests
 from logging.handlers import SysLogHandler
+
+import jwt
+import requests
 from requests.auth import AuthBase
 
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-import os
 import logging
+import os
 
 logger = logging.getLogger('marathon_lb')
 

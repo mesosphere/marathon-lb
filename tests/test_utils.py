@@ -1,6 +1,8 @@
 import unittest
-import utils
+
 from mock import Mock, patch
+
+import utils
 from utils import ServicePortAssigner
 
 
