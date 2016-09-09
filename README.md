@@ -342,8 +342,14 @@ PRs are welcome, but here are a few general guidelines:
 
  - Avoid making changes which may break existing behaviour
  - Document new features
- - Update/include tests for new functionality
+ - Update/include tests for new functionality. To install dependencies and run tests:
+
+   ```
+   pip install -r requirements.txt -r requirements-dev.txt
+   pytest --pep8 --cov
+   ```
  - Use the pre-commit hook to automatically generate docs:
+
    ```
    bash /path/to/marathon-lb/scripts/install-git-hooks.sh
    ```

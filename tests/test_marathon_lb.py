@@ -1,6 +1,7 @@
-import unittest
 import copy
 import json
+import unittest
+
 import marathon_lb
 
 
@@ -1841,7 +1842,7 @@ backend nginx_10000
 '''
         self.assertMultiLineEqual(config, expected)
 
-    def test_config_simple_app_revproxy(self):
+    def test_config_simple_app_redirect(self):
         apps = dict()
         groups = ['external']
         bind_http_https = True
@@ -2529,7 +2530,7 @@ backend nginx_10000
         expected_app_map["/nginx"] = "nginx_10000"
         self.assertEqual(app_config_map, expected_app_map)
 
-    def test_config_simple_app_proxypass(self):
+    def test_config_simple_app_proxypass_health_check(self):
         apps = dict()
         groups = ['external']
         bind_http_https = True
@@ -2588,7 +2589,7 @@ backend nginx_10000
 '''
         self.assertMultiLineEqual(config, expected)
 
-    def test_config_simple_app_revproxy(self):
+    def test_config_simple_app_revproxy_health_check(self):
         apps = dict()
         groups = ['external']
         bind_http_https = True

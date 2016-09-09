@@ -1,22 +1,28 @@
 #!/usr/bin/env python3
 
-from common import *
+import argparse
+import csv
+import json
+import logging
+import math
+import socket
+import subprocess
+import sys
+import time
+import traceback
 from datetime import datetime
 from collections import namedtuple
 
-import argparse
-import json
 import requests
-import csv
-import time
-import math
 import six.moves.urllib as urllib
-import socket
-import sys
-import subprocess
-from utils import *
-from zdd_exceptions import *
-import traceback
+
+from common import (get_marathon_auth_params, set_logging_args,
+                    set_marathon_auth_args, setup_logging)
+from utils import get_task_ip_and_ports
+from zdd_exceptions import (
+    AppCreateException, AppDeleteException, AppScaleException,
+    InvalidArgException, MarathonEndpointException,
+    MarathonLbEndpointException, MissingFieldException)
 
 
 logger = logging.getLogger('zdd')
