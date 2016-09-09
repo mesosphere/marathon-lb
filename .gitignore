@@ -3,3 +3,4 @@ templates/
 __pycache__
 *.pyc
 .env
+.cache
