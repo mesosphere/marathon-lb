@@ -576,7 +576,7 @@ def get_haproxy_pids():
             "pidof haproxy",
             stderr=subprocess.STDOUT,
             shell=True).split()))
-    except subprocess.CalledProcessError as ex:
+    except subprocess.CalledProcessError:
         return set()
 
 
