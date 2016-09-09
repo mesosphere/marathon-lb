@@ -1,4 +1,4 @@
 mock
-pep8
 pytest
 pytest-cov
+pytest-pep8
