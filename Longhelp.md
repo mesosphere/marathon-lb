@@ -92,7 +92,7 @@ optional arguments:
                         ports for IP-per-task applications (default: 10100)
   --syslog-socket SYSLOG_SOCKET
                         Socket to write syslog messages to. Use '/dev/null' to
-                        disable logging to syslog (default: /var/run/syslog)
+                        disable logging to syslog (default: /dev/log)
   --log-format LOG_FORMAT
                         Set log message format (default: %(name)s:
                         %(message)s)
@@ -922,6 +922,38 @@ Specified as `HAPROXY_{n}_AUTH`.
 The http basic auth definition. For details on configuring auth, see: https://github.com/mesosphere/marathon-lb/wiki/HTTP-Basic-Auth
 
 Ex: `HAPROXY_0_AUTH = realm:username:encryptedpassword`
+
+## `HAPROXY_{n}_BACKEND_HEALTHCHECK_PORT_INDEX`
+  *per service port*
+
+Specified as `HAPROXY_{n}_BACKEND_HEALTHCHECK_PORT_INDEX`.
+
+Set the index of the port dedicated for the healthchecks of the backends
+behind a given service port.
+
+By default, the index will be the same as the one of the service port.
+
+Ex: An app exposes two ports, one for the application,
+one for its healthchecks:
+
+portMappings": [
+  {
+    "containerPort": 9000,
+    "hostPort": 0,
+    "servicePort": 0,
+    "protocol": "tcp"
+  },
+  {
+    "containerPort": 9001,
+    "hostPort": 0,
+    "servicePort": 0,
+    "protocol": "tcp"
+  }
+]
+
+HAPROXY_0_BACKEND_HEALTHCHECK_PORT_INDEX=1 will make it so that the port 9001
+is used to perform the backend healthchecks.
+                    
 
 ## `HAPROXY_{n}_BACKEND_NETWORK_ALLOWED_ACL`
   *per service port*
