@@ -1,3 +1,4 @@
 mock
 pep8
 pytest
+pytest-cov
