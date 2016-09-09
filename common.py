@@ -45,6 +45,8 @@ def set_marathon_auth_args(parser):
     parser.add_argument("--dcos-auth-credentials",
                         default=os.getenv('DCOS_SERVICE_ACCOUNT_CREDENTIAL'),
                         help="DC/OS service account credentials")
+    parser.add_argument("--marathon-ca-cert",
+                        help="CA certificate for Marathon HTTPS connections")
 
     return parser
 
