@@ -34,6 +34,7 @@ import sys
 import threading
 import time
 import traceback
+from cgi import parse_qs
 from itertools import cycle
 from operator import attrgetter
 from shutil import move
@@ -1463,8 +1464,9 @@ class MarathonEventProcessor(object):
         self.__ssl_certs = ssl_certs
 
         self.__condition = threading.Condition()
-        self.__thread = threading.Thread(target=self.do_reset)
+        self.__thread = threading.Thread(target=self.try_reset)
         self.__pending_reset = False
+        self.__pending_reload = False
         self.__stop = False
         self.__haproxy_map = haproxy_map
         self.__thread.start()
@@ -1472,39 +1474,69 @@ class MarathonEventProcessor(object):
         # Fetch the base data
         self.reset_from_tasks()
 
-    def do_reset(self):
+    def try_reset(self):
         with self.__condition:
             logger.info('starting event processor thread')
             while True:
+                pending_reset = False
+                pending_reload = False
+
                 self.__condition.acquire()
+
                 if self.__stop:
                     logger.info('stopping event processor thread')
                     return
-                if not self.__pending_reset:
+
+                pending_reset = self.__pending_reset
+                pending_reload = self.__pending_reload
+                if not pending_reset and not pending_reload:
                     if not self.__condition.wait(300):
                         logger.info('condition wait expired')
+
                 self.__pending_reset = False
+                self.__pending_reload = False
+
                 self.__condition.release()
 
-                try:
-                    start_time = time.time()
+                # Reset takes precedence over reload
+                if pending_reset:
+                    self.do_reset()
+                elif pending_reload:
+                    self.do_reload()
+                else:
+                    # Timed out waiting on the condition variable, just do a
+                    # full reset for good measure (as was done before).
+                    self.do_reset()
 
-                    self.__apps = get_apps(self.__marathon)
-                    regenerate_config(self.__apps,
-                                      self.__config_file,
-                                      self.__groups,
-                                      self.__bind_http_https,
-                                      self.__ssl_certs,
-                                      self.__templater,
-                                      self.__haproxy_map)
+    def do_reset(self):
+        try:
+            start_time = time.time()
 
-                    logger.debug("updating tasks finished, took %s seconds",
-                                 time.time() - start_time)
-                except requests.exceptions.ConnectionError as e:
-                    logger.error("Connection error({0}): {1}".format(
-                        e.errno, e.strerror))
-                except:
-                    logger.exception("Unexpected error!")
+            self.__apps = get_apps(self.__marathon)
+            regenerate_config(self.__apps,
+                              self.__config_file,
+                              self.__groups,
+                              self.__bind_http_https,
+                              self.__ssl_certs,
+                              self.__templater,
+                              self.__haproxy_map)
+
+            logger.debug("updating tasks finished, took %s seconds",
+                         time.time() - start_time)
+        except requests.exceptions.ConnectionError as e:
+            logger.error("Connection error({0}): {1}".format(
+                e.errno, e.strerror))
+        except:
+            logger.exception("Unexpected error!")
+
+    def do_reload(self):
+        try:
+            # Validate the existing config before reloading
+            logger.debug("attempting to reload existing config...")
+            if validateConfig(self.__config_file):
+                reloadConfig()
+        except:
+            logger.exception("Unexpected error!")
 
     def stop(self):
         self.__condition.acquire()
@@ -1515,6 +1547,12 @@ class MarathonEventProcessor(object):
     def reset_from_tasks(self):
         self.__condition.acquire()
         self.__pending_reset = True
+        self.__condition.notify()
+        self.__condition.release()
+
+    def reload_existing_config(self):
+        self.__condition.acquire()
+        self.__pending_reload = True
         self.__condition.notify()
         self.__condition.release()
 
@@ -1708,11 +1746,18 @@ class MarathonLbApi(object):
 
         return self.not_found(env, start_response)
 
-    def reload(self, env, start_response):
-        self.__processor.reset_from_tasks()
+    def reload(self, env, start_response, existing=False):
+        query_params = parse_qs(env["QUERY_STRING"])
+        if "existing" in query_params:
+            self.__processor.reload_existing_config()
+            msg = "Reloading existing config...\n"
+        else:
+            self.__processor.reset_from_tasks()
+            msg = "Reloading config...\n"
+
         start_response("200 OK", [("Content-Type", "text/plain")])
 
-        return ["Reloading...\n".encode("utf-8")]
+        return [msg.encode("utf-8")]
 
     def method_not_allowed(self, env, start_response):
         """Called if no method matches."""
