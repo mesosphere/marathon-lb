@@ -1545,7 +1545,7 @@ def get_arg_parser():
     parser.add_argument("--api-listen",
                         help="The address marathon-lb listens on to respond to"
                         "API requests. Only available in SSE mode. (e.g., "
-                        "0.0.0.0:8080)"
+                        "http://0.0.0.0:8080)"
                         )
     parser.add_argument("--haproxy-config",
                         help="Location of haproxy configuration",
@@ -1674,8 +1674,8 @@ class MarathonLbApi(object):
     of the config: POST /reload
     """
 
-    def __init__(self, listen_addr, processor):
-        self.__listen_addr = listen_addr
+    def __init__(self, listen_uri, processor):
+        self.__listen_uri = listen_uri
         self.__processor = processor
 
         self.__thread = threading.Thread(target=self.listen)
@@ -1685,9 +1685,8 @@ class MarathonLbApi(object):
 
     def listen(self):
         try:
-            listen_uri = parse.urlparse(self.__listen_addr)
-            httpd = make_server(listen_uri.hostname, listen_uri.port,
-                                self.wsgi_app)
+            httpd = make_server(self.__listen_uri.hostname,
+                                self.__listen_uri.port, self.wsgi_app)
             httpd.serve_forever()
         finally:
             self.__processor.stop()
@@ -1804,7 +1803,8 @@ if __name__ == '__main__':
                                            args.haproxy_map)
 
         if args.api_listen:
-            api = MarathonLbApi(args.api_listen, processor)
+            listen_uri = parse.urlparse(args.api_listen)
+            api = MarathonLbApi(listen_uri, processor)
             api.run()
 
         backoff = 3
