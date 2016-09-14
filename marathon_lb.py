@@ -1056,28 +1056,14 @@ def writeConfigAndValidate(
         # Change the file paths in the config to (temporarily) point to the
         # temporary map files so those can also be checked when the config is
         # validated
-        if not args.skip_validation:
-            temp_config = config.replace(
-                domain_map_file, domain_temp_map_file
-            ).replace(app_map_file, app_temp_map_file)
+        temp_config = config.replace(
+            domain_map_file, domain_temp_map_file
+        ).replace(app_map_file, app_temp_map_file)
 
     # Write the new config to a temporary file
     haproxyTempConfigFile = writeReplacementTempFile(temp_config, config_file)
 
-    # If skip validation flag is provided, don't check.
-    if args.skip_validation:
-        logger.debug("skipping validation.")
-        if haproxy_map:
-            moveTempFile(domain_temp_map_file, domain_map_file)
-            moveTempFile(app_temp_map_file, app_map_file)
-        moveTempFile(haproxyTempConfigFile, config_file)
-        return True
-
-    # Check that config is valid
-    cmd = ['haproxy', '-f', haproxyTempConfigFile, '-c']
-    logger.debug("checking config with command: " + str(cmd))
-    returncode = subprocess.call(args=cmd)
-    if returncode == 0:
+    if validateConfig(haproxyTempConfigFile):
         # Move into place
         if haproxy_map:
             moveTempFile(domain_temp_map_file, domain_map_file)
@@ -1086,11 +1072,13 @@ def writeConfigAndValidate(
             # Edit the config file again to point to the actual map paths
             with open(haproxyTempConfigFile, 'w') as tempConfig:
                 tempConfig.write(config)
+        else:
+            truncateMapFileIfExists(domain_map_file)
+            truncateMapFileIfExists(app_map_file)
 
         moveTempFile(haproxyTempConfigFile, config_file)
         return True
     else:
-        logger.error("haproxy returned non-zero when checking config")
         return False
 
 
@@ -1114,10 +1102,36 @@ def writeReplacementTempFile(content, file_to_replace):
     return tempFile
 
 
+def validateConfig(haproxy_config_file):
+    # If skip validation flag is provided, don't check.
+    if args.skip_validation:
+        logger.debug("skipping validation.")
+        return True
+
+    # Check that config is valid
+    cmd = ['haproxy', '-f', haproxy_config_file, '-c']
+    logger.debug("checking config with command: " + str(cmd))
+    returncode = subprocess.call(args=cmd)
+    if returncode == 0:
+        return True
+    else:
+        logger.error("haproxy returned non-zero when checking config")
+        return False
+
+
 def moveTempFile(temp_file, dest_file):
     # Replace the old file with the new from its temporary location
     logger.debug("moving temp file %s to %s", temp_file, dest_file)
     move(temp_file, dest_file)
+
+
+def truncateMapFileIfExists(map_file):
+    if os.path.isfile(map_file):
+        logger.debug("Truncating map file as haproxy-map flag "
+                     "is disabled %s", map_file)
+        fd = os.open(map_file, os.O_RDWR)
+        os.ftruncate(fd, 0)
+        os.close(fd)
 
 
 def compareWriteAndReloadConfig(config, config_file, domain_map_array,
@@ -1196,15 +1210,6 @@ def compareMapFile(map_file, map_string):
         logger.warning("couldn't open map file for reading")
 
     return runningmap != map_string
-
-
-def truncateMapFileIfExists(map_file):
-    if os.path.isfile(map_file):
-        logger.debug("Truncating map file as haproxy-map flag "
-                     "is disabled %s", map_file)
-        fd = os.open(map_file, os.O_RDWR)
-        os.ftruncate(fd, 0)
-        os.close(fd)
 
 
 def get_health_check(app, portIndex):
