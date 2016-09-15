@@ -1748,7 +1748,8 @@ class MarathonLbApi(object):
 
     def reload(self, env, start_response, existing=False):
         query_params = parse_qs(env["QUERY_STRING"])
-        if "existing" in query_params:
+        existing = query_params.get("existing", [])
+        if existing and existing[0].lower() in ["true", "1"]:
             self.__processor.reload_existing_config()
             msg = "Triggered reload of existing config...\n"
         else:
