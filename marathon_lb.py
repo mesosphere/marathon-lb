@@ -1169,8 +1169,9 @@ def compareWriteAndReloadConfig(config, config_file, domain_map_array,
                     app_map_string, app_map_file, haproxy_map):
                 reloadConfig()
             else:
-                logger.warning("skipping reload: config not valid")
-
+                logger.warning("skipping reload: config/map not valid")
+        else:
+            logger.debug("skipping reload: config/map unchanged")
     else:
         truncateMapFileIfExists(domain_map_file)
         truncateMapFileIfExists(app_map_file)
@@ -1184,6 +1185,8 @@ def compareWriteAndReloadConfig(config, config_file, domain_map_array,
                 reloadConfig()
             else:
                 logger.warning("skipping reload: config not valid")
+        else:
+            logger.debug("skipping reload: config unchanged")
 
 
 def generateMapString(map_array):
