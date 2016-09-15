@@ -1478,21 +1478,18 @@ class MarathonEventProcessor(object):
         with self.__condition:
             logger.info('starting event processor thread')
             while True:
-                pending_reset = False
-                pending_reload = False
-
                 self.__condition.acquire()
 
                 if self.__stop:
                     logger.info('stopping event processor thread')
                     return
 
-                pending_reset = self.__pending_reset
-                pending_reload = self.__pending_reload
-                if not pending_reset and not pending_reload:
+                if not self.__pending_reset and not self.__pending_reload:
                     if not self.__condition.wait(300):
                         logger.info('condition wait expired')
 
+                pending_reset = self.__pending_reset
+                pending_reload = self.__pending_reload
                 self.__pending_reset = False
                 self.__pending_reload = False
 
