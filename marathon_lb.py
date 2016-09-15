@@ -1750,10 +1750,10 @@ class MarathonLbApi(object):
         query_params = parse_qs(env["QUERY_STRING"])
         if "existing" in query_params:
             self.__processor.reload_existing_config()
-            msg = "Reloading existing config...\n"
+            msg = "Triggered reload of existing config...\n"
         else:
             self.__processor.reset_from_tasks()
-            msg = "Reloading config...\n"
+            msg = "Triggered reload of config...\n"
 
         start_response("200 OK", [("Content-Type", "text/plain")])
 
