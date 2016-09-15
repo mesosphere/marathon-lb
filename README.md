@@ -162,7 +162,7 @@ Currently it creates a lookup dictionary only for host header (both HTTP and HTT
 
 ### API Endpoints
 
-Marathon-lb exposes a few endpoints on port 9090 (by default). They are:
+Marathon-lb exposes a few endpoints served by HAProxy on port 9090 (by default). They are:
 
 | Endpoint                      | Description                                                                                                                                                                                                                                                                                                               |
 |-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -173,6 +173,11 @@ Marathon-lb exposes a few endpoints on port 9090 (by default). They are:
 | `:9090/_haproxy_getvhostmap`  | Returns the HAProxy vhost to backend map. This endpoint returns HAProxy map file only when the `--haproxy-map` flag is enabled, it returns an empty string otherwise. Implemented in [`getmaps.lua`](getmaps.lua).                                                                              |
 | `:9090/_haproxy_getappmap`    | Returns the HAProxy app ID to backend map. Like `_haproxy_getvhostmap`, this requires the `--haproxy-map` flag to be enabled and returns an empty string otherwise. Also implemented in `getmaps.lua`.                                                                                          |
 | `:9090/_haproxy_getpids`      | Returns the PIDs for all HAProxy instances within the current process namespace. This literally returns `$(pidof haproxy)`. Implemented in [`getpids.lua`](getpids.lua). This is also used by the [`zdd.py`](zdd.py) script to determine if connections have finished draining during a deploy. |
+
+
+In addition to these, marathon-lb can (optionally) expose an endpoint for performing some useful actions. By setting the `--api-endpoint` parameter to a listening address (e.g. `http://0.0.0.0:8080`), a *very* basic API is made available for managing marathon-lb. Currently the only endpoint is for triggering a configuration reload. This is done via the `/reload` endpoint. You can also specify a query parameter to reload existing config, rather than regenerating the HAProxy config from Marathon: `/reload?existing=true`. This is **only** available in SSE mode.
+
+This endpoint is useful as a debugging tool: a general way to poke marathon-lb to get it to reload. It may also be useful in other cases, such as when files related to the HAProxy config change (e.g. SSL certificates) but the actual contents of the HAProxy config files haven't changed.
 
 
 ## HAProxy Configuration
