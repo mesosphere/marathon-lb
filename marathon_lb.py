@@ -1586,8 +1586,8 @@ def get_arg_parser():
                              "script back at (http://lb1:8080)"
                         )
     parser.add_argument("--api-listen",
-                        help="The address marathon-lb listens on to respond to"
-                        "API requests. Only available in SSE mode. (e.g., "
+                        help="The address marathon-lb listens on to respond "
+                        "to API requests. Only available in SSE mode. (e.g., "
                         "http://0.0.0.0:8080)"
                         )
     parser.add_argument("--haproxy-config",
