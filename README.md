@@ -18,6 +18,7 @@ fast, efficient, battle-tested, highly available load balancer with many advance
  * Automated Docker image builds ([mesosphere/marathon-lb](https://hub.docker.com/r/mesosphere/marathon-lb))
  * Global HAProxy templates which can be supplied at launch
  * Supports IP-per-task integration, such as [Project Calico](https://github.com/projectcalico/calico-containers)
+ * Include [tini](https://github.com/krallin/tini) zombies reaper
 
 ### Getting Started
 
@@ -348,6 +349,15 @@ specify it.  The range is configured using the `--min-serv-port-ip-per-task` and
 `--max-serv-port-ip-per-task` options. While port assignment is deterministic, the
 assignment is not guaranteed if you change the current set of deployed apps. In
 other words, when you deploy a new app, the port assignments may change.
+
+
+## Zombies reaping
+
+When running within isolated containers, you may have to care about reaping orphan child processes.
+Haproxy typicaly produce orphan processes because of it's two steps reload machanism.
+Marathon-lb is using [tini](https://github.com/krallin/tini) for this purpose.
+When running in a container whitout pid namespace isolation, setting the `TINI_SUBREAPER` environnement variable is recommended.
+
 
 ## Contributing
 
