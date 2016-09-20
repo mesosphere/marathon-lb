@@ -2,7 +2,6 @@ FROM debian:stretch
 
 # runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        iptables \
         openssl \
         procps \
         python3 \
