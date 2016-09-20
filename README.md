@@ -1,4 +1,4 @@
-# marathon-lb [![Build Status](https://travis-ci.org/mesosphere/marathon-lb.svg?branch=master)](https://travis-ci.org/mesosphere/marathon-lb)
+# marathon-lb [![Build Status](https://jenkins.mesosphere.com/service/jenkins/buildStatus/icon?job=public-marathon-lb-master)](https://jenkins.mesosphere.com/service/jenkins/job/public-marathon-lb-master/)
 
 Marathon-lb is a tool for managing HAProxy, by consuming
 [Marathon's](https://github.com/mesosphere/marathon) app state. HAProxy is a
@@ -170,7 +170,8 @@ Marathon-lb exposes a few endpoints on port 9090 (by default). They are:
 | `:9090/haproxy?stats;csv`     | This is a CSV version of the stats above, which can be consumed by other tools. For example, it's used in the [`zdd.py`](zdd.py) script.                                                                                                                                                        |
 | `:9090/_haproxy_health_check` | HAProxy health check endpoint. Returns `200 OK` if HAProxy is healthy.                                                                                                                                                                                                                                                    |
 | `:9090/_haproxy_getconfig`    | Returns the HAProxy config file as it was when HAProxy was started. Implemented in [`getconfig.lua`](getconfig.lua).                                                                                                                                                                                                      |
-| `:9090/_haproxy_getvhostmap`    | Returns the HAProxy vhost to backend map. This endpoint returns HAProxy map file only when `--haproxy-map` flag is enabled, it returns a empty string otherwise. Implemented in [`getvhostmap.lua`](getvhostmap.lua).                                                                                                                                                                                                      |
+| `:9090/_haproxy_getvhostmap`  | Returns the HAProxy vhost to backend map. This endpoint returns HAProxy map file only when the `--haproxy-map` flag is enabled, it returns an empty string otherwise. Implemented in [`getmaps.lua`](getmaps.lua).                                                                              |
+| `:9090/_haproxy_getappmap`    | Returns the HAProxy app ID to backend map. Like `_haproxy_getvhostmap`, this requires the `--haproxy-map` flag to be enabled and returns an empty string otherwise. Also implemented in `getmaps.lua`.                                                                                          |
 | `:9090/_haproxy_getpids`      | Returns the PIDs for all HAProxy instances within the current process namespace. This literally returns `$(pidof haproxy)`. Implemented in [`getpids.lua`](getpids.lua). This is also used by the [`zdd.py`](zdd.py) script to determine if connections have finished draining during a deploy. |
 
 
@@ -341,8 +342,14 @@ PRs are welcome, but here are a few general guidelines:
 
  - Avoid making changes which may break existing behaviour
  - Document new features
- - Update/include tests for new functionality
+ - Update/include tests for new functionality. To install dependencies and run tests:
+
+   ```
+   pip install -r requirements.txt -r requirements-dev.txt
+   pytest --pep8 --cov
+   ```
  - Use the pre-commit hook to automatically generate docs:
+
    ```
    bash /path/to/marathon-lb/scripts/install-git-hooks.sh
    ```

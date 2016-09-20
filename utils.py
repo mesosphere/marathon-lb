@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 
 import hashlib
-import struct
 import logging
 import socket
 
-from lrucache import *
+from lrucache import LRUCache
 
 logger = logging.getLogger('utils')
 

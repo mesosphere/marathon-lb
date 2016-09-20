@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-import os
 import logging
+import os
 
 logger = logging.getLogger('marathon_lb')
 
@@ -59,7 +59,7 @@ AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS
   server-state-base /var/state/haproxy/
   lua-load /marathon-lb/getpids.lua
   lua-load /marathon-lb/getconfig.lua
-  lua-load /marathon-lb/getvhostmap.lua
+  lua-load /marathon-lb/getmaps.lua
 defaults
   load-server-state-from-file global
   log               global
@@ -87,6 +87,8 @@ listen stats
   http-request use-service lua.getpids if getpid
   acl getvhostmap path /_haproxy_getvhostmap
   http-request use-service lua.getvhostmap if getvhostmap
+  acl getappmap path /_haproxy_getappmap
+  http-request use-service lua.getappmap if getappmap
   acl getconfig path /_haproxy_getconfig
   http-request use-service lua.getconfig if getconfig
 ''',
@@ -422,7 +424,7 @@ of the `HAPROXY_HTTP_FRONTEND_APPID_HEAD`.
             ConfigTemplate(name='MAP_HTTP_FRONTEND_APPID_ACL',
                            value='''\
   use_backend %[req.hdr(x-marathon-app-id),lower,\
-map({haproxy_dir}/domain2backend.map)]
+map({haproxy_dir}/app2backend.map)]
 ''',
                            overridable=True,
                            description='''\
@@ -528,7 +530,7 @@ Sets HTTP headers, for example X-Forwarded-For and X-Forwarded-Proto.
             ConfigTemplate(name='HTTP_BACKEND_PROXYPASS_GLUE',
                            value='''\
   http-request set-header Host {hostname}
-  reqirep  "^([^ :]*)\ {proxypath}(.*)" "\\1\ /\\2"
+  reqirep  "^([^ :]*)\ {proxypath}/?(.*)" "\\1\ /\\2"
 ''',
                            overridable=True,
                            description='''\
@@ -1137,6 +1139,10 @@ def set_port(x, k, v):
     x.servicePort = int(v)
 
 
+def set_healthcheck_port_index(x, k, v):
+    x.healthcheck_port_index = int(v)
+
+
 def set_backend_weight(x, k, v):
     x.backend_weight = int(v)
 
@@ -1362,7 +1368,7 @@ labels.append(Label(name='HTTP_BACKEND_PROXYPASS_PATH',
                     func=set_proxypath,
                     description='''\
 Set the location to use for mapping local server URLs to remote servers + URL.
-Ex: `HAPROXY_0_HTTP_BACKEND_PROXYPASS_PATH = '/path/to/redirect`
+Ex: `HAPROXY_0_HTTP_BACKEND_PROXYPASS_PATH = '/path/to/redirect'`
                     '''))
 
 labels.append(Label(name='HTTP_BACKEND_REVPROXY_PATH',
@@ -1403,6 +1409,36 @@ By default every IP is allowed.
 Ex: `HAPROXY_0_BACKEND_NETWORK_ALLOWED_ACL = '127.0.0.1/8, 10.1.55.43'`
                     '''))
 
+labels.append(Label(name='BACKEND_HEALTHCHECK_PORT_INDEX',
+                    func=set_healthcheck_port_index,
+                    description='''\
+Set the index of the port dedicated for the healthchecks of the backends
+behind a given service port.
+
+By default, the index will be the same as the one of the service port.
+
+Ex: An app exposes two ports, one for the application,
+one for its healthchecks:
+
+portMappings": [
+  {
+    "containerPort": 9000,
+    "hostPort": 0,
+    "servicePort": 0,
+    "protocol": "tcp"
+  },
+  {
+    "containerPort": 9001,
+    "hostPort": 0,
+    "servicePort": 0,
+    "protocol": "tcp"
+  }
+]
+
+HAPROXY_0_BACKEND_HEALTHCHECK_PORT_INDEX=1 will make it so that the port 9001
+is used to perform the backend healthchecks.
+                    ''',
+                    ))
 labels.append(Label(name='FRONTEND_HEAD',
                     func=set_label,
                     description=''))

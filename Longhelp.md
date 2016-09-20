@@ -24,13 +24,16 @@ usage: marathon_lb.py [-h] [--longhelp] [--marathon MARATHON [MARATHON ...]]
                       [--command COMMAND] [--sse] [--health-check]
                       [--lru-cache-capacity LRU_CACHE_CAPACITY]
                       [--haproxy-map] [--dont-bind-http-https]
-                      [--ssl-certs SSL_CERTS] [--skip-validation] [--dry]
+                      [--ssl-certs SSL_CERTS]
+                      [--marathon-ca-cert MARATHON_CA_CERT]
+                      [--skip-validation] [--dry]
                       [--min-serv-port-ip-per-task MIN_SERV_PORT_IP_PER_TASK]
                       [--max-serv-port-ip-per-task MAX_SERV_PORT_IP_PER_TASK]
                       [--syslog-socket SYSLOG_SOCKET]
                       [--log-format LOG_FORMAT] [--log-level LOG_LEVEL]
                       [--marathon-auth-credential-file MARATHON_AUTH_CREDENTIAL_FILE]
                       [--auth-credentials AUTH_CREDENTIALS]
+                      [--dcos-auth-credentials DCOS_AUTH_CREDENTIALS]
 
 Marathon HAProxy Load Balancer
 
@@ -40,7 +43,7 @@ optional arguments:
   --marathon MARATHON [MARATHON ...], -m MARATHON [MARATHON ...]
                         [required] Marathon endpoint, eg. -m
                         http://marathon1:8080 http://marathon2:8080 (default:
-                        None)
+                        ['http://master.mesos:8080'])
   --listening LISTENING, -l LISTENING
                         (deprecated) The address this script listens on for
                         marathon events (e.g., http://0.0.0.0:8080) (default:
@@ -76,6 +79,9 @@ optional arguments:
                         frontend marathon_https_inEx:
                         /etc/ssl/site1.co.pem,/etc/ssl/site2.co.pem (default:
                         /etc/ssl/mesosphere.com.pem)
+  --marathon-ca-cert MARATHON_CA_CERT
+                        CA certificate for Marathon HTTPS connections
+                        (default: None)
   --skip-validation     Skip haproxy config file validation (default: False)
   --dry, -d             Only print configuration to console (default: False)
   --min-serv-port-ip-per-task MIN_SERV_PORT_IP_PER_TASK
@@ -98,6 +104,8 @@ optional arguments:
   --auth-credentials AUTH_CREDENTIALS
                         user/pass for the Marathon HTTP API in the format of
                         'user:pass'. (default: None)
+  --dcos-auth-credentials DCOS_AUTH_CREDENTIALS
+                        DC/OS service account credentials (default: None)
 ```
 ## Templates
 
@@ -373,7 +381,7 @@ global
   server-state-base /var/state/haproxy/
   lua-load /marathon-lb/getpids.lua
   lua-load /marathon-lb/getconfig.lua
-  lua-load /marathon-lb/getvhostmap.lua
+  lua-load /marathon-lb/getmaps.lua
 defaults
   load-server-state-from-file global
   log               global
@@ -401,6 +409,8 @@ listen stats
   http-request use-service lua.getpids if getpid
   acl getvhostmap path /_haproxy_getvhostmap
   http-request use-service lua.getvhostmap if getvhostmap
+  acl getappmap path /_haproxy_getappmap
+  http-request use-service lua.getappmap if getappmap
   acl getconfig path /_haproxy_getconfig
   http-request use-service lua.getconfig if getconfig
 ```
@@ -565,7 +575,7 @@ Backend glue for `HAPROXY_{n}_HTTP_BACKEND_PROXYPASS_PATH`.
 **Default template for `HAPROXY_HTTP_BACKEND_PROXYPASS_GLUE`:**
 ```
   http-request set-header Host {hostname}
-  reqirep  "^([^ :]*)\ {proxypath}(.*)" "\1\ /\2"
+  reqirep  "^([^ :]*)\ {proxypath}/?(.*)" "\1\ /\2"
 ```
 ## `HAPROXY_HTTP_BACKEND_REDIR`
   *Overridable*
@@ -859,7 +869,7 @@ of the `HAPROXY_HTTP_FRONTEND_APPID_HEAD` using haproxy maps.
 
 **Default template for `HAPROXY_MAP_HTTP_FRONTEND_APPID_ACL`:**
 ```
-  use_backend %[req.hdr(x-marathon-app-id),lower,map({haproxy_dir}/domain2backend.map)]
+  use_backend %[req.hdr(x-marathon-app-id),lower,map({haproxy_dir}/app2backend.map)]
 ```
 ## `HAPROXY_TCP_BACKEND_ACL_ALLOW_DENY`
   *Global*
@@ -912,6 +922,38 @@ Specified as `HAPROXY_{n}_AUTH`.
 The http basic auth definition. For details on configuring auth, see: https://github.com/mesosphere/marathon-lb/wiki/HTTP-Basic-Auth
 
 Ex: `HAPROXY_0_AUTH = realm:username:encryptedpassword`
+
+## `HAPROXY_{n}_BACKEND_HEALTHCHECK_PORT_INDEX`
+  *per service port*
+
+Specified as `HAPROXY_{n}_BACKEND_HEALTHCHECK_PORT_INDEX`.
+
+Set the index of the port dedicated for the healthchecks of the backends
+behind a given service port.
+
+By default, the index will be the same as the one of the service port.
+
+Ex: An app exposes two ports, one for the application,
+one for its healthchecks:
+
+portMappings": [
+  {
+    "containerPort": 9000,
+    "hostPort": 0,
+    "servicePort": 0,
+    "protocol": "tcp"
+  },
+  {
+    "containerPort": 9001,
+    "hostPort": 0,
+    "servicePort": 0,
+    "protocol": "tcp"
+  }
+]
+
+HAPROXY_0_BACKEND_HEALTHCHECK_PORT_INDEX=1 will make it so that the port 9001
+is used to perform the backend healthchecks.
+                    
 
 ## `HAPROXY_{n}_BACKEND_NETWORK_ALLOWED_ACL`
   *per service port*
@@ -1058,7 +1100,7 @@ Load balancers with the group '*' will collect all groups.
 Specified as `HAPROXY_{n}_HTTP_BACKEND_PROXYPASS_PATH`.
 
 Set the location to use for mapping local server URLs to remote servers + URL.
-Ex: `HAPROXY_0_HTTP_BACKEND_PROXYPASS_PATH = '/path/to/redirect`
+Ex: `HAPROXY_0_HTTP_BACKEND_PROXYPASS_PATH = '/path/to/redirect'`
                     
 
 ## `HAPROXY_{n}_HTTP_BACKEND_REVPROXY_PATH`

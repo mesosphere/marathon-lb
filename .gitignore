@@ -3,3 +3,10 @@ templates/
 __pycache__
 *.pyc
 .env
+.cache
+
+.coverage
+.coverage.*
+*,cover
+coverage.xml
+htmlcov/

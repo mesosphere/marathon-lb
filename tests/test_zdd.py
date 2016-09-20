@@ -1,8 +1,10 @@
 import unittest
-import zdd
-import mock
 import json
-from zdd_exceptions import *
+
+import mock
+
+import zdd
+from zdd_exceptions import InvalidArgException
 
 
 class Arguments:
@@ -18,6 +20,7 @@ class Arguments:
     new_instances = 0
     complete_cur = False
     complete_prev = False
+    dcos_auth_credentials = None
 
 
 class MyResponse:

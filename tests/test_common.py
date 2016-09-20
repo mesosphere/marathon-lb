@@ -1,7 +1,8 @@
 import unittest
-import common
-import mock
+
 from mock import Mock
+
+import common
 
 
 class TestCommon(unittest.TestCase):
