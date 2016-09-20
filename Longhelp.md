@@ -156,7 +156,6 @@ Parameters of the first health check for this service are exposed as:
   * healthCheckPath
   * healthCheckTimeoutSeconds
   * healthCheckIntervalSeconds
-  * healthCheckIgnoreHttp1xx
   * healthCheckGracePeriodSeconds
   * healthCheckMaxConsecutiveFailures
   * healthCheckFalls is set to healthCheckMaxConsecutiveFailures + 1
@@ -229,7 +228,6 @@ Parameters of the first health check for this service are exposed as:
   * healthCheckPath
   * healthCheckTimeoutSeconds
   * healthCheckIntervalSeconds
-  * healthCheckIgnoreHttp1xx
   * healthCheckGracePeriodSeconds
   * healthCheckMaxConsecutiveFailures
   * healthCheckFalls is set to healthCheckMaxConsecutiveFailures + 1

@@ -334,7 +334,6 @@ def _get_health_check_options(template, health_check, health_check_port):
         healthCheckPath=health_check.get('path', '/'),
         healthCheckTimeoutSeconds=health_check['timeoutSeconds'],
         healthCheckIntervalSeconds=health_check['intervalSeconds'],
-        healthCheckIgnoreHttp1xx=health_check['ignoreHttp1xx'],
         healthCheckGracePeriodSeconds=health_check['gracePeriodSeconds'],
         healthCheckMaxConsecutiveFailures=health_check[
             'maxConsecutiveFailures'],
