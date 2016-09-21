@@ -60,8 +60,7 @@
           "gracePeriodSeconds":15,
           "intervalSeconds":3,
           "timeoutSeconds":15,
-          "maxConsecutiveFailures":10,
-          "ignoreHttp1xx":false
+          "maxConsecutiveFailures":10
         }
       ],
       "dependencies":[
