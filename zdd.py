@@ -344,12 +344,21 @@ def execute_pre_kill_hook(args, old_app, tasks_to_kill, new_app):
 
 
 def swap_zdd_apps(args, new_app, old_app):
+    func_args = (args, new_app, old_app)
+    while True:
+        res = _swap_zdd_apps(func_args[0], func_args[1], func_args[2])
+        if isinstance(res, bool):
+            return res
+        func_args = res
+
+
+def _swap_zdd_apps(args, new_app, old_app):
     old_app = fetch_marathon_app(args, old_app['id'])
     new_app = fetch_marathon_app(args, new_app['id'])
 
     if deployment_in_progress(new_app):
         time.sleep(args.step_delay)
-        return swap_zdd_apps(args, new_app, old_app)
+        return (args, new_app, old_app)
 
     tasks_to_kill = find_tasks_to_kill(args, new_app, old_app, time.time())
 
@@ -378,7 +387,7 @@ def swap_zdd_apps(args, new_app, old_app):
         if new_app['instances'] < get_deployment_target(new_app):
             scale_new_app_instances(args, new_app, old_app)
 
-    return swap_zdd_apps(args, new_app, old_app)
+    return (args, new_app, old_app)
 
 
 def ready_to_delete_old_app(args, new_app, old_app, draining_task_ids):
