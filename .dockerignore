@@ -1,4 +1,5 @@
 .git
+build.bash
 tests
 hooks
 scripts
