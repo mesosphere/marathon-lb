@@ -353,12 +353,12 @@ def swap_zdd_apps(args, new_app, old_app):
     if deployment_in_progress(new_app):
         if global_retry_time_counter < args.fail_wait:
             time.sleep(args.step_delay)
-            global_retry_time_counter+=args.step_delay
+            global_retry_time_counter += args.step_delay
             return swap_zdd_apps(args, new_app, old_app)
         else:
             raise Exception("The deployment seems to be"
-                        " stucked. Kindly remove the stucked deployment")
-    
+                            " stucked. Kindly remove the stucked deployment")
+
     tasks_to_kill = find_tasks_to_kill(args, new_app, old_app, time.time())
 
     if ready_to_delete_old_app(args, new_app, old_app, tasks_to_kill):
@@ -739,10 +739,10 @@ def get_arg_parser():
                         help="Resume from a previous deployment",
                         action="store_true"
                         )
-    parser.add_argument("--fail-wait", "-t",       
-                        help="Total time to wait before failing to deploy"      
-                        " the application",     
-                        type=int, default=120       
+    parser.add_argument("--fail-wait", "-t",
+                        help="Total time to wait before failing to deploy"
+                        " the application",
+                        type=int, default=120
                         )
     parser.add_argument("--max-wait", "-w",
                         help="Maximum amount of time (in seconds) to wait"
