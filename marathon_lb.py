@@ -28,13 +28,13 @@ import os.path
 import random
 import re
 import shlex
+import signal
 import stat
 import subprocess
 import sys
 import threading
 import time
 import traceback
-from cgi import parse_qs
 from itertools import cycle
 from operator import attrgetter
 from shutil import move
@@ -1562,6 +1562,16 @@ class MarathonEventProcessor(object):
                 event['eventType'] == 'api_post_event':
             self.reset_from_tasks()
 
+    def handle_signal(self, sig, stack):
+        if sig == signal.SIGHUP:
+            logger.debug('received signal SIGHUP - reloading config')
+            self.reset_from_tasks()
+        elif sig == signal.SIGUSR1:
+            logger.debug('received signal SIGUSR1 - reloading existing config')
+            self.reload_existing_config()
+        else:
+            logger.warning('received unknown signal %d' % (sig,))
+
 
 def get_arg_parser():
     parser = argparse.ArgumentParser(
@@ -1584,11 +1594,6 @@ def get_arg_parser():
     parser.add_argument("--callback-url", "-u",
                         help="The HTTP address that Marathon can call this " +
                              "script back at (http://lb1:8080)"
-                        )
-    parser.add_argument("--api-listen",
-                        help="The address marathon-lb listens on to respond "
-                        "to API requests. Only available in SSE mode. (e.g., "
-                        "http://0.0.0.0:8080)"
                         )
     parser.add_argument("--haproxy-config",
                         help="Location of haproxy configuration",
@@ -1650,13 +1655,7 @@ def get_arg_parser():
     return parser
 
 
-def run_server(marathon, listen_addr, callback_url, config_file, groups,
-               bind_http_https, ssl_certs, haproxy_map, marathon_ca_cert):
-    processor = MarathonEventProcessor(marathon,
-                                       config_file,
-                                       groups,
-                                       bind_http_https,
-                                       ssl_certs, haproxy_map)
+def run_server(marathon, listen_addr, callback_url, processor):
     try:
         marathon.add_subscriber(callback_url)
 
@@ -1711,67 +1710,6 @@ def process_sse_events(marathon, processor):
         processor.stop()
 
 
-class MarathonLbApi(object):
-    """
-    This isn't a real API yet, it just contains an endpoint to trigger a reload
-    of the config: POST /reload
-    """
-
-    def __init__(self, listen_uri, processor):
-        self.__listen_uri = listen_uri
-        self.__processor = processor
-
-        self.__thread = threading.Thread(target=self.listen)
-
-    def run(self):
-        self.__thread.run()
-
-    def listen(self):
-        try:
-            httpd = make_server(self.__listen_uri.hostname,
-                                self.__listen_uri.port, self.wsgi_app)
-            httpd.serve_forever()
-        finally:
-            self.__processor.stop()
-
-    # TODO(JayH5): Switch to a sane http server
-    # TODO(JayH5): Good exception catching, etc
-    def wsgi_app(self, env, start_response):
-        path = env.get("PATH_INFO", "").lstrip("/")
-        if re.match(r"reload/?$", path):
-            if env.get("REQUEST_METHOD") == "POST":
-                return self.reload(env, start_response)
-
-            return self.method_not_allowed(env, start_response)
-
-        return self.not_found(env, start_response)
-
-    def reload(self, env, start_response, existing=False):
-        query_params = parse_qs(env["QUERY_STRING"])
-        existing = query_params.get("existing", [])
-        if existing and existing[0].lower() in ["true", "1"]:
-            self.__processor.reload_existing_config()
-            msg = "Triggered reload of existing config...\n"
-        else:
-            self.__processor.reset_from_tasks()
-            msg = "Triggered reload of config...\n"
-
-        start_response("200 OK", [("Content-Type", "text/plain")])
-
-        return [msg.encode("utf-8")]
-
-    def method_not_allowed(self, env, start_response):
-        """Called if no method matches."""
-        start_response("405 METHOD NOT ALLOWED",
-                       [("Content-Type", "text/plain")])
-        return ["Method Not Allowed".encode("utf-8")]
-
-    def not_found(self, env, start_response):
-        """Called if no path matches."""
-        start_response("404 NOT FOUND", [("Content-Type", "text/plain")])
-        return ["Not Found".encode("utf-8")]
-
-
 if __name__ == '__main__':
     # Process arguments
     arg_parser = get_arg_parser()
@@ -1792,8 +1730,6 @@ if __name__ == '__main__':
         if args.sse and args.listening:
             arg_parser.error(
                 'cannot use --listening and --sse at the same time')
-        if args.api_listen and not args.sse:
-            arg_parser.error('--api-listen is only supported with --sse')
         if bool(args.min_serv_port_ip_per_task) != \
            bool(args.max_serv_port_ip_per_task):
             arg_parser.error(
@@ -1832,6 +1768,18 @@ if __name__ == '__main__':
                         get_marathon_auth_params(args),
                         args.marathon_ca_cert)
 
+    # If we're going to be handling events, set up the event processor and
+    # hook it up to the process signals.
+    if args.listening or args.sse:
+        processor = MarathonEventProcessor(marathon,
+                                           args.haproxy_config,
+                                           args.group,
+                                           not args.dont_bind_http_https,
+                                           args.ssl_certs,
+                                           args.haproxy_map)
+        signal.signal(signal.SIGHUP, processor.handle_signal)
+        signal.signal(signal.SIGUSR1, processor.handle_signal)
+
     # If in listening mode, spawn a webserver waiting for events. Otherwise
     # just write the config.
     if args.listening:
@@ -1839,25 +1787,10 @@ if __name__ == '__main__':
                        "and will be removed in future releases")
         callback_url = args.callback_url or args.listening
         try:
-            run_server(marathon, args.listening, callback_url,
-                       args.haproxy_config, args.group,
-                       not args.dont_bind_http_https, args.ssl_certs,
-                       args.haproxy_map, args.marathon_ca_cert)
+            run_server(marathon, args.listening, callback_url, processor)
         finally:
             clear_callbacks(marathon, callback_url)
     elif args.sse:
-        processor = MarathonEventProcessor(marathon,
-                                           args.haproxy_config,
-                                           args.group,
-                                           not args.dont_bind_http_https,
-                                           args.ssl_certs,
-                                           args.haproxy_map)
-
-        if args.api_listen:
-            listen_uri = parse.urlparse(args.api_listen)
-            api = MarathonLbApi(listen_uri, processor)
-            api.run()
-
         backoff = 3
         while True:
             stream_started = time.time()
