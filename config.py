@@ -60,6 +60,7 @@ AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS
   lua-load /marathon-lb/getpids.lua
   lua-load /marathon-lb/getconfig.lua
   lua-load /marathon-lb/getmaps.lua
+  lua-load /marathon-lb/signalmlb.lua
 defaults
   load-server-state-from-file global
   log               global
@@ -91,6 +92,11 @@ listen stats
   http-request use-service lua.getappmap if getappmap
   acl getconfig path /_haproxy_getconfig
   http-request use-service lua.getconfig if getconfig
+
+  acl signalmlbhup path /_mlb_signal/hup
+  http-request use-service lua.signalmlbhup if signalmlbhup
+  acl signalmlbusr1 path /_mlb_signal/usr1
+  http-request use-service lua.signalmlbusr1 if signalmlbusr1
 ''',
                            overridable=False,
                            description='''\
