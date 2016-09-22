@@ -20,7 +20,6 @@ which marathon-lb can be reached by Marathon.
 ```
 usage: marathon_lb.py [-h] [--longhelp] [--marathon MARATHON [MARATHON ...]]
                       [--listening LISTENING] [--callback-url CALLBACK_URL]
-                      [--api-listen API_LISTEN]
                       [--haproxy-config HAPROXY_CONFIG] [--group GROUP]
                       [--command COMMAND] [--sse] [--health-check]
                       [--lru-cache-capacity LRU_CACHE_CAPACITY]
@@ -52,10 +51,6 @@ optional arguments:
   --callback-url CALLBACK_URL, -u CALLBACK_URL
                         The HTTP address that Marathon can call this script
                         back at (http://lb1:8080) (default: None)
-  --api-listen API_LISTEN
-                        The address marathon-lb listens on to respond to API
-                        requests. Only available in SSE mode. (e.g.,
-                        http://0.0.0.0:8080) (default: None)
   --haproxy-config HAPROXY_CONFIG
                         Location of haproxy configuration (default:
                         /etc/haproxy/haproxy.cfg)
