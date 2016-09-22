@@ -335,7 +335,6 @@ def _get_health_check_options(template, health_check, health_check_port):
         healthCheckPath=health_check.get('path', '/'),
         healthCheckTimeoutSeconds=health_check['timeoutSeconds'],
         healthCheckIntervalSeconds=health_check['intervalSeconds'],
-        healthCheckIgnoreHttp1xx=health_check['ignoreHttp1xx'],
         healthCheckGracePeriodSeconds=health_check['gracePeriodSeconds'],
         healthCheckMaxConsecutiveFailures=health_check[
             'maxConsecutiveFailures'],
@@ -1634,8 +1633,6 @@ def get_arg_parser():
                              "for frontend marathon_https_in"
                              "Ex: /etc/ssl/site1.co.pem,/etc/ssl/site2.co.pem",
                         default="/etc/ssl/mesosphere.com.pem")
-    parser.add_argument("--marathon-ca-cert",
-                        help="CA certificate for Marathon HTTPS connections")
     parser.add_argument("--skip-validation",
                         help="Skip haproxy config file validation",
                         action="store_true")
