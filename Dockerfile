@@ -1,10 +1,22 @@
 FROM debian:stretch
 
+# runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        iptables \
+        libpcre3 \
+        openssl \
+        procps \
+        python3 \
+        python3-setuptools \
+        runit \
+        socat \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt /marathon-lb/requirements.txt
 COPY build-haproxy.sh /marathon-lb/build-haproxy.sh
 
 RUN set -x \
-    && buildDeps=" \
+    && buildDeps=' \
         gcc \
         libc6-dev \
         libffi-dev \
@@ -15,19 +27,9 @@ RUN set -x \
         python3-dev \
         python3-pip \
         wget \
-    " \
-    && runDeps=" \
-        iptables \
-        libpcre3 \
-        openssl \
-        procps \
-        python3 \
-        python3-setuptools \
-        runit \
-        socat \
-    " \
+    ' \
     && apt-get update \
-        && apt-get install -y --no-install-recommends $buildDeps $runDeps \
+        && apt-get install -y --no-install-recommends $buildDeps \
         && rm -rf /var/lib/apt/lists/* \
     && pip3 install --no-cache -r /marathon-lb/requirements.txt \
     && /marathon-lb/build-haproxy.sh \
