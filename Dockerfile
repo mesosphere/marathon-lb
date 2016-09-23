@@ -10,8 +10,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         socat \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt /marathon-lb/requirements.txt
-COPY build-haproxy.sh /marathon-lb/build-haproxy.sh
+COPY requirements.txt build-haproxy.sh \
+    /marathon-lb/
 
 RUN set -x \
     && buildDeps=' \
