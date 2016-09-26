@@ -16,6 +16,11 @@ else
   exit 1
 fi
 
+if [ -n "${HAPROXY_RELOAD_SIGTERM_DELAY-}" ]; then
+  echo $HAPROXY_RELOAD_SIGTERM_DELAY > $HAPROXY_SERVICE/env/HAPROXY_RELOAD_SIGTERM_DELAY
+fi
+
+
 # Find the --ssl-certs arg if one was provided,
 # get the certs and remove them and the arg from the list
 # of positional parameters so we don't duplicate them
