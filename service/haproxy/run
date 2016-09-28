@@ -13,7 +13,7 @@ addFirewallRules() {
 removeFirewallRules() {
   IFS=',' read -ra ADDR <<< "$PORTS"
   for i in "${ADDR[@]}"; do
-    iptables -w -D INPUT -p tcp --dport $i --syn -j DROP
+    while iptables -w -D INPUT -p tcp --dport $i --syn -j DROP 2>/dev/null; do :; done
   done
 }
 
@@ -51,7 +51,6 @@ reload() {
 mkdir -p /var/state/haproxy
 mkdir -p /var/run/haproxy
 
-removeFirewallRules # do this first to be safe
 reload
 
 trap reload SIGHUP
