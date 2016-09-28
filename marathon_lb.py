@@ -1375,7 +1375,8 @@ def get_apps(marathon):
                 service.healthCheck = \
                     get_health_check(app, service.healthcheck_port_index)
                 if service.healthCheck:
-                    if service.healthCheck['protocol'] == 'HTTP':
+                    healthProto = service.healthCheck['protocol']
+                    if healthProto in ['HTTP', 'HTTPS', 'MESOS_HTTP']:
                         service.mode = 'http'
 
             marathon_app.services[servicePort] = service
