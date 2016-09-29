@@ -38,7 +38,11 @@ reload() {
   socat /var/run/haproxy/socket - <<< "show servers state" > /var/state/haproxy/global
 
   # Trigger reload
-  haproxy -p $PIDFILE -f /marathon-lb/haproxy.cfg -D -sf $(pidof haproxy)
+  HAPROXY_PIDS=$(pidof haproxy)
+  haproxy -p $PIDFILE -f /marathon-lb/haproxy.cfg -D -sf $HAPROXY_PIDS
+  if [ -n "${HAPROXY_RELOAD_SIGTERM_DELAY-}" ]; then
+    sleep $HAPROXY_RELOAD_SIGTERM_DELAY && kill $HAPROXY_PIDS 2> /dev/null &
+  fi
 
   # Remove the firewall rules
   removeFirewallRules
