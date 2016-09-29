@@ -173,7 +173,10 @@ Marathon-lb exposes a few endpoints on port 9090 (by default). They are:
 | `:9090/_haproxy_getvhostmap`  | Returns the HAProxy vhost to backend map. This endpoint returns HAProxy map file only when the `--haproxy-map` flag is enabled, it returns an empty string otherwise. Implemented in [`getmaps.lua`](getmaps.lua).                                                                              |
 | `:9090/_haproxy_getappmap`    | Returns the HAProxy app ID to backend map. Like `_haproxy_getvhostmap`, this requires the `--haproxy-map` flag to be enabled and returns an empty string otherwise. Also implemented in `getmaps.lua`.                                                                                          |
 | `:9090/_haproxy_getpids`      | Returns the PIDs for all HAProxy instances within the current process namespace. This literally returns `$(pidof haproxy)`. Implemented in [`getpids.lua`](getpids.lua). This is also used by the [`zdd.py`](zdd.py) script to determine if connections have finished draining during a deploy. |
+| `:9090/_mlb_signal/hup`*      | Sends a `SIGHUP` signal to the marathon-lb process, causing it to fetch the running apps from Marathon and reload the HAProxy config as though an event was received from Marathon.                                                                                                             |
+| `:9090/_mlb_signal/usr1`*     | Sends a `SIGUSR1` signal to the marathon-lb process, causing it to restart HAProxy with the existing config, without checking Marathon for changes.                                                                                                                                             |
 
+\* These endpoints won't function when marathon-lb is in `poll` mode as there is no marathon-lb process to be signaled in this mode (marathon-lb exits after each poll).
 
 ## HAProxy Configuration
 
@@ -265,6 +268,7 @@ are [documented here](Longhelp.md#templates).
   >
   < HTTP/1.1 200 OK
   ```
+  * Some of the features of marathon-lb assume that it is the only instance of itself running in a PID namespace. i.e. marathon-lb assumes that it is running in a container. Certain features like the `/_mlb_signal` endpoints and the `/_haproxy_getpids` endpoint (and by extension, zero-downtime deployments) may behave unexpectedly if more than one instance of marathon-lb is running in the same PID namespace or if there are other HAProxy processes in the same PID namespace.
 
 ## Zero-downtime Deployments
 
