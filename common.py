@@ -57,25 +57,32 @@ class DCOSAuth(AuthBase):
         self.private_key = creds['private_key']
         self.login_endpoint = creds['login_endpoint']
         self.verify = False
+        self.auth_header = None
+        self.expiry = 0
         if ca_cert:
             self.verify = ca_cert
 
     def __call__(self, auth_request):
-        payload = {
-            'uid': self.uid,
-            'exp': int(time.time()) + 3600,
-        }
-        token = jwt.encode(payload, self.private_key, 'RS256')
+        if not self.auth_header or int(time.time()) >= self.expiry - 10:
+            self.expiry = int(time.time()) + 3600
+            payload = {
+                'uid': self.uid,
+                'exp': self.expiry,
+            }
+            token = jwt.encode(payload, self.private_key, 'RS256')
 
-        data = {
-            'uid': self.uid,
-            'token': token.decode('ascii'),
-        }
-        r = requests.post(self.login_endpoint, json=data, verify=self.verify)
-        r.raise_for_status()
+            data = {
+                'uid': self.uid,
+                'token': token.decode('ascii'),
+            }
+            r = requests.post(self.login_endpoint,
+                              json=data,
+                              verify=self.verify)
+            r.raise_for_status()
 
-        auth_header = 'token=' + r.cookies['dcos-acs-auth-cookie']
-        auth_request.headers['Authorization'] = auth_header
+            self.auth_header = 'token=' + r.cookies['dcos-acs-auth-cookie']
+
+        auth_request.headers['Authorization'] = self.auth_header
         return auth_request
 
 
