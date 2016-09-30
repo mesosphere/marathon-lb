@@ -67,13 +67,16 @@ class DCOSAuth(AuthBase):
             self.expiry = int(time.time()) + 3600
             payload = {
                 'uid': self.uid,
-                'exp': self.expiry,
+                # This is the expiry of the auth request params
+                'exp': int(time.time()) + 60,
             }
             token = jwt.encode(payload, self.private_key, 'RS256')
 
             data = {
                 'uid': self.uid,
                 'token': token.decode('ascii'),
+                # This is the expiry for the token itself
+                'exp': self.expiry,
             }
             r = requests.post(self.login_endpoint,
                               json=data,
