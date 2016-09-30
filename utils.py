@@ -110,6 +110,19 @@ class ServicePortAssigner(object):
         :return: The list of ports.    Note that if auto-assigning and ports
         become exhausted, a port may be returned as None.
         """
+        # Are we using 'USER' network?
+        if is_user_network(app):
+            # Here we must use portMappings
+            portMappings = app.get('container', {})\
+                .get('docker', {})\
+                .get('portMappings', [])
+            ports = filter(lambda p: p is not None,
+                           map(lambda p: p.get('servicePort', None),
+                               portMappings))
+            ports = list(ports)
+            if ports:
+                return list(ports)
+
         ports = app.get('ports', [])
         if 'portDefinitions' in app:
             ports = filter(lambda p: p is not None,
@@ -119,8 +132,6 @@ class ServicePortAssigner(object):
         ports = list(ports)  # wtf python?
         if not ports and is_ip_per_task(app) and self.can_assign \
                 and len(app['tasks']) > 0:
-            logger.warning("Auto assigning service port for "
-                           "IP-per-container task")
             task = app['tasks'][0]
             _, task_ports = get_task_ip_and_ports(app, task)
             if task_ports is not None:
@@ -158,6 +169,18 @@ def is_ip_per_task(app):
     return app.get('ipAddress') is not None
 
 
+def is_user_network(app):
+    """
+    Returns True if container network mode is set to USER
+    :param app:  The application to check.
+    :return:  True if using USER network, False otherwise.
+    """
+    c = app.get('container', {})
+    return c is not None and c.get('type', '') == 'DOCKER' and \
+        c.get('docker', {})\
+        .get('network', '') == 'USER'
+
+
 def get_task_ip_and_ports(app, task):
     """
     Return the IP address and list of ports used to access a task.  For a
@@ -175,16 +198,29 @@ def get_task_ip_and_ports(app, task):
     # single IP address, so just take the first IP in the list.
     if is_ip_per_task(app):
         logger.debug("Using IP per container")
+
         task_ip_addresses = task.get('ipAddresses')
         if not task_ip_addresses:
             logger.warning("Task %s does not yet have an ip address allocated",
                            task['id'])
             return None, None
+
         task_ip = task_ip_addresses[0]['ipAddress']
 
-        discovery = app['ipAddress'].get('discovery', {})
-        task_ports = [int(port['number'])
-                      for port in discovery.get('ports', [])]
+        # Are we using 'USER' network?
+        if is_user_network(app):
+            # in this case, we pull the port from portMappings
+            portMappings = app.get('container', {})\
+                .get('docker', {})\
+                .get('portMappings', [])
+            ports = filter(lambda p: p is not None,
+                           map(lambda p: p.get('containerPort', None),
+                               portMappings))
+            task_ports = list(ports)
+        else:
+            discovery = app['ipAddress'].get('discovery', {})
+            task_ports = [int(port['number'])
+                          for port in discovery.get('ports', [])]
     else:
         logger.debug("Using host port mapping")
         task_ports = task.get('ports', [])
