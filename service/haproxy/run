@@ -18,10 +18,6 @@ removeFirewallRules() {
 
 reload() {
   echo "Reloading haproxy"
-  if ! haproxy -c -f /marathon-lb/haproxy.cfg; then
-    echo "Invalid config"
-    return 1
-  fi
 
   (
     flock 200
