@@ -1444,6 +1444,8 @@ def get_apps(marathon):
 
 def regenerate_config(apps, config_file, groups, bind_http_https,
                       ssl_certs, templater, haproxy_map):
+
+    logger.info("17")
     domain_map_array = []
     app_map_array = []
 
@@ -1459,6 +1461,8 @@ class MarathonEventProcessor(object):
 
     def __init__(self, marathon, config_file, groups,
                  bind_http_https, ssl_certs, haproxy_map):
+
+        logger.info("16")
         self.__marathon = marathon
         # appId -> MarathonApp
         self.__apps = dict()
@@ -1480,10 +1484,13 @@ class MarathonEventProcessor(object):
         self.reset_from_tasks()
 
     def try_reset(self):
+        logger.info("2")
         with self.__condition:
             logger.info('starting event processor thread')
             while True:
+                logger.info("1")
                 self.__condition.acquire()
+                logger.info("3")
 
                 if self.__stop:
                     logger.info('stopping event processor thread')
@@ -1498,16 +1505,21 @@ class MarathonEventProcessor(object):
                 self.__pending_reset = False
                 self.__pending_reload = False
 
+                logger.info("4")
                 self.__condition.release()
+                logger.info("5")
 
                 # Reset takes precedence over reload
                 if pending_reset:
+                    logger.info("6")
                     self.do_reset()
                 elif pending_reload:
+                    logger.info("7")
                     self.do_reload()
                 else:
                     # Timed out waiting on the condition variable, just do a
                     # full reset for good measure (as was done before).
+                    logger.info("8")
                     self.do_reset()
 
     def do_reset(self):
@@ -1515,6 +1527,8 @@ class MarathonEventProcessor(object):
             start_time = time.time()
 
             self.__apps = get_apps(self.__marathon)
+
+            logger.info("9")
             regenerate_config(self.__apps,
                               self.__config_file,
                               self.__groups,
@@ -1541,24 +1555,28 @@ class MarathonEventProcessor(object):
             logger.exception("Unexpected error!")
 
     def stop(self):
+        logger.info("10")
         self.__condition.acquire()
         self.__stop = True
         self.__condition.notify()
         self.__condition.release()
 
     def reset_from_tasks(self):
+        logger.info("11")
         self.__condition.acquire()
         self.__pending_reset = True
         self.__condition.notify()
         self.__condition.release()
 
     def reload_existing_config(self):
+        logger.info("12")
         self.__condition.acquire()
         self.__pending_reload = True
         self.__condition.notify()
         self.__condition.release()
 
     def handle_event(self, event):
+        logger.info("13")
         if event['eventType'] == 'status_update_event' or \
                 event['eventType'] == 'health_status_changed_event' or \
                 event['eventType'] == 'api_post_event':
@@ -1684,6 +1702,7 @@ def clear_callbacks(marathon, callback_url):
 
 
 def process_sse_events(marathon, processor):
+    logger.info("14")
     try:
         events = marathon.get_event_stream()
         for event in events:
