@@ -1471,59 +1471,19 @@ class MarathonEventProcessor(object):
         self.__templater = ConfigTemplater()
         self.__bind_http_https = bind_http_https
         self.__ssl_certs = ssl_certs
-
-        self.__condition = threading.Condition()
-        self.__thread = threading.Thread(target=self.try_reset)
-        self.__pending_reset = False
-        self.__pending_reload = False
-        self.__stop = False
         self.__haproxy_map = haproxy_map
-        self.__thread.start()
+
+        # Lock to protect concurrent calls due to signals
+        self.__condition = threading.Condition()
+
+
+        logger.info("Started event processor...")
 
         # Fetch the base data
         self.reset_from_tasks()
 
-    def try_reset(self):
-        logger.info("2")
-        with self.__condition:
-            logger.info('starting event processor thread')
-            while True:
-                logger.info("1")
-                self.__condition.acquire()
-                logger.info("3")
 
-                if self.__stop:
-                    logger.info('stopping event processor thread')
-                    return
-
-                if not self.__pending_reset and not self.__pending_reload:
-                    logger.info("19")
-                    if not self.__condition.wait(30):
-                        logger.info('condition wait expired')
-
-                pending_reset = self.__pending_reset
-                pending_reload = self.__pending_reload
-                self.__pending_reset = False
-                self.__pending_reload = False
-
-                logger.info("4")
-                self.__condition.release()
-                logger.info("5")
-
-                # Reset takes precedence over reload
-                if pending_reset:
-                    logger.info("6")
-                    self.do_reset()
-                elif pending_reload:
-                    logger.info("7")
-                    self.do_reload()
-                else:
-                    # Timed out waiting on the condition variable, just do a
-                    # full reset for good measure (as was done before).
-                    logger.info("8")
-                    self.do_reset()
-
-    def do_reset(self):
+    def __do_reset(self):
         try:
             start_time = time.time()
 
@@ -1546,7 +1506,7 @@ class MarathonEventProcessor(object):
         except:
             logger.exception("Unexpected error!")
 
-    def do_reload(self):
+    def __do_reload(self):
         try:
             # Validate the existing config before reloading
             logger.debug("attempting to reload existing config...")
@@ -1556,25 +1516,17 @@ class MarathonEventProcessor(object):
             logger.exception("Unexpected error!")
 
     def stop(self):
-        logger.info("10")
-        self.__condition.acquire()
-        self.__stop = True
-        self.__condition.notify()
-        self.__condition.release()
+        logger.info("10 (stop)")
 
     def reset_from_tasks(self):
         logger.info("11")
-        self.__condition.acquire()
-        self.__pending_reset = True
-        self.__condition.notify()
-        self.__condition.release()
+        with self.__condition:
+            self.__do_reset()
 
     def reload_existing_config(self):
         logger.info("12")
-        self.__condition.acquire()
-        self.__pending_reload = True
-        self.__condition.notify()
-        self.__condition.release()
+        with self.__condition:
+            self.__do_reload()
 
     def handle_event(self, event):
         logger.info("13")
