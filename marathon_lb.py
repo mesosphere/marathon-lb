@@ -660,6 +660,7 @@ def reloadConfig():
             subprocess.check_call(reloadCommand, close_fds=True)
             # Wait until the reload actually occurs and there's a new PID
             while len(get_haproxy_pids() - old_pids) < 1:
+                logger.debug("Waiting for new haproxy pid...")
                 time.sleep(0.1)
             logger.debug("reload finished, took %s seconds",
                          time.time() - start_time)
