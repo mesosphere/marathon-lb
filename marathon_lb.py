@@ -1497,6 +1497,7 @@ class MarathonEventProcessor(object):
                     return
 
                 if not self.__pending_reset and not self.__pending_reload:
+                    logger.info("19")
                     if not self.__condition.wait(300):
                         logger.info('condition wait expired')
 
