@@ -1806,7 +1806,7 @@ if __name__ == '__main__':
                 backoff = backoff * 1.5
                 if backoff > 300:
                     backoff = 300
-                logger.error("Reconnecting in {}s...", backoff)
+                logger.error("Reconnecting in {}s...".format(backoff))
             # Reset the backoff if it's been more than 10 minutes
             if time.time() - stream_started > 600:
                 backoff = 3
