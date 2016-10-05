@@ -1515,9 +1515,6 @@ class MarathonEventProcessor(object):
         except:
             logger.exception("Unexpected error!")
 
-    def stop(self):
-        logger.info("10 (stop)")
-
     def reset_from_tasks(self):
         logger.info("11")
         with self.__condition:
@@ -1627,26 +1624,23 @@ def get_arg_parser():
 
 
 def run_server(marathon, listen_addr, callback_url, processor):
-    try:
-        marathon.add_subscriber(callback_url)
+    marathon.add_subscriber(callback_url)
 
-        # TODO(cmaloney): Switch to a sane http server
-        # TODO(cmaloney): Good exception catching, etc
-        def wsgi_app(env, start_response):
-            length = int(env['CONTENT_LENGTH'])
-            data = env['wsgi.input'].read(length)
-            processor.handle_event(json.loads(data.decode('utf-8')))
-            # TODO(cmaloney): Make this have a simple useful webui for
-            # debugging / monitoring
-            start_response('200 OK', [('Content-Type', 'text/html')])
+    # TODO(cmaloney): Switch to a sane http server
+    # TODO(cmaloney): Good exception catching, etc
+    def wsgi_app(env, start_response):
+        length = int(env['CONTENT_LENGTH'])
+        data = env['wsgi.input'].read(length)
+        processor.handle_event(json.loads(data.decode('utf-8')))
+        # TODO(cmaloney): Make this have a simple useful webui for
+        # debugging / monitoring
+        start_response('200 OK', [('Content-Type', 'text/html')])
 
-            return ["Got it\n".encode('utf-8')]
+        return ["Got it\n".encode('utf-8')]
 
-        listen_uri = parse.urlparse(listen_addr)
-        httpd = make_server(listen_uri.hostname, listen_uri.port, wsgi_app)
-        httpd.serve_forever()
-    finally:
-        processor.stop()
+    listen_uri = parse.urlparse(listen_addr)
+    httpd = make_server(listen_uri.hostname, listen_uri.port, wsgi_app)
+    httpd.serve_forever()
 
 
 def clear_callbacks(marathon, callback_url):
@@ -1655,31 +1649,29 @@ def clear_callbacks(marathon, callback_url):
 
 
 def process_sse_events(marathon, processor):
-    logger.info("14")
-    try:
-        events = marathon.get_event_stream()
-        for event in events:
-            try:
-                # logger.info("received event: {0}".format(event))
-                # marathon might also send empty messages as keepalive...
-                if (event.data.strip() != ''):
-                    # marathon sometimes sends more than one json per event
-                    # e.g. {}\r\n{}\r\n\r\n
-                    for real_event_data in re.split(r'\r\n', event.data):
-                        data = json.loads(real_event_data)
-                        logger.info(
-                            "received event of type {0}"
-                            .format(data['eventType']))
-                        processor.handle_event(data)
-                else:
-                    logger.info("skipping empty message")
-            except:
-                print(event.data)
-                print("Unexpected error:", sys.exc_info()[0])
-                traceback.print_stack()
-                raise
-    finally:
-        processor.stop()
+    logger.info("Start event processing.")
+
+    events = marathon.get_event_stream()
+    for event in events:
+        try:
+            # logger.info("received event: {0}".format(event))
+            # marathon might also send empty messages as keepalive...
+            if (event.data.strip() != ''):
+                # marathon sometimes sends more than one json per event
+                # e.g. {}\r\n{}\r\n\r\n
+                for real_event_data in re.split(r'\r\n', event.data):
+                    data = json.loads(real_event_data)
+                    logger.info(
+                        "received event of type {0}"
+                        .format(data['eventType']))
+                    processor.handle_event(data)
+            else:
+                logger.info("skipping empty message")
+        except:
+            print(event.data)
+            print("Unexpected error:", sys.exc_info()[0])
+            traceback.print_stack()
+            raise
 
 
 if __name__ == '__main__':
