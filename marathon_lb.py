@@ -1471,13 +1471,13 @@ class MarathonEventProcessor(object):
         self.__condition = threading.Condition()
         self.__pending_reset = False
         self.__pending_reload = False
-        self.__stop = False
         self.__haproxy_map = haproxy_map
 
         # Fetch the base data
         self.reset_from_tasks()
 
     def start(self):
+        self.__stop = False
         self.__thread = threading.Thread(target=self.try_reset)
         self.__thread.start()
 
