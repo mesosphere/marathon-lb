@@ -1444,7 +1444,6 @@ def get_apps(marathon):
 
 def regenerate_config(apps, config_file, groups, bind_http_https,
                       ssl_certs, templater, haproxy_map):
-
     domain_map_array = []
     app_map_array = []
 
@@ -1460,7 +1459,6 @@ class MarathonEventProcessor(object):
 
     def __init__(self, marathon, config_file, groups,
                  bind_http_https, ssl_certs, haproxy_map):
-
         self.__marathon = marathon
         # appId -> MarathonApp
         self.__apps = dict()
@@ -1473,7 +1471,6 @@ class MarathonEventProcessor(object):
 
         # Lock to protect concurrent calls due to signals
         self.__condition = threading.Condition()
-
 
         logger.info("Started event processor...")
 
