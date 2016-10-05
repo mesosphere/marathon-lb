@@ -1487,6 +1487,7 @@ class MarathonEventProcessor(object):
 
                 if self.__stop:
                     logger.info('stopping event processor thread')
+                    self.__condition.release()
                     return
 
                 if not self.__pending_reset and not self.__pending_reload:
