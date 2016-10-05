@@ -1469,15 +1469,17 @@ class MarathonEventProcessor(object):
         self.__ssl_certs = ssl_certs
 
         self.__condition = threading.Condition()
-        self.__thread = threading.Thread(target=self.try_reset)
         self.__pending_reset = False
         self.__pending_reload = False
         self.__stop = False
         self.__haproxy_map = haproxy_map
-        self.__thread.start()
 
         # Fetch the base data
         self.reset_from_tasks()
+
+    def start(self):
+        self.__thread = threading.Thread(target=self.try_reset)
+        self.__thread.start()
 
     def try_reset(self):
         with self.__condition:
@@ -1658,6 +1660,7 @@ def get_arg_parser():
 
 def run_server(marathon, listen_addr, callback_url, processor):
     try:
+        processor.start()
         marathon.add_subscriber(callback_url)
 
         # TODO(cmaloney): Switch to a sane http server
@@ -1686,6 +1689,7 @@ def clear_callbacks(marathon, callback_url):
 
 def process_sse_events(marathon, processor):
     try:
+        processor.start()
         events = marathon.get_event_stream()
         for event in events:
             try:
