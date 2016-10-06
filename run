@@ -82,6 +82,7 @@ MODE=$1; shift
 case "$MODE" in
   poll)
     POLL_INTERVAL="${POLL_INTERVAL:-60}"
+    ARGS=""
     ;;
   sse)
     ARGS="--sse"
