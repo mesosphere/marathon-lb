@@ -27,7 +27,7 @@ fi
 # further down when we pass $@ to marathon_lb.py
 declare -i ssl_certs_pos=0
 for ((i=1; i<=$#; i++)); do
-  if [ ${!i} = '--ssl-certs' ]; then
+  if [ "${!i}" = '--ssl-certs' ]; then
     ssl_certs_pos=$(($i+1))
     break
   fi
@@ -102,6 +102,11 @@ case "$MODE" in
     ;;
 esac
 
+for arg in "$@"; do
+    escaped=$(printf %q "$arg")
+    ARGS="$ARGS $escaped"
+done
+
 cat > $LB_SERVICE/run << EOF
 #!/bin/sh
 exec 2>&1
@@ -111,11 +116,9 @@ exec /marathon-lb/marathon_lb.py \
     --haproxy-config /marathon-lb/haproxy.cfg \
     --ssl-certs "${SSL_CERTS}" \
     --command "sv reload ${HAPROXY_SERVICE}" \
-    $ARGS ${@}
-
+    $ARGS
 EOF
 chmod 755 $LB_SERVICE/run
-
 
 if [ "${MODE}" == "poll" ]; then
 
