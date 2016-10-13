@@ -4,11 +4,11 @@ import json
 import logging
 import os
 import sys
+import ssl
 import time
-from logging.handlers import SysLogHandler
-
 import jwt
 import requests
+from logging.handlers import SysLogHandler
 from requests.auth import AuthBase
 
 
@@ -79,8 +79,8 @@ class DCOSAuth(AuthBase):
                 'exp': self.expiry,
             }
             r = requests.post(self.login_endpoint,
-                              json=data,
-                              verify=self.verify)
+                       json=data,
+                       verify=self.verify)
             r.raise_for_status()
 
             self.auth_header = 'token=' + r.cookies['dcos-acs-auth-cookie']
