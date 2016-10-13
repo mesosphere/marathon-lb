@@ -4,12 +4,22 @@ import json
 import logging
 import os
 import sys
+import ssl
 import time
-from logging.handlers import SysLogHandler
-
 import jwt
 import requests
+from logging.handlers import SysLogHandler
 from requests.auth import AuthBase
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.poolmanager import PoolManager
+
+
+class TLSAdapter(HTTPAdapter):
+    def init_poolmanager(self, connections, maxsize, block=False):
+        self.poolmanager = PoolManager(num_pools=connections,
+                                       maxsize=maxsize,
+                                       block=block,
+                                       ssl_version=ssl.PROTOCOL_TLSv1_2)
 
 
 def setup_logging(logger, syslog_socket, log_format, log_level='DEBUG'):
@@ -78,9 +88,11 @@ class DCOSAuth(AuthBase):
                 # This is the expiry for the token itself
                 'exp': self.expiry,
             }
-            r = requests.post(self.login_endpoint,
-                              json=data,
-                              verify=self.verify)
+            s = requests.Session()
+            s.mount('https://', TLSAdapter())
+            r = s.post(self.login_endpoint,
+                       json=data,
+                       verify=self.verify)
             r.raise_for_status()
 
             self.auth_header = 'token=' + r.cookies['dcos-acs-auth-cookie']

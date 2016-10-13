@@ -3,3 +3,7 @@ PyJWT==1.4.0
 python-dateutil
 requests
 six
+pyopenssl
+ndg-httpsclient
+pyasn1
+urllib3
