@@ -1,19 +1,42 @@
 FROM registry.nutmeg.co.uk:8443/docker.io/library/debian:sid
 
-ENTRYPOINT [ "/marathon-lb/run" ]
-CMD        [ "sse", "-m", "http://master.mesos:8080", "--health-check", "--group", "external" ]
-EXPOSE     80 81 443 9090
+# runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        iptables \
+        openssl \
+        procps \
+        python3 \
+        runit \
+        socat \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY build-haproxy.sh /marathon-lb/build-haproxy.sh
-COPY requirements.txt /marathon-lb/requirements.txt
+COPY requirements.txt build-haproxy.sh \
+    /marathon-lb/
 
-RUN apt-get update && apt-get install -y python3 python3-pip openssl libssl-dev runit procps \
-    wget build-essential libpcre3 libpcre3-dev python3-dateutil socat iptables libreadline-dev \
-    && pip3 install -r /marathon-lb/requirements.txt \
+RUN set -x \
+    && buildDeps=' \
+        gcc \
+        libc6-dev \
+        libffi-dev \
+        libpcre3-dev \
+        libreadline-dev \
+        libssl-dev \
+        make \
+        python3-dev \
+        python3-pip \
+        python3-setuptools \
+        wget \
+    ' \
+    && apt-get update \
+        && apt-get install -y --no-install-recommends $buildDeps \
+        && rm -rf /var/lib/apt/lists/* \
+# Install Python packages with --upgrade so we get new packages even if a system
+# package is already installed. Combine with --force-reinstall to ensure we get
+# a local package even if the system package is up-to-date as the system package
+# will probably be uninstalled with the build dependencies.
+    && pip3 install --no-cache --upgrade --force-reinstall -r /marathon-lb/requirements.txt \
     && /marathon-lb/build-haproxy.sh \
-    && apt-get remove -yf wget libssl-dev build-essential libpcre3-dev libreadline-dev \
-    && apt-get autoremove -yf \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    && apt-get purge -y --auto-remove $buildDeps
     
 ADD https://github.com/nutmegdevelopment/nutcracker-cli/releases/download/0.0.2/nutcracker-cli /usr/local/bin/nutcracker-cli
 RUN chmod +x /usr/local/bin/nutcracker-cli
@@ -21,3 +44,9 @@ RUN chmod +x /usr/local/bin/nutcracker-cli
 COPY  . /marathon-lb
 
 WORKDIR /marathon-lb
+
+ENTRYPOINT [ "/marathon-lb/run" ]
+
+CMD [ "sse", "--health-check", "--group", "external" ]
+
+EXPOSE 80 443 9090 9091

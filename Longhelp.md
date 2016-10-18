@@ -23,14 +23,16 @@ usage: marathon_lb.py [-h] [--longhelp] [--marathon MARATHON [MARATHON ...]]
                       [--haproxy-config HAPROXY_CONFIG] [--group GROUP]
                       [--command COMMAND] [--sse] [--health-check]
                       [--lru-cache-capacity LRU_CACHE_CAPACITY]
-                      [--dont-bind-http-https] [--ssl-certs SSL_CERTS]
-                      [--skip-validation] [--dry]
+                      [--haproxy-map] [--dont-bind-http-https]
+                      [--ssl-certs SSL_CERTS] [--skip-validation] [--dry]
                       [--min-serv-port-ip-per-task MIN_SERV_PORT_IP_PER_TASK]
                       [--max-serv-port-ip-per-task MAX_SERV_PORT_IP_PER_TASK]
                       [--syslog-socket SYSLOG_SOCKET]
-                      [--log-format LOG_FORMAT]
+                      [--log-format LOG_FORMAT] [--log-level LOG_LEVEL]
                       [--marathon-auth-credential-file MARATHON_AUTH_CREDENTIAL_FILE]
                       [--auth-credentials AUTH_CREDENTIALS]
+                      [--dcos-auth-credentials DCOS_AUTH_CREDENTIALS]
+                      [--marathon-ca-cert MARATHON_CA_CERT]
 
 Marathon HAProxy Load Balancer
 
@@ -39,11 +41,12 @@ optional arguments:
   --longhelp            Print out configuration details (default: False)
   --marathon MARATHON [MARATHON ...], -m MARATHON [MARATHON ...]
                         [required] Marathon endpoint, eg. -m
-                        http://marathon1:8080 -m http://marathon2:8080
-                        (default: None)
+                        http://marathon1:8080 http://marathon2:8080 (default:
+                        ['http://master.mesos:8080'])
   --listening LISTENING, -l LISTENING
-                        The address this script listens on for marathon events
-                        (e.g., http://0.0.0.0:8080) (default: None)
+                        (deprecated) The address this script listens on for
+                        marathon events (e.g., http://0.0.0.0:8080) (default:
+                        None)
   --callback-url CALLBACK_URL, -u CALLBACK_URL
                         The HTTP address that Marathon can call this script
                         back at (http://lb1:8080) (default: None)
@@ -65,6 +68,8 @@ optional arguments:
                         LRU cache size (in number of items). This should be at
                         least as large as the number of tasks exposed via
                         marathon-lb. (default: 1000)
+  --haproxy-map         Use HAProxy maps for domain name to backendmapping.
+                        (default: False)
   --dont-bind-http-https
                         Don't bind to HTTP and HTTPS frontends. (default:
                         False)
@@ -87,12 +92,19 @@ optional arguments:
   --log-format LOG_FORMAT
                         Set log message format (default: %(name)s:
                         %(message)s)
+  --log-level LOG_LEVEL
+                        Set log level (default: DEBUG)
   --marathon-auth-credential-file MARATHON_AUTH_CREDENTIAL_FILE
                         Path to file containing a user/pass for the Marathon
                         HTTP API in the format of 'user:pass'. (default: None)
   --auth-credentials AUTH_CREDENTIALS
                         user/pass for the Marathon HTTP API in the format of
                         'user:pass'. (default: None)
+  --dcos-auth-credentials DCOS_AUTH_CREDENTIALS
+                        DC/OS service account credentials (default: None)
+  --marathon-ca-cert MARATHON_CA_CERT
+                        CA certificate for Marathon HTTPS connections
+                        (default: None)
 ```
 ## Templates
 
@@ -143,7 +155,6 @@ Parameters of the first health check for this service are exposed as:
   * healthCheckPath
   * healthCheckTimeoutSeconds
   * healthCheckIntervalSeconds
-  * healthCheckIgnoreHttp1xx
   * healthCheckGracePeriodSeconds
   * healthCheckMaxConsecutiveFailures
   * healthCheckFalls is set to healthCheckMaxConsecutiveFailures + 1
@@ -216,7 +227,6 @@ Parameters of the first health check for this service are exposed as:
   * healthCheckPath
   * healthCheckTimeoutSeconds
   * healthCheckIntervalSeconds
-  * healthCheckIgnoreHttp1xx
   * healthCheckGracePeriodSeconds
   * healthCheckMaxConsecutiveFailures
   * healthCheckFalls is set to healthCheckMaxConsecutiveFailures + 1
@@ -360,14 +370,16 @@ global
   maxconn 50000
   tune.ssl.default-dh-param 2048
   ssl-default-bind-ciphers ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS
-  ssl-default-bind-options no-sslv3 no-tls-tickets
+  ssl-default-bind-options no-sslv3 no-tlsv10 no-tls-tickets
   ssl-default-server-ciphers ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS
-  ssl-default-server-options no-sslv3 no-tls-tickets
+  ssl-default-server-options no-sslv3 no-tlsv10 no-tls-tickets
   stats socket /var/run/haproxy/socket
   server-state-file global
   server-state-base /var/state/haproxy/
   lua-load /marathon-lb/getpids.lua
   lua-load /marathon-lb/getconfig.lua
+  lua-load /marathon-lb/getmaps.lua
+  lua-load /marathon-lb/signalmlb.lua
 defaults
   load-server-state-from-file global
   log               global
@@ -393,8 +405,17 @@ listen stats
   monitor-uri /_haproxy_health_check
   acl getpid path /_haproxy_getpids
   http-request use-service lua.getpids if getpid
+  acl getvhostmap path /_haproxy_getvhostmap
+  http-request use-service lua.getvhostmap if getvhostmap
+  acl getappmap path /_haproxy_getappmap
+  http-request use-service lua.getappmap if getappmap
   acl getconfig path /_haproxy_getconfig
   http-request use-service lua.getconfig if getconfig
+
+  acl signalmlbhup path /_mlb_signal/hup
+  http-request use-service lua.signalmlbhup if signalmlbhup
+  acl signalmlbusr1 path /_mlb_signal/usr1
+  http-request use-service lua.signalmlbusr1 if signalmlbusr1
 ```
 ## `HAPROXY_HTTPS_FRONTEND_ACL`
   *Overridable*
@@ -520,19 +541,44 @@ glues the acl names to the appropriate backend
   http-request auth realm "{realm}" if host_{cleanedUpHostname} path_{backend} !auth_{cleanedUpHostname}
   use_backend {backend} if host_{cleanedUpHostname} path_{backend}
 ```
-## `HAPROXY_HTTP_BACKEND_PROXYPASS`
+## `HAPROXY_HTTP_BACKEND_ACL_ALLOW_DENY`
+  *Global*
+
+Specified as `HAPROXY_HTTP_BACKEND_ACL_ALLOW_DENY` template.
+
+This option denies all IPs (or IP ranges) not explicitly allowed to access the HTTP backend.
+Use with HAPROXY_HTTP_BACKEND_NETWORK_ALLOWED_ACL.
+
+
+**Default template for `HAPROXY_HTTP_BACKEND_ACL_ALLOW_DENY`:**
+```
+  http-request allow if network_allowed
+  http-request deny
+```
+## `HAPROXY_HTTP_BACKEND_NETWORK_ALLOWED_ACL`
   *Overridable*
 
-Specified as `HAPROXY_HTTP_BACKEND_PROXYPASS` template or with label `HAPROXY_{n}_HTTP_BACKEND_PROXYPASS`.
+Specified as `HAPROXY_HTTP_BACKEND_NETWORK_ALLOWED_ACL` template or with label `HAPROXY_{n}_HTTP_BACKEND_NETWORK_ALLOWED_ACL`.
 
-Set the location to use for mapping local server URLs to remote servers + URL.
-Ex: HAPROXY_0_HTTP_BACKEND_PROXYPASS = '/path/to/redirect
+This option set the IPs (or IP ranges) having access to the HTTP backend.
 
 
-**Default template for `HAPROXY_HTTP_BACKEND_PROXYPASS`:**
+**Default template for `HAPROXY_HTTP_BACKEND_NETWORK_ALLOWED_ACL`:**
+```
+  acl network_allowed src {network_allowed}
+```
+## `HAPROXY_HTTP_BACKEND_PROXYPASS_GLUE`
+  *Overridable*
+
+Specified as `HAPROXY_HTTP_BACKEND_PROXYPASS_GLUE` template or with label `HAPROXY_{n}_HTTP_BACKEND_PROXYPASS_GLUE`.
+
+Backend glue for `HAPROXY_{n}_HTTP_BACKEND_PROXYPASS_PATH`.
+
+
+**Default template for `HAPROXY_HTTP_BACKEND_PROXYPASS_GLUE`:**
 ```
   http-request set-header Host {hostname}
-  reqirep  "^([^ :]*)\ {proxypath}(.*)" "\1\ /\2"
+  reqirep  "^([^ :]*)\ {proxypath}/?(.*)" "\1\ /\2"
 ```
 ## `HAPROXY_HTTP_BACKEND_REDIR`
   *Overridable*
@@ -549,16 +595,15 @@ Ex: HAPROXY_0_HTTP_BACKEND_REDIR = '/my/content'
   acl is_domain hdr(host) -i {hostname}
   redirect code 301 location {redirpath} if is_domain is_root
 ```
-## `HAPROXY_HTTP_BACKEND_REVPROXY`
+## `HAPROXY_HTTP_BACKEND_REVPROXY_GLUE`
   *Overridable*
 
-Specified as `HAPROXY_HTTP_BACKEND_REVPROXY` template or with label `HAPROXY_{n}_HTTP_BACKEND_REVPROXY`.
+Specified as `HAPROXY_HTTP_BACKEND_REVPROXY_GLUE` template or with label `HAPROXY_{n}_HTTP_BACKEND_REVPROXY_GLUE`.
 
-Set the URL in HTTP response headers sent from a reverse proxied server. It only updates Location, Content-Location and URL.
-Ex: HAPROXY_0_HTTP_BACKEND_REVPROXY = '/my/content'
+Backend glue for `HAPROXY_{n}_HTTP_BACKEND_REVPROXY_PATH`.
 
 
-**Default template for `HAPROXY_HTTP_BACKEND_REVPROXY`:**
+**Default template for `HAPROXY_HTTP_BACKEND_REVPROXY_GLUE`:**
 ```
   acl hdr_location res.hdr(Location) -m found
   rspirep "^Location: (https?://{hostname}(:[0-9]+)?)?(/.*)" "Location:   {rootpath} if hdr_location"
@@ -777,6 +822,84 @@ glues the acl names to the appropriate backend
   http-request auth realm "{realm}" if host_{cleanedUpHostname} path_{backend} !auth_{cleanedUpHostname}
   use_backend {backend} if host_{cleanedUpHostname} path_{backend}
 ```
+## `HAPROXY_MAP_HTTPS_FRONTEND_ACL`
+  *Overridable*
+
+Specified as `HAPROXY_MAP_HTTPS_FRONTEND_ACL` template or with label `HAPROXY_{n}_MAP_HTTPS_FRONTEND_ACL`.
+
+The ACL that performs the SNI based hostname matching
+for the `HAPROXY_HTTPS_FRONTEND_HEAD` template using haproxy maps
+
+
+**Default template for `HAPROXY_MAP_HTTPS_FRONTEND_ACL`:**
+```
+  use_backend %[ssl_fc_sni,lower,map({haproxy_dir}/domain2backend.map)]
+```
+## `HAPROXY_MAP_HTTP_FRONTEND_ACL`
+  *Overridable*
+
+Specified as `HAPROXY_MAP_HTTP_FRONTEND_ACL` template or with label `HAPROXY_{n}_MAP_HTTP_FRONTEND_ACL`.
+
+The ACL that glues a backend to the corresponding virtual host
+of the `HAPROXY_HTTP_FRONTEND_HEAD` using haproxy maps.
+
+
+**Default template for `HAPROXY_MAP_HTTP_FRONTEND_ACL`:**
+```
+  use_backend %[req.hdr(host),lower,regsub(:.*$,,),map({haproxy_dir}/domain2backend.map)]
+```
+## `HAPROXY_MAP_HTTP_FRONTEND_ACL_ONLY`
+  *Overridable*
+
+Specified as `HAPROXY_MAP_HTTP_FRONTEND_ACL_ONLY` template or with label `HAPROXY_{n}_MAP_HTTP_FRONTEND_ACL_ONLY`.
+
+Define the ACL matching a particular hostname, This is useful only in the case
+ of multiple vhosts routing to the same backend in haproxy map.
+
+
+**Default template for `HAPROXY_MAP_HTTP_FRONTEND_ACL_ONLY`:**
+```
+  use_backend %[req.hdr(host),lower,regsub(:.*$,,),map({haproxy_dir}/domain2backend.map)]
+```
+## `HAPROXY_MAP_HTTP_FRONTEND_APPID_ACL`
+  *Overridable*
+
+Specified as `HAPROXY_MAP_HTTP_FRONTEND_APPID_ACL` template or with label `HAPROXY_{n}_MAP_HTTP_FRONTEND_APPID_ACL`.
+
+The ACL that glues a backend to the corresponding app
+of the `HAPROXY_HTTP_FRONTEND_APPID_HEAD` using haproxy maps.
+
+
+**Default template for `HAPROXY_MAP_HTTP_FRONTEND_APPID_ACL`:**
+```
+  use_backend %[req.hdr(x-marathon-app-id),lower,map({haproxy_dir}/app2backend.map)]
+```
+## `HAPROXY_TCP_BACKEND_ACL_ALLOW_DENY`
+  *Global*
+
+Specified as `HAPROXY_TCP_BACKEND_ACL_ALLOW_DENY` template.
+
+This option denies all IPs (or IP ranges) not explicitly allowed to access the TCP backend.
+Use with HAPROXY_TCP_BACKEND_ACL_ALLOW_DENY.
+
+
+**Default template for `HAPROXY_TCP_BACKEND_ACL_ALLOW_DENY`:**
+```
+  tcp-request content accept if network_allowed
+  tcp-request content reject
+```
+## `HAPROXY_TCP_BACKEND_NETWORK_ALLOWED_ACL`
+  *Overridable*
+
+Specified as `HAPROXY_TCP_BACKEND_NETWORK_ALLOWED_ACL` template or with label `HAPROXY_{n}_TCP_BACKEND_NETWORK_ALLOWED_ACL`.
+
+This option set the IPs (or IP ranges) having access to the TCP backend.
+
+
+**Default template for `HAPROXY_TCP_BACKEND_NETWORK_ALLOWED_ACL`:**
+```
+  acl network_allowed src {network_allowed}
+```
 ## `HAPROXY_USERLIST_HEAD`
   *Overridable*
 
@@ -799,9 +922,51 @@ These labels may be used to configure other app settings.
 
 Specified as `HAPROXY_{n}_AUTH`.
 
-The http basic auth definition.
+The http basic auth definition. For details on configuring auth, see: https://github.com/mesosphere/marathon-lb/wiki/HTTP-Basic-Auth
 
 Ex: `HAPROXY_0_AUTH = realm:username:encryptedpassword`
+
+## `HAPROXY_{n}_BACKEND_HEALTHCHECK_PORT_INDEX`
+  *per service port*
+
+Specified as `HAPROXY_{n}_BACKEND_HEALTHCHECK_PORT_INDEX`.
+
+Set the index of the port dedicated for the healthchecks of the backends
+behind a given service port.
+
+By default, the index will be the same as the one of the service port.
+
+Ex: An app exposes two ports, one for the application,
+one for its healthchecks:
+
+portMappings": [
+  {
+    "containerPort": 9000,
+    "hostPort": 0,
+    "servicePort": 0,
+    "protocol": "tcp"
+  },
+  {
+    "containerPort": 9001,
+    "hostPort": 0,
+    "servicePort": 0,
+    "protocol": "tcp"
+  }
+]
+
+HAPROXY_0_BACKEND_HEALTHCHECK_PORT_INDEX=1 will make it so that the port 9001
+is used to perform the backend healthchecks.
+                    
+
+## `HAPROXY_{n}_BACKEND_NETWORK_ALLOWED_ACL`
+  *per service port*
+
+Specified as `HAPROXY_{n}_BACKEND_NETWORK_ALLOWED_ACL`.
+
+Set the IPs (or IP ranges) having access to the backend. By default every IP is allowed.
+
+Ex: `HAPROXY_0_BACKEND_NETWORK_ALLOWED_ACL = '127.0.0.1/8, 10.1.55.43'`
+                    
 
 ## `HAPROXY_{n}_BACKEND_WEIGHT`
   *per service port*
@@ -848,7 +1013,7 @@ Specified as `HAPROXY_{n}_BIND_OPTIONS`.
 
 Set additional bind options
 
-Ex: `HAPROXY_0_BIND_OPTIONS = 'ciphers AES128+EECDH:AES128+EDH force-tlsv12 no-sslv3'`
+Ex: `HAPROXY_0_BIND_OPTIONS = 'ciphers AES128+EECDH:AES128+EDH force-tlsv12 no-sslv3 no-tlsv10'`
                     
 
 ## `HAPROXY_DEPLOYMENT_ALT_PORT`
@@ -932,12 +1097,23 @@ it falls back to default `HAPROXY_GROUP` and gets associated with
 Load balancers with the group '*' will collect all groups.
     
 
-## `HAPROXY_{n}_HTTPS_FRONTEND_ACL_ONLY_WITH_PATH_AND_AUTH`
+## `HAPROXY_{n}_HTTP_BACKEND_PROXYPASS_PATH`
   *per service port*
 
-Specified as `HAPROXY_{n}_HTTPS_FRONTEND_ACL_ONLY_WITH_PATH_AND_AUTH`.
+Specified as `HAPROXY_{n}_HTTP_BACKEND_PROXYPASS_PATH`.
 
+Set the location to use for mapping local server URLs to remote servers + URL.
+Ex: `HAPROXY_0_HTTP_BACKEND_PROXYPASS_PATH = '/path/to/redirect'`
+                    
 
+## `HAPROXY_{n}_HTTP_BACKEND_REVPROXY_PATH`
+  *per service port*
+
+Specified as `HAPROXY_{n}_HTTP_BACKEND_REVPROXY_PATH`.
+
+Set the URL in HTTP response headers sent from a reverse proxied server. It only updates Location, Content-Location and URL.
+Ex: `HAPROXY_0_HTTP_BACKEND_REVPROXY_PATH = '/my/content'`
+                    
 
 ## `HAPROXY_{n}_MODE`
   *per service port*
