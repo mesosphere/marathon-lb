@@ -77,7 +77,7 @@ optional arguments:
                         List of SSL certificates separated by commafor
                         frontend marathon_https_inEx:
                         /etc/ssl/site1.co.pem,/etc/ssl/site2.co.pem (default:
-                        /etc/ssl/mesosphere.com.pem)
+                        /etc/ssl/cert.pem)
   --skip-validation     Skip haproxy config file validation (default: False)
   --dry, -d             Only print configuration to console (default: False)
   --min-serv-port-ip-per-task MIN_SERV_PORT_IP_PER_TASK
@@ -1172,7 +1172,7 @@ Specified as `HAPROXY_{n}_SSL_CERT`.
 
 Enable the given SSL certificate for TLS/SSL traffic.
 
-Ex: `HAPROXY_0_SSL_CERT = '/etc/ssl/certs/marathon.mesosphere.com'`
+Ex: `HAPROXY_0_SSL_CERT = '/etc/ssl/cert.pem'`
                     
 
 ## `HAPROXY_{n}_STICKY`

@@ -1327,7 +1327,7 @@ labels.append(Label(name='SSL_CERT',
                     description='''\
 Enable the given SSL certificate for TLS/SSL traffic.
 
-Ex: `HAPROXY_0_SSL_CERT = '/etc/ssl/certs/marathon.mesosphere.com'`
+Ex: `HAPROXY_0_SSL_CERT = '/etc/ssl/cert.pem'`
                     '''))
 labels.append(Label(name='BIND_OPTIONS',
                     func=set_bindOptions,
