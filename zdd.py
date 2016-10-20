@@ -497,7 +497,11 @@ def get_service_port(app):
         return \
             int(app['container']['docker']['portMappings'][0]['servicePort'])
     except KeyError:
-        return int(app['ports'][0])
+        try:
+            return \
+                int(app['portDefinitions'][0]['port'])
+        except KeyError:
+            return int(app['ports'][0])
 
 
 def set_service_port(app, servicePort):
