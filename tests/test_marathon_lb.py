@@ -12,6 +12,8 @@ class TestMarathonUpdateHaproxy(unittest.TestCase):
   daemon
   log /dev/log local0
   log /dev/log local1 notice
+  spread-checks 5
+  max-spread-checks 15000
   maxconn 50000
   tune.ssl.default-dh-param 2048
   ssl-default-bind-ciphers ECDHE-ECDSA-CHACHA20-POLY1305:\
