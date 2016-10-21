@@ -116,12 +116,13 @@ class ServicePortAssigner(object):
             portMappings = app.get('container', {})\
                 .get('docker', {})\
                 .get('portMappings', [])
-            ports = filter(lambda p: p is not None,
-                           map(lambda p: p.get('servicePort', None),
-                               portMappings))
-            ports = list(ports)
-            if ports:
-                return list(ports)
+            if portMappings:
+                ports = filter(lambda p: p is not None,
+                               map(lambda p: p.get('servicePort', None),
+                                   portMappings))
+                ports = list(ports)
+                if ports:
+                    return list(ports)
 
         ports = app.get('ports', [])
         if 'portDefinitions' in app:
