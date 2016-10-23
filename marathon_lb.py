@@ -735,6 +735,7 @@ def generateHttpVhostAcl(
             if haproxy_map and not app.path and not app.authRealm and \
                     not app.redirectHttpToHttps:
                 if 'map_http_frontend_acl' not in duplicate_map:
+                    app.backend_weight = -1
                     http_frontend_acl = templater.\
                         haproxy_map_http_frontend_acl_only(app)
                     staging_http_frontends += http_frontend_acl.format(
@@ -980,6 +981,7 @@ def generateHttpVhostAcl(
                 else:
                     if haproxy_map:
                         if 'map_http_frontend_acl' not in duplicate_map:
+                            app.backend_weight = -1
                             http_frontend_acl = \
                                 templater.haproxy_map_http_frontend_acl(app)
                             staging_http_frontends += http_frontend_acl.format(
@@ -1012,6 +1014,7 @@ def generateHttpVhostAcl(
             else:
                 if haproxy_map:
                     if 'map_https_frontend_acl' not in duplicate_map:
+                        app.backend_weight = -1
                         https_frontend_acl = templater.\
                             haproxy_map_https_frontend_acl(app)
                         staging_https_frontends += https_frontend_acl.format(
