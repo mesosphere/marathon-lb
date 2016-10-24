@@ -77,7 +77,7 @@ optional arguments:
                         List of SSL certificates separated by commafor
                         frontend marathon_https_inEx:
                         /etc/ssl/site1.co.pem,/etc/ssl/site2.co.pem (default:
-                        /etc/ssl/mesosphere.com.pem)
+                        /etc/ssl/cert.pem)
   --skip-validation     Skip haproxy config file validation (default: False)
   --dry, -d             Only print configuration to console (default: False)
   --min-serv-port-ip-per-task MIN_SERV_PORT_IP_PER_TASK
@@ -90,8 +90,8 @@ optional arguments:
                         Socket to write syslog messages to. Use '/dev/null' to
                         disable logging to syslog (default: /var/run/syslog)
   --log-format LOG_FORMAT
-                        Set log message format (default: %(name)s:
-                        %(message)s)
+                        Set log message format (default: %(asctime)-15s
+                        %(name)s: %(message)s)
   --log-level LOG_LEVEL
                         Set log level (default: DEBUG)
   --marathon-auth-credential-file MARATHON_AUTH_CREDENTIAL_FILE
@@ -114,7 +114,7 @@ be overridden on a per service port basis using the
 `HAPROXY_{n}_...` syntax.
 
 ## `HAPROXY_BACKEND_HEAD`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_BACKEND_HEAD` template or with label `HAPROXY_{n}_BACKEND_HEAD`.
 
@@ -130,7 +130,7 @@ backend {backend}
   mode {mode}
 ```
 ## `HAPROXY_BACKEND_HSTS_OPTIONS`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_BACKEND_HSTS_OPTIONS` template or with label `HAPROXY_{n}_BACKEND_HSTS_OPTIONS`.
 
@@ -143,7 +143,7 @@ This template is used for the backend where the
   rspadd  Strict-Transport-Security:\ max-age=15768000
 ```
 ## `HAPROXY_BACKEND_HTTP_HEALTHCHECK_OPTIONS`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_BACKEND_HTTP_HEALTHCHECK_OPTIONS` template or with label `HAPROXY_{n}_BACKEND_HTTP_HEALTHCHECK_OPTIONS`.
 
@@ -175,7 +175,7 @@ Example:
   timeout check {healthCheckTimeoutSeconds}s
 ```
 ## `HAPROXY_BACKEND_HTTP_OPTIONS`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_BACKEND_HTTP_OPTIONS` template or with label `HAPROXY_{n}_BACKEND_HTTP_OPTIONS`.
 
@@ -189,7 +189,7 @@ Sets HTTP headers, for example X-Forwarded-For and X-Forwarded-Proto.
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
 ```
 ## `HAPROXY_BACKEND_REDIRECT_HTTP_TO_HTTPS`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_BACKEND_REDIRECT_HTTP_TO_HTTPS` template or with label `HAPROXY_{n}_BACKEND_REDIRECT_HTTP_TO_HTTPS`.
 
@@ -202,7 +202,7 @@ This template is used with backends where the
   redirect scheme https code 301 if !{{ ssl_fc }} host_{cleanedUpHostname}
 ```
 ## `HAPROXY_BACKEND_REDIRECT_HTTP_TO_HTTPS_WITH_PATH`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_BACKEND_REDIRECT_HTTP_TO_HTTPS_WITH_PATH` template or with label `HAPROXY_{n}_BACKEND_REDIRECT_HTTP_TO_HTTPS_WITH_PATH`.
 
@@ -215,7 +215,7 @@ but includes a path.
   redirect scheme https code 301 if !{{ ssl_fc }} host_{cleanedUpHostname} path_{backend}
 ```
 ## `HAPROXY_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS` template or with label `HAPROXY_{n}_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS`.
 
@@ -245,7 +245,7 @@ Example:
   check inter {healthCheckIntervalSeconds}s fall {healthCheckFalls}{healthCheckPortOptions}
 ```
 ## `HAPROXY_BACKEND_SERVER_OPTIONS`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_BACKEND_SERVER_OPTIONS` template or with label `HAPROXY_{n}_BACKEND_SERVER_OPTIONS`.
 
@@ -257,7 +257,7 @@ The options for each server added to a backend.
   server {serverName} {host_ipv4}:{port}{cookieOptions}{healthCheckOptions}{otherOptions}
 ```
 ## `HAPROXY_BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS` template or with label `HAPROXY_{n}_BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS`.
 
@@ -286,7 +286,7 @@ Example:
   check inter {healthCheckIntervalSeconds}s fall {healthCheckFalls}{healthCheckPortOptions}
 ```
 ## `HAPROXY_BACKEND_STICKY_OPTIONS`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_BACKEND_STICKY_OPTIONS` template or with label `HAPROXY_{n}_BACKEND_STICKY_OPTIONS`.
 
@@ -298,7 +298,7 @@ Sets a cookie for services where `HAPROXY_{n}_STICKY` is true.
   cookie mesosphere_server_id insert indirect nocache
 ```
 ## `HAPROXY_BACKEND_TCP_HEALTHCHECK_OPTIONS`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_BACKEND_TCP_HEALTHCHECK_OPTIONS` template or with label `HAPROXY_{n}_BACKEND_TCP_HEALTHCHECK_OPTIONS`.
 
@@ -326,7 +326,7 @@ Example:
 ```
 ```
 ## `HAPROXY_FRONTEND_BACKEND_GLUE`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_FRONTEND_BACKEND_GLUE` template or with label `HAPROXY_{n}_FRONTEND_BACKEND_GLUE`.
 
@@ -338,7 +338,7 @@ This option glues the backend to the frontend.
   use_backend {backend}
 ```
 ## `HAPROXY_FRONTEND_HEAD`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_FRONTEND_HEAD` template or with label `HAPROXY_{n}_FRONTEND_HEAD`.
 
@@ -367,6 +367,8 @@ global
   daemon
   log /dev/log local0
   log /dev/log local1 notice
+  spread-checks 5
+  max-spread-checks 15000
   maxconn 50000
   tune.ssl.default-dh-param 2048
   ssl-default-bind-ciphers ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS
@@ -418,7 +420,7 @@ listen stats
   http-request use-service lua.signalmlbusr1 if signalmlbusr1
 ```
 ## `HAPROXY_HTTPS_FRONTEND_ACL`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_HTTPS_FRONTEND_ACL` template or with label `HAPROXY_{n}_HTTPS_FRONTEND_ACL`.
 
@@ -431,7 +433,7 @@ for the `HAPROXY_HTTPS_FRONTEND_HEAD` template.
   use_backend {backend} if {{ ssl_fc_sni {hostname} }}
 ```
 ## `HAPROXY_HTTPS_FRONTEND_ACL_ONLY_WITH_PATH`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_HTTPS_FRONTEND_ACL_ONLY_WITH_PATH` template or with label `HAPROXY_{n}_HTTPS_FRONTEND_ACL_ONLY_WITH_PATH`.
 
@@ -443,7 +445,7 @@ Same as HTTP_FRONTEND_ACL_ONLY_WITH_PATH, but for HTTPS.
   acl path_{backend} path_beg {path}
 ```
 ## `HAPROXY_HTTPS_FRONTEND_ACL_WITH_AUTH`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_HTTPS_FRONTEND_ACL_WITH_AUTH` template or with label `HAPROXY_{n}_HTTPS_FRONTEND_ACL_WITH_AUTH`.
 
@@ -458,7 +460,7 @@ of the `HAPROXY_HTTPS_FRONTEND_HEAD` thru HTTP basic auth.
   use_backend {backend} if {{ ssl_fc_sni {hostname} }}
 ```
 ## `HAPROXY_HTTPS_FRONTEND_ACL_WITH_AUTH_AND_PATH`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_HTTPS_FRONTEND_ACL_WITH_AUTH_AND_PATH` template or with label `HAPROXY_{n}_HTTPS_FRONTEND_ACL_WITH_AUTH_AND_PATH`.
 
@@ -473,7 +475,7 @@ of the `HAPROXY_HTTPS_FRONTEND_HEAD` thru HTTP basic auth.
   use_backend {backend} if {{ ssl_fc_sni {hostname} }} path_{backend}
 ```
 ## `HAPROXY_HTTPS_FRONTEND_ACL_WITH_PATH`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_HTTPS_FRONTEND_ACL_WITH_PATH` template or with label `HAPROXY_{n}_HTTPS_FRONTEND_ACL_WITH_PATH`.
 
@@ -486,7 +488,7 @@ for the `HAPROXY_HTTPS_FRONTEND_HEAD` template.
   use_backend {backend} if {{ ssl_fc_sni {hostname} }} path_{backend}
 ```
 ## `HAPROXY_HTTPS_FRONTEND_AUTH_ACL_ONLY`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_HTTPS_FRONTEND_AUTH_ACL_ONLY` template or with label `HAPROXY_{n}_HTTPS_FRONTEND_AUTH_ACL_ONLY`.
 
@@ -498,7 +500,7 @@ The http auth ACL to the corresponding virtual host.
   acl auth_{cleanedUpHostname} http_auth(user_{backend})
 ```
 ## `HAPROXY_HTTPS_FRONTEND_AUTH_REQUEST_ONLY`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_HTTPS_FRONTEND_AUTH_REQUEST_ONLY` template or with label `HAPROXY_{n}_HTTPS_FRONTEND_AUTH_REQUEST_ONLY`.
 
@@ -528,7 +530,7 @@ frontend marathon_https_in
   mode http
 ```
 ## `HAPROXY_HTTPS_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_HTTPS_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH` template or with label `HAPROXY_{n}_HTTPS_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH`.
 
@@ -547,7 +549,7 @@ glues the acl names to the appropriate backend
 Specified as `HAPROXY_HTTP_BACKEND_ACL_ALLOW_DENY` template.
 
 This option denies all IPs (or IP ranges) not explicitly allowed to access the HTTP backend.
-Use with HAPROXY_HTTP_BACKEND_NETWORK_ALLOWED_ACL.
+Use with `HAPROXY_HTTP_BACKEND_NETWORK_ALLOWED_ACL`.
 
 
 **Default template for `HAPROXY_HTTP_BACKEND_ACL_ALLOW_DENY`:**
@@ -556,7 +558,7 @@ Use with HAPROXY_HTTP_BACKEND_NETWORK_ALLOWED_ACL.
   http-request deny
 ```
 ## `HAPROXY_HTTP_BACKEND_NETWORK_ALLOWED_ACL`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_HTTP_BACKEND_NETWORK_ALLOWED_ACL` template or with label `HAPROXY_{n}_HTTP_BACKEND_NETWORK_ALLOWED_ACL`.
 
@@ -568,7 +570,7 @@ This option set the IPs (or IP ranges) having access to the HTTP backend.
   acl network_allowed src {network_allowed}
 ```
 ## `HAPROXY_HTTP_BACKEND_PROXYPASS_GLUE`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_HTTP_BACKEND_PROXYPASS_GLUE` template or with label `HAPROXY_{n}_HTTP_BACKEND_PROXYPASS_GLUE`.
 
@@ -581,7 +583,7 @@ Backend glue for `HAPROXY_{n}_HTTP_BACKEND_PROXYPASS_PATH`.
   reqirep  "^([^ :]*)\ {proxypath}/?(.*)" "\1\ /\2"
 ```
 ## `HAPROXY_HTTP_BACKEND_REDIR`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_HTTP_BACKEND_REDIR` template or with label `HAPROXY_{n}_HTTP_BACKEND_REDIR`.
 
@@ -596,7 +598,7 @@ Ex: HAPROXY_0_HTTP_BACKEND_REDIR = '/my/content'
   redirect code 301 location {redirpath} if is_domain is_root
 ```
 ## `HAPROXY_HTTP_BACKEND_REVPROXY_GLUE`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_HTTP_BACKEND_REVPROXY_GLUE` template or with label `HAPROXY_{n}_HTTP_BACKEND_REVPROXY_GLUE`.
 
@@ -609,7 +611,7 @@ Backend glue for `HAPROXY_{n}_HTTP_BACKEND_REVPROXY_PATH`.
   rspirep "^Location: (https?://{hostname}(:[0-9]+)?)?(/.*)" "Location:   {rootpath} if hdr_location"
 ```
 ## `HAPROXY_HTTP_FRONTEND_ACL`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_HTTP_FRONTEND_ACL` template or with label `HAPROXY_{n}_HTTP_FRONTEND_ACL`.
 
@@ -623,7 +625,7 @@ of the `HAPROXY_HTTP_FRONTEND_HEAD`
   use_backend {backend} if host_{cleanedUpHostname}
 ```
 ## `HAPROXY_HTTP_FRONTEND_ACL_ONLY`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_HTTP_FRONTEND_ACL_ONLY` template or with label `HAPROXY_{n}_HTTP_FRONTEND_ACL_ONLY`.
 
@@ -638,7 +640,7 @@ vhosts routing to the same backend.
   acl host_{cleanedUpHostname} hdr(host) -i {hostname}
 ```
 ## `HAPROXY_HTTP_FRONTEND_ACL_ONLY_WITH_PATH`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_HTTP_FRONTEND_ACL_ONLY_WITH_PATH` template or with label `HAPROXY_{n}_HTTP_FRONTEND_ACL_ONLY_WITH_PATH`.
 
@@ -653,7 +655,7 @@ vhosts routing to the same backend
   acl path_{backend} path_beg {path}
 ```
 ## `HAPROXY_HTTP_FRONTEND_ACL_ONLY_WITH_PATH_AND_AUTH`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_HTTP_FRONTEND_ACL_ONLY_WITH_PATH_AND_AUTH` template or with label `HAPROXY_{n}_HTTP_FRONTEND_ACL_ONLY_WITH_PATH_AND_AUTH`.
 
@@ -669,7 +671,7 @@ vhosts routing to the same backend
   acl auth_{cleanedUpHostname} http_auth(user_{backend})
 ```
 ## `HAPROXY_HTTP_FRONTEND_ACL_WITH_AUTH`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_HTTP_FRONTEND_ACL_WITH_AUTH` template or with label `HAPROXY_{n}_HTTP_FRONTEND_ACL_WITH_AUTH`.
 
@@ -685,7 +687,7 @@ of the `HAPROXY_HTTP_FRONTEND_HEAD` thru HTTP basic auth.
   use_backend {backend} if host_{cleanedUpHostname}
 ```
 ## `HAPROXY_HTTP_FRONTEND_ACL_WITH_AUTH_AND_PATH`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_HTTP_FRONTEND_ACL_WITH_AUTH_AND_PATH` template or with label `HAPROXY_{n}_HTTP_FRONTEND_ACL_WITH_AUTH_AND_PATH`.
 
@@ -702,7 +704,7 @@ of the `HAPROXY_HTTP_FRONTEND_HEAD` thru HTTP basic auth.
   use_backend {backend} if host_{cleanedUpHostname} path_{backend}
 ```
 ## `HAPROXY_HTTP_FRONTEND_ACL_WITH_PATH`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_HTTP_FRONTEND_ACL_WITH_PATH` template or with label `HAPROXY_{n}_HTTP_FRONTEND_ACL_WITH_PATH`.
 
@@ -717,7 +719,7 @@ of the `HAPROXY_HTTP_FRONTEND_HEAD`.
   use_backend {backend} if host_{cleanedUpHostname} path_{backend}
 ```
 ## `HAPROXY_HTTP_FRONTEND_APPID_ACL`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_HTTP_FRONTEND_APPID_ACL` template or with label `HAPROXY_{n}_HTTP_FRONTEND_APPID_ACL`.
 
@@ -768,7 +770,7 @@ frontend marathon_http_in
   mode http
 ```
 ## `HAPROXY_HTTP_FRONTEND_ROUTING_ONLY`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_HTTP_FRONTEND_ROUTING_ONLY` template or with label `HAPROXY_{n}_HTTP_FRONTEND_ROUTING_ONLY`.
 
@@ -781,7 +783,7 @@ glues the acl name to the appropriate backend.
   use_backend {backend} if host_{cleanedUpHostname}
 ```
 ## `HAPROXY_HTTP_FRONTEND_ROUTING_ONLY_WITH_AUTH`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_HTTP_FRONTEND_ROUTING_ONLY_WITH_AUTH` template or with label `HAPROXY_{n}_HTTP_FRONTEND_ROUTING_ONLY_WITH_AUTH`.
 
@@ -796,7 +798,7 @@ glues the acl name to the appropriate backend, and add http basic auth.
   use_backend {backend} if host_{cleanedUpHostname}
 ```
 ## `HAPROXY_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH` template or with label `HAPROXY_{n}_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH`.
 
@@ -809,7 +811,7 @@ glues the acl names to the appropriate backend
   use_backend {backend} if host_{cleanedUpHostname} path_{backend}
 ```
 ## `HAPROXY_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH` template or with label `HAPROXY_{n}_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH`.
 
@@ -823,7 +825,7 @@ glues the acl names to the appropriate backend
   use_backend {backend} if host_{cleanedUpHostname} path_{backend}
 ```
 ## `HAPROXY_MAP_HTTPS_FRONTEND_ACL`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_MAP_HTTPS_FRONTEND_ACL` template or with label `HAPROXY_{n}_MAP_HTTPS_FRONTEND_ACL`.
 
@@ -836,7 +838,7 @@ for the `HAPROXY_HTTPS_FRONTEND_HEAD` template using haproxy maps
   use_backend %[ssl_fc_sni,lower,map({haproxy_dir}/domain2backend.map)]
 ```
 ## `HAPROXY_MAP_HTTP_FRONTEND_ACL`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_MAP_HTTP_FRONTEND_ACL` template or with label `HAPROXY_{n}_MAP_HTTP_FRONTEND_ACL`.
 
@@ -849,7 +851,7 @@ of the `HAPROXY_HTTP_FRONTEND_HEAD` using haproxy maps.
   use_backend %[req.hdr(host),lower,regsub(:.*$,,),map({haproxy_dir}/domain2backend.map)]
 ```
 ## `HAPROXY_MAP_HTTP_FRONTEND_ACL_ONLY`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_MAP_HTTP_FRONTEND_ACL_ONLY` template or with label `HAPROXY_{n}_MAP_HTTP_FRONTEND_ACL_ONLY`.
 
@@ -862,7 +864,7 @@ Define the ACL matching a particular hostname, This is useful only in the case
   use_backend %[req.hdr(host),lower,regsub(:.*$,,),map({haproxy_dir}/domain2backend.map)]
 ```
 ## `HAPROXY_MAP_HTTP_FRONTEND_APPID_ACL`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_MAP_HTTP_FRONTEND_APPID_ACL` template or with label `HAPROXY_{n}_MAP_HTTP_FRONTEND_APPID_ACL`.
 
@@ -889,7 +891,7 @@ Use with HAPROXY_TCP_BACKEND_ACL_ALLOW_DENY.
   tcp-request content reject
 ```
 ## `HAPROXY_TCP_BACKEND_NETWORK_ALLOWED_ACL`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_TCP_BACKEND_NETWORK_ALLOWED_ACL` template or with label `HAPROXY_{n}_TCP_BACKEND_NETWORK_ALLOWED_ACL`.
 
@@ -901,7 +903,7 @@ This option set the IPs (or IP ranges) having access to the TCP backend.
   acl network_allowed src {network_allowed}
 ```
 ## `HAPROXY_USERLIST_HEAD`
-  *Overridable*
+  *Overridable per app*
 
 Specified as `HAPROXY_USERLIST_HEAD` template or with label `HAPROXY_{n}_USERLIST_HEAD`.
 
@@ -965,7 +967,7 @@ Specified as `HAPROXY_{n}_BACKEND_NETWORK_ALLOWED_ACL`.
 
 Set the IPs (or IP ranges) having access to the backend. By default every IP is allowed.
 
-Ex: `HAPROXY_0_BACKEND_NETWORK_ALLOWED_ACL = '127.0.0.1/8, 10.1.55.43'`
+Ex: `HAPROXY_0_BACKEND_NETWORK_ALLOWED_ACL = '10.1.40.0/24 10.1.55.43'`
                     
 
 ## `HAPROXY_{n}_BACKEND_WEIGHT`
@@ -1172,7 +1174,7 @@ Specified as `HAPROXY_{n}_SSL_CERT`.
 
 Enable the given SSL certificate for TLS/SSL traffic.
 
-Ex: `HAPROXY_0_SSL_CERT = '/etc/ssl/certs/marathon.mesosphere.com'`
+Ex: `HAPROXY_0_SSL_CERT = '/etc/ssl/cert.pem'`
                     
 
 ## `HAPROXY_{n}_STICKY`

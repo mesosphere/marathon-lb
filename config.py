@@ -28,6 +28,8 @@ global
   daemon
   log /dev/log local0
   log /dev/log local1 notice
+  spread-checks 5
+  max-spread-checks 15000
   maxconn 50000
   tune.ssl.default-dh-param 2048
   ssl-default-bind-ciphers ECDHE-ECDSA-CHACHA20-POLY1305:\
@@ -731,7 +733,7 @@ This option set the IPs (or IP ranges) having access to the HTTP backend.
                            description='''\
 This option denies all IPs (or IP ranges) not explicitly allowed to access\
  the HTTP backend.
-Use with HAPROXY_HTTP_BACKEND_NETWORK_ALLOWED_ACL.
+Use with `HAPROXY_HTTP_BACKEND_NETWORK_ALLOWED_ACL`.
 '''))
 
         self.add_template(
@@ -806,7 +808,8 @@ Specified as {specifiedAs}.
             descriptions += desc_template.format(
                 full_name=t.full_name,
                 specifiedAs=spec,
-                overridable="Overridable" if t.overridable else "Global",
+                overridable="Overridable per app" if t.overridable
+                else "Global",
                 description=t.description,
                 default=t.default_value
             )
@@ -1327,7 +1330,7 @@ labels.append(Label(name='SSL_CERT',
                     description='''\
 Enable the given SSL certificate for TLS/SSL traffic.
 
-Ex: `HAPROXY_0_SSL_CERT = '/etc/ssl/certs/marathon.mesosphere.com'`
+Ex: `HAPROXY_0_SSL_CERT = '/etc/ssl/cert.pem'`
                     '''))
 labels.append(Label(name='BIND_OPTIONS',
                     func=set_bindOptions,
@@ -1410,7 +1413,7 @@ labels.append(Label(name='BACKEND_NETWORK_ALLOWED_ACL',
 Set the IPs (or IP ranges) having access to the backend. \
 By default every IP is allowed.
 
-Ex: `HAPROXY_0_BACKEND_NETWORK_ALLOWED_ACL = '127.0.0.1/8, 10.1.55.43'`
+Ex: `HAPROXY_0_BACKEND_NETWORK_ALLOWED_ACL = '10.1.40.0/24 10.1.55.43'`
                     '''))
 
 labels.append(Label(name='BACKEND_HEALTHCHECK_PORT_INDEX',
@@ -1537,6 +1540,12 @@ labels.append(Label(name='BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS',
                     func=set_label,
                     description=''))
 labels.append(Label(name='FRONTEND_BACKEND_GLUE',
+                    func=set_label,
+                    description=''))
+labels.append(Label(name='HTTP_BACKEND_NETWORK_ALLOWED_ACL',
+                    func=set_label,
+                    description=''))
+labels.append(Label(name='TCP_BACKEND_NETWORK_ALLOWED_ACL',
                     func=set_label,
                     description=''))
 

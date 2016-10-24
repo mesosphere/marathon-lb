@@ -12,6 +12,8 @@ class TestMarathonUpdateHaproxy(unittest.TestCase):
   daemon
   log /dev/log local0
   log /dev/log local1 notice
+  spread-checks 5
+  max-spread-checks 15000
   maxconn 50000
   tune.ssl.default-dh-param 2048
   ssl-default-bind-ciphers ECDHE-ECDSA-CHACHA20-POLY1305:\
@@ -102,7 +104,7 @@ frontend marathon_http_appid_in
   mode http
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
 '''
         self.assertMultiLineEqual(config, expected)
@@ -191,7 +193,7 @@ frontend marathon_http_appid_in
   use_backend nginx_10000 if app__nginx
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
 
 frontend nginx_10000
@@ -247,7 +249,7 @@ frontend marathon_http_appid_in
   mode http
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
 
 frontend nginx_10000
@@ -300,7 +302,7 @@ frontend marathon_http_appid_in
   use_backend nginx_10000 if app__nginx
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
   use_backend nginx_10000 if { ssl_fc_sni test.example.com }
 
@@ -360,7 +362,7 @@ frontend marathon_http_appid_in
   use_backend nginx_10000 if app__nginx
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
   use_backend nginx_10000 if { ssl_fc_sni test.example.com }
   use_backend nginx_10000 if { ssl_fc_sni test }
@@ -421,7 +423,7 @@ frontend marathon_http_appid_in
   use_backend nginx_10000 if app__nginx
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
   use_backend nginx_10000 if { ssl_fc_sni test.example.com }
 
@@ -482,7 +484,7 @@ frontend marathon_http_appid_in
   use_backend nginx_10000 if app__nginx
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
   use_backend nginx_10000 if { ssl_fc_sni test.example.com }
   use_backend nginx_10000 if { ssl_fc_sni test }
@@ -551,7 +553,7 @@ frontend marathon_http_appid_in
   use_backend nginx_10000 if app__nginx
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
   acl auth_test_example_com_nginx http_auth(user_nginx_10000)
   http-request auth realm "realm" if { ssl_fc_sni test.example.com } \
@@ -623,7 +625,7 @@ frontend marathon_http_appid_in
   use_backend nginx_10000 if app__nginx
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
   acl auth_test_example_com_nginx http_auth(user_nginx_10000)
   http-request auth realm "realm" if { ssl_fc_sni test.example.com } \
@@ -700,7 +702,7 @@ frontend marathon_http_appid_in
   use_backend nginx_10000 if app__nginx
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
   acl path_nginx_10000 path_beg /some/path
   acl auth_test_example_com_nginx http_auth(user_nginx_10000)
@@ -775,7 +777,7 @@ frontend marathon_http_appid_in
   use_backend nginx_10000 if app__nginx
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
   acl path_nginx_10000 path_beg /some/path
   acl auth_test_example_com_nginx http_auth(user_nginx_10000)
@@ -845,7 +847,7 @@ frontend marathon_http_appid_in
   use_backend nginx_10000 if app__nginx
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
   acl path_nginx_10000 path_beg /some/path
   use_backend nginx_10000 if { ssl_fc_sni test.example.com } path_nginx_10000
@@ -908,7 +910,7 @@ frontend marathon_http_appid_in
   use_backend nginx_10000 if app__nginx
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
   acl path_nginx_10000 path_beg /some/path
   use_backend nginx_10000 if { ssl_fc_sni test.example.com } ''' + \
@@ -974,7 +976,7 @@ frontend marathon_http_appid_in
   use_backend nginx_10000 if app__nginx
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
   acl path_nginx_10000 path_beg /some/path
   use_backend nginx_10000 if { ssl_fc_sni test.example.com } path_nginx_10000
@@ -1039,7 +1041,7 @@ frontend marathon_http_appid_in
   use_backend nginx_10000 if app__nginx
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
   acl path_nginx_10000 path_beg /some/path
   use_backend nginx_10000 if { ssl_fc_sni test.example.com } ''' + \
@@ -1107,7 +1109,7 @@ frontend marathon_http_appid_in
   use_backend nginx_10000 if app__nginx
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
   acl path_nginx_10000 path_beg /some/path
   use_backend nginx_10000 if { ssl_fc_sni test.example.com } ''' + \
@@ -1168,7 +1170,7 @@ frontend marathon_http_appid_in
   use_backend nginx_10000 if app__nginx
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
 
 frontend nginx_10000
@@ -1221,7 +1223,7 @@ frontend marathon_http_appid_in
   use_backend nginx_10000 if app__nginx
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
 
 frontend nginx_10000
@@ -1279,7 +1281,7 @@ frontend marathon_http_appid_in
   use_backend nginx_10000 if app__nginx
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
 
 frontend nginx_10000
@@ -1338,7 +1340,7 @@ frontend marathon_http_appid_in
   use_backend nginx_10000 if app__nginx
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
 
 frontend nginx_10000
@@ -1412,7 +1414,7 @@ frontend marathon_http_appid_in
   use_backend nginx_10000 if app__nginx
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
 
 frontend nginx_10000
@@ -1493,7 +1495,7 @@ frontend marathon_http_appid_in
   use_backend nginx_10000 if app__nginx
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
 
 frontend nginx_10000
@@ -1565,7 +1567,7 @@ frontend marathon_http_appid_in
   use_backend nginx_10000 if app__nginx
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
   use_backend nginx_10000 if { ssl_fc_sni test.example.com }
 
@@ -1611,7 +1613,7 @@ frontend marathon_http_appid_in
   mode http
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
 
 frontend nginx_10000
@@ -1663,7 +1665,7 @@ frontend marathon_http_appid_in
   mode http
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
 
 frontend nginx_10000
@@ -1705,7 +1707,7 @@ frontend marathon_http_appid_in
   mode http
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
 
 frontend nginx_10001
@@ -1753,7 +1755,7 @@ frontend marathon_http_appid_in
   use_backend nginx_10000 if app__nginx
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
   use_backend nginx_10000 if { ssl_fc_sni test.example.com }
 
@@ -1805,7 +1807,7 @@ frontend marathon_http_appid_in
   use_backend nginx_10000 if app__nginx
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
   use_backend nginx_10000 if { ssl_fc_sni test.example.com }
 
@@ -1858,7 +1860,7 @@ frontend marathon_http_appid_in
   use_backend nginx_10000 if app__nginx
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
   use_backend nginx_10000 if { ssl_fc_sni test.example.com }
 
@@ -1906,7 +1908,7 @@ frontend marathon_http_appid_in
   mode http
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
 
 frontend nginx_10000
@@ -1993,7 +1995,7 @@ frontend marathon_http_appid_in
   use_backend nginx3_10000 if app__nginx3
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
   acl path_nginx3_10000 path_beg /some/path
   use_backend nginx3_10000 if { ssl_fc_sni test.example.com } path_nginx3_10000
@@ -2118,7 +2120,7 @@ frontend marathon_http_appid_in
 map(/etc/haproxy/app2backend.map)]
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
   use_backend %[ssl_fc_sni,lower,map(/etc/haproxy/domain2backend.map)]
 
@@ -2227,7 +2229,7 @@ frontend marathon_http_appid_in
 map(/etc/haproxy/app2backend.map)]
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
   acl path_apache_10001 path_beg /apache
   use_backend apache_10001 if { ssl_fc_sni server.apache.net } \
@@ -2462,7 +2464,7 @@ frontend marathon_http_appid_in
 map(/etc/haproxy/app2backend.map)]
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
   acl path_apache_10001 path_beg /apache
   use_backend apache_10001 if { ssl_fc_sni server.apache.net } \
@@ -2575,7 +2577,7 @@ frontend marathon_http_appid_in
 map(/etc/haproxy/app2backend.map)]
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
   use_backend %[ssl_fc_sni,lower,map(/etc/haproxy/domain2backend.map)]
 
@@ -2669,7 +2671,7 @@ frontend marathon_http_appid_in
   use_backend nginx_10000 if app__nginx
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
 
 frontend nginx_10000
@@ -2727,7 +2729,7 @@ frontend marathon_http_appid_in
   use_backend nginx_10000 if app__nginx
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
 
 frontend nginx_10000
