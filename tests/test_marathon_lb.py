@@ -2288,6 +2288,129 @@ backend nginx_10000
         expected_app_map["/nginx"] = "nginx_10000"
         self.assertEqual(app_config_map, expected_app_map)
 
+    # Tests a scenario in which two applications are deployed,
+    # one with authentication and the other without. The app id
+    # of the one without authentication comes before the other
+    # one when sorted alphabetically. In this scenario we expect
+    # the 'domain2backend.map' use_backend definition to still be defined last.
+    def test_config_haproxy_map_auth_noauth(self):
+        apps = dict()
+        groups = ['external']
+        bind_http_https = True
+        ssl_certs = ""
+        templater = marathon_lb.ConfigTemplater()
+
+        healthCheck = {}
+        healthCheck = {
+            "path": "/",
+            "protocol": "HTTP",
+            "portIndex": 0,
+            "gracePeriodSeconds": 15,
+            "intervalSeconds": 3,
+            "timeoutSeconds": 15,
+            "maxConsecutiveFailures": 10
+        }
+
+        app1 = marathon_lb.MarathonService('/nginx1', 10000, healthCheck)
+        app1.hostname = "server.nginx.net"
+        app1.haproxy_groups = ['external']
+        app1.add_backend("agent1", "1.1.1.1", 1024, False)
+        app2 = marathon_lb.MarathonService('/nginx2', 10001, healthCheck)
+        app2.hostname = "server.nginx.net"
+        app2.authRealm = "realm"
+        app2.authUser = "testuser"
+        app2.authPasswd = "testpasswd"
+        app2.haproxy_groups = ['external']
+        app2.add_backend("agent2", "2.2.2.2", 1025, False)
+        apps = [app1, app2]
+        haproxy_map = True
+        domain_map_array = []
+        app_map_array = []
+        config_file = "/etc/haproxy/haproxy.cfg"
+        config = marathon_lb.config(apps, groups, bind_http_https, ssl_certs,
+                                    templater, haproxy_map, domain_map_array,
+                                    app_map_array, config_file)
+        expected = self.base_config + '''
+userlist user_nginx2_10001
+  user testuser password testpasswd
+
+frontend marathon_http_in
+  bind *:80
+  mode http
+  acl host_server_nginx_net_nginx2 hdr(host) -i server.nginx.net
+  acl auth_server_nginx_net_nginx2 http_auth(user_nginx2_10001)
+  http-request auth realm "realm" if host_server_nginx_net_nginx2 \
+!auth_server_nginx_net_nginx2
+  use_backend nginx2_10001 if host_server_nginx_net_nginx2
+  use_backend %[req.hdr(host),lower,regsub(:.*$,,),\
+map(/etc/haproxy/domain2backend.map)]
+
+frontend marathon_http_appid_in
+  bind *:9091
+  mode http
+  use_backend %[req.hdr(x-marathon-app-id),lower,\
+map(/etc/haproxy/app2backend.map)]
+
+frontend marathon_https_in
+  bind *:443 ssl crt /etc/ssl/cert.pem
+  mode http
+  acl auth_server_nginx_net_nginx2 http_auth(user_nginx2_10001)
+  http-request auth realm "realm" if { ssl_fc_sni server.nginx.net } \
+!auth_server_nginx_net_nginx2
+  use_backend nginx2_10001 if { ssl_fc_sni server.nginx.net }
+  use_backend %[ssl_fc_sni,lower,map(/etc/haproxy/domain2backend.map)]
+
+frontend nginx1_10000
+  bind *:10000
+  mode http
+  use_backend nginx1_10000
+
+frontend nginx2_10001
+  bind *:10001
+  mode http
+  use_backend nginx2_10001
+
+backend nginx1_10000
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  option  httpchk GET /
+  timeout check 15s
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 3s fall 11
+
+backend nginx2_10001
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  option  httpchk GET /
+  timeout check 15s
+  server agent2_2_2_2_2_1025 2.2.2.2:1025 check inter 3s fall 11
+'''
+        self.assertMultiLineEqual(config, expected)
+
+        # Check the domain map
+        domain_config_map = {}
+        for element in domain_map_array:
+            for key, value in list(element.items()):
+                domain_config_map[key] = value
+        expected_domain_map = {}
+        expected_domain_map["server.nginx.net"] = "nginx1_10000"
+        self.assertEqual(domain_config_map, expected_domain_map)
+
+        # Check the app map
+        app_config_map = {}
+        for element in app_map_array:
+            for key, value in list(element.items()):
+                app_config_map[key] = value
+        expected_app_map = {}
+        expected_app_map["/nginx2"] = "nginx2_10001"
+        expected_app_map["/nginx1"] = "nginx1_10000"
+        self.assertEqual(app_config_map, expected_app_map)
+
     def test_config_haproxy_map_hybrid_with_vhost_path(self):
         apps = dict()
         groups = ['external']
