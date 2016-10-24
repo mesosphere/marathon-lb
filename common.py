@@ -80,6 +80,7 @@ class DCOSAuth(AuthBase):
             }
             r = requests.post(self.login_endpoint,
                               json=data,
+                              timeout=(3.05, 46),
                               verify=self.verify)
             r.raise_for_status()
 

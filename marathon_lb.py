@@ -179,6 +179,7 @@ class Marathon(object):
                     'Accept': 'application/json',
                     'Content-Type': 'application/json'
                 },
+                timeout=(3.05, 46),
                 **kwargs
             )
 
