@@ -2352,7 +2352,7 @@ frontend marathon_http_appid_in
 map(/etc/haproxy/app2backend.map)]
 
 frontend marathon_https_in
-  bind *:443 ssl crt /etc/ssl/mesosphere.com.pem
+  bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
   acl auth_server_nginx_net_nginx2 http_auth(user_nginx2_10001)
   http-request auth realm "realm" if { ssl_fc_sni server.nginx.net } \
