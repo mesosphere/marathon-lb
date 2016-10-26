@@ -28,7 +28,7 @@ echo "$HAPROXY_MD5  $HAPROXY_FILENAME.tar.gz" | md5sum -c
 tar zxf "$HAPROXY_FILENAME.tar.gz"
 cd "$HAPROXY_FILENAME"
 make -j4 \
-  TARGET=custom \
+  TARGET=linux2628 \
   CPU=x86_64 \
   USE_PCRE=1 \
   USE_PCRE_JIT=1 \
