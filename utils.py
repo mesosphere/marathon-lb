@@ -220,12 +220,10 @@ def get_task_ip_and_ports(app, task):
                                    portMappings))
                 task_ports = list(ports)
             else:
-                if 'portDefinitions' in app:
-                    ports = filter(lambda p: p is not None,
-                                   map(lambda p: p.get('port', None),
-                                       app.get('portDefinitions', []))
-                                   )
-                    task_ports = list(ports)  # wtf python?
+                ports = [port.get('port')
+                         for port in app.get(portDefinitions, [])
+                         if 'port' in port]
+                task_ports = list(ports)
         else:
             discovery = app['ipAddress'].get('discovery', {})
             task_ports = [int(port['number'])
