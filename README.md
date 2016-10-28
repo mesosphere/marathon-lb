@@ -240,7 +240,7 @@ are [documented here](Longhelp.md#templates).
 
  * Use service ports within the reserved range (which is 10000 to 10100 by default). This will prevent port conflicts, and ensure reloads don't result in connection errors.
  * Avoid using the `HAPROXY_{n}_PORT` label; prefer defining service ports.
- * Consider running multiple marathon-lb instances. In practice, 2 or more should be used to provide high availability. Note: **do not** run marathon-lb on every node in your cluster. This is considered an anti-pattern due to the implications of hammering the Marathon API and excess health checking.
+ * Consider running multiple marathon-lb instances. In practice, 3 or more should be used to provide high availability for production workloads. Running 1 instance is never recommended, and unless you have significant load running more than 5 instances may not add value. The number of MLB instances you run will vary depending on workload and the amount of failure tolerance required. Note: **do not** run marathon-lb on every node in your cluster. This is considered an anti-pattern due to the implications of hammering the Marathon API and excess health checking.
  * Consider using a dedicated load balancer in front of marathon-lb to permit upgrades/changes. Common choices include an ELB (on AWS) or a hardware load balancer for on-premise installations.
  * Use separate marathon-lb groups (specified with `--group`) for internal and external load balancing. On DC/OS, the default group is `external`. A simple `options.json` for an internal load balancer would be:
 
