@@ -214,10 +214,18 @@ def get_task_ip_and_ports(app, task):
             portMappings = app.get('container', {})\
                 .get('docker', {})\
                 .get('portMappings', [])
-            ports = filter(lambda p: p is not None,
-                           map(lambda p: p.get('containerPort', None),
-                               portMappings))
-            task_ports = list(ports)
+            if portMappings:
+                ports = filter(lambda p: p is not None,
+                               map(lambda p: p.get('containerPort', None),
+                                   portMappings))
+                task_ports = list(ports)
+            else:
+                if 'portDefinitions' in app:
+                    ports = filter(lambda p: p is not None,
+                                   map(lambda p: p.get('port', None),
+                                       app.get('portDefinitions', []))
+                                   )
+                    task_ports = list(ports)  # wtf python?
         else:
             discovery = app['ipAddress'].get('discovery', {})
             task_ports = [int(port['number'])
