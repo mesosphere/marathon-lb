@@ -102,6 +102,27 @@ class TestUtils(unittest.TestCase):
 
         self.assertEquals(result, expected)
 
+    def test_get_task_ip_and_ports_portmapping_null(self):
+        app = {
+            'ipAddress': {},
+            'container': {
+                'type': 'DOCKER',
+                'docker': {
+                    'network': 'USER',
+                    'portMappings': [{
+                    }]
+                },
+            },
+        }
+        task = {
+            "id": "testtaskid",
+        }
+
+        result = utils.get_task_ip_and_ports(app, task)
+        expected = (None, None)
+
+        self.assertEquals(result, expected)
+
     def test_get_task_ip_and_ports_port_map(self):
         app = {}
         task = {
@@ -264,6 +285,32 @@ class TestServicePortAssigner(unittest.TestCase):
                 "id": "testtaskid",
                 "ipAddresses": [{"ipAddress": "1.2.3.4"}]
             }],
+        }
+        self.assertEquals(self.assigner.get_service_ports(app),
+                          [10000, 10001])
+
+    def test_ip_per_task_portMappings_null(self):
+        app = {
+            'ipAddress': {},
+            'container': {
+                'type': 'DOCKER',
+                'docker': {
+                    'network': 'USER',
+                    'portMappings': None,
+                },
+            },
+            'tasks': [{
+                "id": "testtaskid",
+                "ipAddresses": [{"ipAddress": "1.2.3.4"}]
+            }],
+            "portDefinitions": [
+                {
+                    'port': 10000,
+                },
+                {
+                    'port': 10001,
+                },
+            ],
         }
         self.assertEquals(self.assigner.get_service_ports(app),
                           [10000, 10001])
