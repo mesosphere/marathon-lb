@@ -216,7 +216,7 @@ def get_task_ip_and_ports(app, task):
                 .get('portMappings', [])
             _port_mappings = portMappings or app.get('portDefinitions', [])
             _attr = 'containerPort' if portMappings else 'port'
-            task_ports = [p.get(_attr, None)
+            task_ports = [p.get(_attr)
                           for p in _port_mappings
                           if _attr in p]
         else:
