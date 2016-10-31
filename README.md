@@ -335,11 +335,11 @@ is no host port mapping.  Note, that due to limitations with Marathon (see
 configured service ports are not exposed to marathon-lb for IP-per-task apps.
 
 For these apps, if the service ports are missing from the Marathon app data,
-marathon-lb will automatically assign port values from a configurable range.  The range
-is configured using the `--min-serv-port-ip-per-task` and `--max-serv-port-ip-per-task`
-options. While port assignment is deterministic, the assignment is not guaranteed if
-you change the current set of deployed apps. In other words, when you deploy a new
-app, the port assignments may change.
+marathon-lb will automatically assign port values from a configurable range if you
+specify it.  The range is configured using the `--min-serv-port-ip-per-task` and
+`--max-serv-port-ip-per-task` options. While port assignment is deterministic, the
+assignment is not guaranteed if you change the current set of deployed apps. In
+other words, when you deploy a new app, the port assignments may change.
 
 ## Contributing
 
