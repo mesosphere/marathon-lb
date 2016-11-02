@@ -80,6 +80,7 @@ class DCOSAuth(AuthBase):
             }
             r = requests.post(self.login_endpoint,
                               json=data,
+                              timeout=(3.05, 46),
                               verify=self.verify)
             r.raise_for_status()
 
@@ -124,7 +125,7 @@ def set_logging_args(parser):
                         )
     parser.add_argument("--log-format",
                         help="Set log message format",
-                        default="%(name)s: %(message)s"
+                        default="%(asctime)-15s %(name)s: %(message)s"
                         )
     parser.add_argument("--log-level",
                         help="Set log level",

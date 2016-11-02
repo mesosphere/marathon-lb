@@ -179,6 +179,7 @@ class Marathon(object):
                     'Accept': 'application/json',
                     'Content-Type': 'application/json'
                 },
+                timeout=(3.05, 46),
                 **kwargs
             )
 
@@ -352,7 +353,7 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
     groups = frozenset(groups)
     duplicate_map = {}
     # donot repeat use backend multiple times since map file is same.
-    _ssl_certs = ssl_certs or "/etc/ssl/mesosphere.com.pem"
+    _ssl_certs = ssl_certs or "/etc/ssl/cert.pem"
     _ssl_certs = _ssl_certs.split(",")
 
     if bind_http_https:
@@ -736,6 +737,7 @@ def generateHttpVhostAcl(
             if haproxy_map and not app.path and not app.authRealm and \
                     not app.redirectHttpToHttps:
                 if 'map_http_frontend_acl' not in duplicate_map:
+                    app.backend_weight = -1
                     http_frontend_acl = templater.\
                         haproxy_map_http_frontend_acl_only(app)
                     staging_http_frontends += http_frontend_acl.format(
@@ -981,6 +983,7 @@ def generateHttpVhostAcl(
                 else:
                     if haproxy_map:
                         if 'map_http_frontend_acl' not in duplicate_map:
+                            app.backend_weight = -1
                             http_frontend_acl = \
                                 templater.haproxy_map_http_frontend_acl(app)
                             staging_http_frontends += http_frontend_acl.format(
@@ -1013,6 +1016,7 @@ def generateHttpVhostAcl(
             else:
                 if haproxy_map:
                     if 'map_https_frontend_acl' not in duplicate_map:
+                        app.backend_weight = -1
                         https_frontend_acl = templater.\
                             haproxy_map_https_frontend_acl(app)
                         staging_https_frontends += https_frontend_acl.format(
@@ -1639,7 +1643,7 @@ def get_arg_parser():
                         help="List of SSL certificates separated by comma"
                              "for frontend marathon_https_in"
                              "Ex: /etc/ssl/site1.co.pem,/etc/ssl/site2.co.pem",
-                        default="/etc/ssl/mesosphere.com.pem")
+                        default="/etc/ssl/cert.pem")
     parser.add_argument("--skip-validation",
                         help="Skip haproxy config file validation",
                         action="store_true")

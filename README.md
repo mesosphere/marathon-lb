@@ -240,7 +240,7 @@ are [documented here](Longhelp.md#templates).
 
  * Use service ports within the reserved range (which is 10000 to 10100 by default). This will prevent port conflicts, and ensure reloads don't result in connection errors.
  * Avoid using the `HAPROXY_{n}_PORT` label; prefer defining service ports.
- * Consider running multiple marathon-lb instances. In practice, 2 or more should be used to provide high availability. Note: **do not** run marathon-lb on every node in your cluster. This is considered an anti-pattern due to the implications of hammering the Marathon API and excess health checking.
+ * Consider running multiple marathon-lb instances. In practice, 3 or more should be used to provide high availability for production workloads. Running 1 instance is never recommended, and unless you have significant load running more than 5 instances may not add value. The number of MLB instances you run will vary depending on workload and the amount of failure tolerance required. Note: **do not** run marathon-lb on every node in your cluster. This is considered an anti-pattern due to the implications of hammering the Marathon API and excess health checking.
  * Consider using a dedicated load balancer in front of marathon-lb to permit upgrades/changes. Common choices include an ELB (on AWS) or a hardware load balancer for on-premise installations.
  * Use separate marathon-lb groups (specified with `--group`) for internal and external load balancing. On DC/OS, the default group is `external`. A simple `options.json` for an internal load balancer would be:
 
@@ -335,11 +335,11 @@ is no host port mapping.  Note, that due to limitations with Marathon (see
 configured service ports are not exposed to marathon-lb for IP-per-task apps.
 
 For these apps, if the service ports are missing from the Marathon app data,
-marathon-lb will automatically assign port values from a configurable range.  The range
-is configured using the `--min-serv-port-ip-per-task` and `--max-serv-port-ip-per-task`
-options. While port assignment is deterministic, the assignment is not guaranteed if
-you change the current set of deployed apps. In other words, when you deploy a new
-app, the port assignments may change.
+marathon-lb will automatically assign port values from a configurable range if you
+specify it.  The range is configured using the `--min-serv-port-ip-per-task` and
+`--max-serv-port-ip-per-task` options. While port assignment is deterministic, the
+assignment is not guaranteed if you change the current set of deployed apps. In
+other words, when you deploy a new app, the port assignments may change.
 
 ## Contributing
 
