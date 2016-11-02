@@ -1,4 +1,4 @@
-FROM registry.nutmeg.co.uk:8443/docker.io/library/debian:sid
+FROM debian:stretch
 
 # runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
