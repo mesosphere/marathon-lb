@@ -2,6 +2,8 @@ global
   daemon
   log /dev/log local0
   log /dev/log local1 notice
+  spread-checks 5
+  max-spread-checks 15000
   maxconn 50000
   tune.ssl.default-dh-param 2048
   ssl-default-bind-ciphers EECDH+CHACHA20:EECDH+AES128:RSA+AES128:EECDH+AES256:RSA+AES256:!MD5:!DSS;
@@ -47,6 +49,11 @@ listen stats
   http-request use-service lua.getpids if getpid
   acl getconfig path /_haproxy_getconfig
   http-request use-service lua.getconfig if getconfig
+
+  acl signalmlbhup path /_mlb_signal/hup
+  http-request use-service lua.signalmlbhup if signalmlbhup
+  acl signalmlbusr1 path /_mlb_signal/usr1
+  http-request use-service lua.signalmlbusr1 if signalmlbusr1
 
 resolvers dns
     nameserver public-0 172.17.0.1:53
