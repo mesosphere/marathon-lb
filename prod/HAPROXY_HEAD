@@ -50,7 +50,7 @@ listen stats
 
 resolvers dns
     nameserver public-0 172.17.0.1:53
-    hold valid 1s
+    hold valid 60s
 
 backend mesos
   balance roundrobin

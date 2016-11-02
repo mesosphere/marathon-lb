@@ -1,7 +1,7 @@
 global
   daemon
-  log /dev/log local0 debug alert
-  log /dev/log local1 notice alert
+  log 127.0.0.1 local0 debug alert
+  log 127.0.0.1 local1 notice alert
   maxconn 50000
   tune.ssl.default-dh-param 2048
   ssl-default-bind-ciphers EECDH+CHACHA20:EECDH+AES128:RSA+AES128:EECDH+AES256:RSA+AES256:!MD5:!DSS;
@@ -50,7 +50,7 @@ listen stats
 
 resolvers dns
     nameserver public-0 172.17.0.1:53
-    hold valid 1s
+    hold valid 60s
 
 backend mesos
   balance roundrobin
