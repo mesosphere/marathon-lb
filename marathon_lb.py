@@ -361,7 +361,6 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
         https_frontends = templater.haproxy_https_frontend_head.format(
             sslCerts=" ".join(map(lambda cert: "crt " + cert, _ssl_certs))
         )
-        print(https_frontends)
 
     userlists = str()
     frontends = str()
