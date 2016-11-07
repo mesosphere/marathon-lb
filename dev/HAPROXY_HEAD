@@ -1,7 +1,9 @@
 global
   daemon
-  log /dev/log local0 debug alert
-  log /dev/log local1 notice alert
+  log 127.0.0.1 local0 debug alert
+  log 127.0.0.1 local1 notice alert
+  spread-checks 5
+  max-spread-checks 15000
   maxconn 50000
   tune.ssl.default-dh-param 2048
   ssl-default-bind-ciphers EECDH+CHACHA20:EECDH+AES128:RSA+AES128:EECDH+AES256:RSA+AES256:!MD5:!DSS;
@@ -13,7 +15,9 @@ global
   server-state-base /var/state/haproxy/
   lua-load /marathon-lb/getpids.lua
   lua-load /marathon-lb/getconfig.lua
-  
+  lua-load /marathon-lb/getmaps.lua
+  lua-load /marathon-lb/signalmlb.lua
+
 defaults
   load-server-state-from-file global
   log               global
@@ -36,7 +40,7 @@ defaults
   option            httplog
   option            splice-auto
   option            forwardfor
-  
+
 listen stats
   bind 0.0.0.0:9090
   balance
@@ -47,7 +51,16 @@ listen stats
   http-request use-service lua.getpids if getpid
   acl getconfig path /_haproxy_getconfig
   http-request use-service lua.getconfig if getconfig
-  
+
+  acl signalmlbhup path /_mlb_signal/hup
+  http-request use-service lua.signalmlbhup if signalmlbhup
+  acl signalmlbusr1 path /_mlb_signal/usr1
+  http-request use-service lua.signalmlbusr1 if signalmlbusr1
+
+resolvers dns
+    nameserver public-0 172.17.0.1:53
+    hold valid 60s
+
 backend mesos
   balance roundrobin
   mode http
@@ -56,8 +69,8 @@ backend mesos
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /health
   timeout check 10s
-  server mesos leader.mesos:5050 check inter 5s fall 4
-  
+  server mesos1 leader.mesos:5050 resolvers dns check inter 5s fall 4
+
 backend marathon
   balance roundrobin
   mode http
@@ -67,10 +80,8 @@ backend marathon
   option  httpchk GET /
   http-check expect status 401
   timeout check 10s
-  server marathon1 172.22.1.20:8080 check inter 5s fall 4
-  server marathon2 172.22.2.77:8080 check inter 5s fall 4
-  server marathon3 172.22.3.144:8080 check inter 5s fall 4
-  
+  server marathon1 marathon.mesos:8080 resolvers dns check inter 5s fall 4
+
 backend consul
   balance roundrobin
   mode http
@@ -79,17 +90,14 @@ backend consul
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server consul1 172.22.1.20:8500 check inter 1s
-  server consul2 172.22.2.77:8500 check inter 1s
-  server consul3 172.22.3.144:8500 check inter 1s
-  
-backend eremetic
+  server consul1 master.mesos:8500 resolvers dns check inter 1s
+
+backend singularity
   balance roundrobin
   mode http
   option forwardfor
   http-request set-header X-Forwarded-Port %[dst_port]
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
-  option  httpchk GET /metrics
+  option  httpchk GET /ui/
   timeout check 10s
-  server eremetic eremetic:8000 check inter 5s fall 4
-  
+  server singularity1 singularity.mesos:7099 resolvers dns check inter 5s fall 4

@@ -7,7 +7,9 @@ args: [
     "--group={{marathon_group_name}}",
     "--marathon={{marathon_url}}",
     "--auth-credentials={{marathon_creds}}",
-    "--syslog-socket=/dev/log"
+    "--syslog-socket=/dev/log",
+    "--log-level=INFO",
+    "--ssl-certs=/etc/ssl/private"
     ]
 container:
   docker:

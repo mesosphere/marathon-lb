@@ -1,5 +1,7 @@
 .git
+build.bash
 tests
+requirements-dev.txt
 hooks
 scripts
 .*

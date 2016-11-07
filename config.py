@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-import os
 import logging
+import os
 
 logger = logging.getLogger('marathon_lb')
 
@@ -28,6 +28,8 @@ global
   daemon
   log /dev/log local0
   log /dev/log local1 notice
+  spread-checks 5
+  max-spread-checks 15000
   maxconn 50000
   tune.ssl.default-dh-param 2048
   ssl-default-bind-ciphers ECDHE-ECDSA-CHACHA20-POLY1305:\
@@ -41,7 +43,7 @@ DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:\
 DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:\
 EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:\
 AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS
-  ssl-default-bind-options no-sslv3 no-tls-tickets
+  ssl-default-bind-options no-sslv3 no-tlsv10 no-tls-tickets
   ssl-default-server-ciphers ECDHE-ECDSA-CHACHA20-POLY1305:\
 ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:\
 ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:\
@@ -53,12 +55,14 @@ DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:\
 DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:\
 EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:\
 AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS
-  ssl-default-server-options no-sslv3 no-tls-tickets
+  ssl-default-server-options no-sslv3 no-tlsv10 no-tls-tickets
   stats socket /var/run/haproxy/socket
   server-state-file global
   server-state-base /var/state/haproxy/
   lua-load /marathon-lb/getpids.lua
   lua-load /marathon-lb/getconfig.lua
+  lua-load /marathon-lb/getmaps.lua
+  lua-load /marathon-lb/signalmlb.lua
 defaults
   load-server-state-from-file global
   log               global
@@ -84,8 +88,17 @@ listen stats
   monitor-uri /_haproxy_health_check
   acl getpid path /_haproxy_getpids
   http-request use-service lua.getpids if getpid
+  acl getvhostmap path /_haproxy_getvhostmap
+  http-request use-service lua.getvhostmap if getvhostmap
+  acl getappmap path /_haproxy_getappmap
+  http-request use-service lua.getappmap if getappmap
   acl getconfig path /_haproxy_getconfig
   http-request use-service lua.getconfig if getconfig
+
+  acl signalmlbhup path /_mlb_signal/hup
+  http-request use-service lua.signalmlbhup if signalmlbhup
+  acl signalmlbusr1 path /_mlb_signal/usr1
+  http-request use-service lua.signalmlbusr1 if signalmlbusr1
 ''',
                            overridable=False,
                            description='''\
@@ -223,6 +236,18 @@ of the `HAPROXY_HTTP_FRONTEND_HEAD`
 '''))
 
         self.add_template(
+            ConfigTemplate(name='MAP_HTTP_FRONTEND_ACL',
+                           value='''\
+  use_backend %[req.hdr(host),lower,regsub(:.*$,,),\
+map({haproxy_dir}/domain2backend.map)]
+''',
+                           overridable=True,
+                           description='''\
+The ACL that glues a backend to the corresponding virtual host
+of the `HAPROXY_HTTP_FRONTEND_HEAD` using haproxy maps.
+'''))
+
+        self.add_template(
             ConfigTemplate(name='HTTP_FRONTEND_ACL_WITH_AUTH',
                            value='''\
   acl host_{cleanedUpHostname} hdr(host) -i {hostname}
@@ -248,6 +273,18 @@ Define the ACL matching a particular hostname, but unlike
 `HAPROXY_HTTP_FRONTEND_ACL`, only do the ACL portion. Does not glue
 the ACL to the backend. This is useful only in the case of multiple
 vhosts routing to the same backend.
+'''))
+
+        self.add_template(
+            ConfigTemplate(name='MAP_HTTP_FRONTEND_ACL_ONLY',
+                           value='''\
+  use_backend %[req.hdr(host),lower,regsub(:.*$,,),\
+map({haproxy_dir}/domain2backend.map)]
+''',
+                           overridable=True,
+                           description='''\
+Define the ACL matching a particular hostname, This is useful only in the case
+ of multiple vhosts routing to the same backend in haproxy map.
 '''))
 
         self.add_template(
@@ -392,6 +429,18 @@ of the `HAPROXY_HTTP_FRONTEND_APPID_HEAD`.
 '''))
 
         self.add_template(
+            ConfigTemplate(name='MAP_HTTP_FRONTEND_APPID_ACL',
+                           value='''\
+  use_backend %[req.hdr(x-marathon-app-id),lower,\
+map({haproxy_dir}/app2backend.map)]
+''',
+                           overridable=True,
+                           description='''\
+The ACL that glues a backend to the corresponding app
+of the `HAPROXY_HTTP_FRONTEND_APPID_HEAD` using haproxy maps.
+'''))
+
+        self.add_template(
             ConfigTemplate(name='HTTPS_FRONTEND_ACL',
                            value='''\
   use_backend {backend} if {{ ssl_fc_sni {hostname} }}
@@ -400,6 +449,17 @@ of the `HAPROXY_HTTP_FRONTEND_APPID_HEAD`.
                            description='''\
 The ACL that performs the SNI based hostname matching
 for the `HAPROXY_HTTPS_FRONTEND_HEAD` template.
+'''))
+
+        self.add_template(
+            ConfigTemplate(name='MAP_HTTPS_FRONTEND_ACL',
+                           value='''\
+  use_backend %[ssl_fc_sni,lower,map({haproxy_dir}/domain2backend.map)]
+''',
+                           overridable=True,
+                           description='''\
+The ACL that performs the SNI based hostname matching
+for the `HAPROXY_HTTPS_FRONTEND_HEAD` template using haproxy maps
 '''))
 
         self.add_template(
@@ -475,19 +535,18 @@ Sets HTTP headers, for example X-Forwarded-For and X-Forwarded-Proto.
 '''))
 
         self.add_template(
-            ConfigTemplate(name='HTTP_BACKEND_PROXYPASS',
+            ConfigTemplate(name='HTTP_BACKEND_PROXYPASS_GLUE',
                            value='''\
   http-request set-header Host {hostname}
-  reqirep  "^([^ :]*)\ {proxypath}(.*)" "\\1\ /\\2"
+  reqirep  "^([^ :]*)\ {proxypath}/?(.*)" "\\1\ /\\2"
 ''',
                            overridable=True,
                            description='''\
-Set the location to use for mapping local server URLs to remote servers + URL.
-Ex: HAPROXY_0_HTTP_BACKEND_PROXYPASS = '/path/to/redirect
+Backend glue for `HAPROXY_{n}_HTTP_BACKEND_PROXYPASS_PATH`.
 '''))
 
         self.add_template(
-            ConfigTemplate(name='HTTP_BACKEND_REVPROXY',
+            ConfigTemplate(name='HTTP_BACKEND_REVPROXY_GLUE',
                            value='''\
   acl hdr_location res.hdr(Location) -m found
   rspirep "^Location: (https?://{hostname}(:[0-9]+)?)?(/.*)" "Location: \
@@ -495,9 +554,7 @@ Ex: HAPROXY_0_HTTP_BACKEND_PROXYPASS = '/path/to/redirect
 ''',
                            overridable=True,
                            description='''\
-Set the URL in HTTP response headers sent from a reverse proxied server. \
-It only updates Location, Content-Location and URL.
-Ex: HAPROXY_0_HTTP_BACKEND_REVPROXY = '/my/content'
+Backend glue for `HAPROXY_{n}_HTTP_BACKEND_REVPROXY_PATH`.
 '''))
 
         self.add_template(
@@ -529,7 +586,6 @@ Parameters of the first health check for this service are exposed as:
   * healthCheckPath
   * healthCheckTimeoutSeconds
   * healthCheckIntervalSeconds
-  * healthCheckIgnoreHttp1xx
   * healthCheckGracePeriodSeconds
   * healthCheckMaxConsecutiveFailures
   * healthCheckFalls is set to healthCheckMaxConsecutiveFailures + 1
@@ -606,7 +662,6 @@ Parameters of the first health check for this service are exposed as:
   * healthCheckPath
   * healthCheckTimeoutSeconds
   * healthCheckIntervalSeconds
-  * healthCheckIgnoreHttp1xx
   * healthCheckGracePeriodSeconds
   * healthCheckMaxConsecutiveFailures
   * healthCheckFalls is set to healthCheckMaxConsecutiveFailures + 1
@@ -658,6 +713,52 @@ Example:
 This option glues the backend to the frontend.
     '''))
 
+        self.add_template(
+            ConfigTemplate(name='HTTP_BACKEND_NETWORK_ALLOWED_ACL',
+                           value='''\
+  acl network_allowed src {network_allowed}
+''',
+                           overridable=True,
+                           description='''\
+This option set the IPs (or IP ranges) having access to the HTTP backend.
+'''))
+
+        self.add_template(
+            ConfigTemplate(name='HTTP_BACKEND_ACL_ALLOW_DENY',
+                           value='''\
+  http-request allow if network_allowed
+  http-request deny
+''',
+                           overridable=False,
+                           description='''\
+This option denies all IPs (or IP ranges) not explicitly allowed to access\
+ the HTTP backend.
+Use with `HAPROXY_HTTP_BACKEND_NETWORK_ALLOWED_ACL`.
+'''))
+
+        self.add_template(
+            ConfigTemplate(name='TCP_BACKEND_NETWORK_ALLOWED_ACL',
+                           value='''\
+  acl network_allowed src {network_allowed}
+''',
+                           overridable=True,
+                           description='''\
+This option set the IPs (or IP ranges) having access to the TCP backend.
+'''))
+
+        self.add_template(
+            ConfigTemplate(name='TCP_BACKEND_ACL_ALLOW_DENY',
+                           value='''\
+  tcp-request content accept if network_allowed
+  tcp-request content reject
+''',
+                           overridable=False,
+                           description='''\
+This option denies all IPs (or IP ranges) not explicitly allowed to access\
+ the TCP backend.
+Use with HAPROXY_TCP_BACKEND_ACL_ALLOW_DENY.
+'''))
+
     def __init__(self, directory='templates'):
         self.__template_directory = directory
         self.t = dict()
@@ -707,7 +808,8 @@ Specified as {specifiedAs}.
             descriptions += desc_template.format(
                 full_name=t.full_name,
                 specifiedAs=spec,
-                overridable="Overridable" if t.overridable else "Global",
+                overridable="Overridable per app" if t.overridable
+                else "Global",
                 description=t.description,
                 default=t.default_value
             )
@@ -756,6 +858,14 @@ Specified as {specifiedAs}.
     @property
     def haproxy_http_frontend_appid_head(self):
         return self.t['HTTP_FRONTEND_APPID_HEAD'].value
+
+    @property
+    def haproxy_http_backend_acl_allow_deny(self):
+        return self.t['HTTP_BACKEND_ACL_ALLOW_DENY'].value
+
+    @property
+    def haproxy_tcp_backend_acl_allow_deny(self):
+        return self.t['TCP_BACKEND_ACL_ALLOW_DENY'].value
 
     @property
     def haproxy_https_frontend_head(self):
@@ -820,10 +930,20 @@ Specified as {specifiedAs}.
             return app.labels['HAPROXY_{0}_HTTP_FRONTEND_ACL']
         return self.t['HTTP_FRONTEND_ACL'].value
 
+    def haproxy_map_http_frontend_acl(self, app):
+        if 'HAPROXY_{0}_HTTP_FRONTEND_ACL' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTP_FRONTEND_ACL']
+        return self.t['MAP_HTTP_FRONTEND_ACL'].value
+
     def haproxy_http_frontend_acl_only(self, app):
         if 'HAPROXY_{0}_HTTP_FRONTEND_ACL_ONLY' in app.labels:
             return app.labels['HAPROXY_{0}_HTTP_FRONTEND_ACL_ONLY']
         return self.t['HTTP_FRONTEND_ACL_ONLY'].value
+
+    def haproxy_map_http_frontend_acl_only(self, app):
+        if 'HAPROXY_{0}_HTTP_FRONTEND_ACL_ONLY' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTP_FRONTEND_ACL_ONLY']
+        return self.t['MAP_HTTP_FRONTEND_ACL_ONLY'].value
 
     def haproxy_http_frontend_routing_only(self, app):
         if 'HAPROXY_{0}_HTTP_FRONTEND_ROUTING_ONLY' in app.labels:
@@ -879,10 +999,20 @@ Specified as {specifiedAs}.
             return app.labels['HAPROXY_{0}_HTTP_FRONTEND_APPID_ACL']
         return self.t['HTTP_FRONTEND_APPID_ACL'].value
 
+    def haproxy_map_http_frontend_appid_acl(self, app):
+        if 'HAPROXY_{0}_HTTP_FRONTEND_APPID_ACL' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTP_FRONTEND_APPID_ACL']
+        return self.t['MAP_HTTP_FRONTEND_APPID_ACL'].value
+
     def haproxy_https_frontend_acl(self, app):
         if 'HAPROXY_{0}_HTTPS_FRONTEND_ACL' in app.labels:
             return app.labels['HAPROXY_{0}_HTTPS_FRONTEND_ACL']
         return self.t['HTTPS_FRONTEND_ACL'].value
+
+    def haproxy_map_https_frontend_acl(self, app):
+        if 'HAPROXY_{0}_HTTPS_FRONTEND_ACL' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTPS_FRONTEND_ACL']
+        return self.t['MAP_HTTPS_FRONTEND_ACL'].value
 
     def haproxy_https_frontend_acl_with_path(self, app):
         if 'HAPROXY_{0}_HTTPS_FRONTEND_ACL_WITH_PATH' in app.labels:
@@ -914,15 +1044,15 @@ Specified as {specifiedAs}.
             return app.labels['HAPROXY_{0}_BACKEND_SERVER_OPTIONS']
         return self.t['BACKEND_SERVER_OPTIONS'].value
 
-    def haproxy_http_backend_proxypass(self, app):
-        if 'HAPROXY_{0}_HTTP_BACKEND_PROXYPASS' in app.labels:
-            return app.labels['HAPROXY_{0}_HTTP_BACKEND_PROXYPASS']
-        return self.t['HTTP_BACKEND_PROXYPASS'].value
+    def haproxy_http_backend_proxypass_glue(self, app):
+        if 'HAPROXY_{0}_HTTP_BACKEND_PROXYPASS_GLUE' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTP_BACKEND_PROXYPASS_GLUE']
+        return self.t['HTTP_BACKEND_PROXYPASS_GLUE'].value
 
-    def haproxy_http_backend_revproxy(self, app):
-        if 'HAPROXY_{0}_HTTP_BACKEND_REVPROXY' in app.labels:
-            return app.labels['HAPROXY_{0}_HTTP_BACKEND_REVPROXY']
-        return self.t['HTTP_BACKEND_REVPROXY'].value
+    def haproxy_http_backend_revproxy_glue(self, app):
+        if 'HAPROXY_{0}_HTTP_BACKEND_REVPROXY_GLUE' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTP_BACKEND_REVPROXY_GLUE']
+        return self.t['HTTP_BACKEND_REVPROXY_GLUE'].value
 
     def haproxy_http_backend_redir(self, app):
         if 'HAPROXY_{0}_HTTP_BACKEND_REDIR' in app.labels:
@@ -953,6 +1083,16 @@ Specified as {specifiedAs}.
             return app.labels['HAPROXY_{0}_FRONTEND_BACKEND_GLUE']
         return self.t['FRONTEND_BACKEND_GLUE'].value
 
+    def haproxy_http_backend_network_allowed_acl(self, app):
+        if 'HAPROXY_{0}_HTTP_BACKEND_NETWORK_ALLOWED_ACL' in app.labels:
+            return app.labels['HAPROXY_{0}_HTTP_BACKEND_NETWORK_ALLOWED_ACL']
+        return self.t['HTTP_BACKEND_NETWORK_ALLOWED_ACL'].value
+
+    def haproxy_tcp_backend_network_allowed_acl(self, app):
+        if 'HAPROXY_{0}_TCP_BACKEND_NETWORK_ALLOWED_ACL' in app.labels:
+            return app.labels['HAPROXY_{0}_TCP_BACKEND_NETWORK_ALLOWED_ACL']
+        return self.t['TCP_BACKEND_NETWORK_ALLOWED_ACL'].value
+
     def __blank_prefix_or_empty(self, s):
         if s:
             return ' ' + s
@@ -965,7 +1105,7 @@ def string_to_bool(s):
 
 
 def set_hostname(x, k, v):
-    x.hostname = v
+    x.hostname = v.lower()
 
 
 def set_path(x, k, v):
@@ -1006,6 +1146,10 @@ def set_port(x, k, v):
     x.servicePort = int(v)
 
 
+def set_healthcheck_port_index(x, k, v):
+    x.healthcheck_port_index = int(v)
+
+
 def set_backend_weight(x, k, v):
     x.backend_weight = int(v)
 
@@ -1038,6 +1182,10 @@ def set_redirpath(x, k, v):
     x.redirpath = v
 
 
+def set_network_allowed(x, k, v):
+    x.network_allowed = v
+
+
 class Label:
     def __init__(self, name, func, description, perServicePort=True):
         self.name = name
@@ -1053,7 +1201,9 @@ labels = []
 labels.append(Label(name='AUTH',
                     func=set_auth,
                     description='''\
-The http basic auth definition.
+The http basic auth definition. \
+For details on configuring auth, see: \
+https://github.com/mesosphere/marathon-lb/wiki/HTTP-Basic-Auth
 
 Ex: `HAPROXY_0_AUTH = realm:username:encryptedpassword`'''))
 labels.append(Label(name='VHOST',
@@ -1180,7 +1330,7 @@ labels.append(Label(name='SSL_CERT',
                     description='''\
 Enable the given SSL certificate for TLS/SSL traffic.
 
-Ex: `HAPROXY_0_SSL_CERT = '/etc/ssl/certs/marathon.mesosphere.com'`
+Ex: `HAPROXY_0_SSL_CERT = '/etc/ssl/cert.pem'`
                     '''))
 labels.append(Label(name='BIND_OPTIONS',
                     func=set_bindOptions,
@@ -1188,7 +1338,7 @@ labels.append(Label(name='BIND_OPTIONS',
 Set additional bind options
 
 Ex: `HAPROXY_0_BIND_OPTIONS = 'ciphers AES128+EECDH:AES128+EDH force-tlsv12\
- no-sslv3'`
+ no-sslv3 no-tlsv10'`
                     '''))
 labels.append(Label(name='BIND_ADDR',
                     func=set_bindAddr,
@@ -1221,19 +1371,19 @@ roundrobin.
 Ex: `HAPROXY_0_BALANCE = 'leastconn'`
                     '''))
 
-labels.append(Label(name='HTTP_BACKEND_PROXYPASS',
+labels.append(Label(name='HTTP_BACKEND_PROXYPASS_PATH',
                     func=set_proxypath,
                     description='''\
 Set the location to use for mapping local server URLs to remote servers + URL.
-Ex: `HAPROXY_0_HTTP_BACKEND_PROXYPASS = '/path/to/redirect`
+Ex: `HAPROXY_0_HTTP_BACKEND_PROXYPASS_PATH = '/path/to/redirect'`
                     '''))
 
-labels.append(Label(name='HTTP_BACKEND_REVPROXY',
+labels.append(Label(name='HTTP_BACKEND_REVPROXY_PATH',
                     func=set_revproxypath,
                     description='''\
 Set the URL in HTTP response headers sent from a reverse proxied server. \
 It only updates Location, Content-Location and URL.
-Ex: `HAPROXY_0_HTTP_BACKEND_REVPROXY = '/my/content'`
+Ex: `HAPROXY_0_HTTP_BACKEND_REVPROXY_PATH = '/my/content'`
                     '''))
 
 labels.append(Label(name='HTTP_BACKEND_REDIR',
@@ -1257,6 +1407,45 @@ weight of 1, if the default weight is used (which is 0).
 Ex: `HAPROXY_0_BACKEND_WEIGHT = 1`
                     '''))
 
+labels.append(Label(name='BACKEND_NETWORK_ALLOWED_ACL',
+                    func=set_network_allowed,
+                    description='''\
+Set the IPs (or IP ranges) having access to the backend. \
+By default every IP is allowed.
+
+Ex: `HAPROXY_0_BACKEND_NETWORK_ALLOWED_ACL = '10.1.40.0/24 10.1.55.43'`
+                    '''))
+
+labels.append(Label(name='BACKEND_HEALTHCHECK_PORT_INDEX',
+                    func=set_healthcheck_port_index,
+                    description='''\
+Set the index of the port dedicated for the healthchecks of the backends
+behind a given service port.
+
+By default, the index will be the same as the one of the service port.
+
+Ex: An app exposes two ports, one for the application,
+one for its healthchecks:
+
+portMappings": [
+  {
+    "containerPort": 9000,
+    "hostPort": 0,
+    "servicePort": 0,
+    "protocol": "tcp"
+  },
+  {
+    "containerPort": 9001,
+    "hostPort": 0,
+    "servicePort": 0,
+    "protocol": "tcp"
+  }
+]
+
+HAPROXY_0_BACKEND_HEALTHCHECK_PORT_INDEX=1 will make it so that the port 9001
+is used to perform the backend healthchecks.
+                    ''',
+                    ))
 labels.append(Label(name='FRONTEND_HEAD',
                     func=set_label,
                     description=''))
@@ -1272,7 +1461,13 @@ labels.append(Label(name='BACKEND_HEAD',
 labels.append(Label(name='HTTP_FRONTEND_ACL',
                     func=set_label,
                     description=''))
+labels.append(Label(name='MAP_HTTP_FRONTEND_ACL',
+                    func=set_label,
+                    description=''))
 labels.append(Label(name='HTTP_FRONTEND_ACL_ONLY',
+                    func=set_label,
+                    description=''))
+labels.append(Label(name='MAP_HTTP_FRONTEND_ACL_ONLY',
                     func=set_label,
                     description=''))
 labels.append(Label(name='HTTP_FRONTEND_ROUTING_ONLY',
@@ -1293,9 +1488,6 @@ labels.append(Label(name='HTTP_FRONTEND_ACL_ONLY_WITH_PATH_AND_AUTH',
 labels.append(Label(name='HTTPS_FRONTEND_ACL_ONLY_WITH_PATH',
                     func=set_label,
                     description=''))
-labels.append(Label(name='HTTPS_FRONTEND_ACL_ONLY_WITH_PATH_AND_AUTH',
-                    func=set_label,
-                    description=''))
 labels.append(Label(name='HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH',
                     func=set_label,
                     description=''))
@@ -1305,10 +1497,22 @@ labels.append(Label(name='HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH',
 labels.append(Label(name='HTTP_FRONTEND_APPID_ACL',
                     func=set_label,
                     description=''))
+labels.append(Label(name='MAP_HTTP_FRONTEND_APPID_ACL',
+                    func=set_label,
+                    description=''))
 labels.append(Label(name='HTTPS_FRONTEND_ACL',
                     func=set_label,
                     description=''))
+labels.append(Label(name='MAP_HTTPS_FRONTEND_ACL',
+                    func=set_label,
+                    description=''))
+labels.append(Label(name='HTTPS_FRONTEND_ACL_WITH_AUTH',
+                    func=set_label,
+                    description=''))
 labels.append(Label(name='HTTPS_FRONTEND_ACL_WITH_PATH',
+                    func=set_label,
+                    description=''))
+labels.append(Label(name='HTTPS_FRONTEND_ACL_WITH_AUTH_AND_PATH',
                     func=set_label,
                     description=''))
 labels.append(Label(name='BACKEND_HTTP_OPTIONS',
@@ -1336,6 +1540,12 @@ labels.append(Label(name='BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS',
                     func=set_label,
                     description=''))
 labels.append(Label(name='FRONTEND_BACKEND_GLUE',
+                    func=set_label,
+                    description=''))
+labels.append(Label(name='HTTP_BACKEND_NETWORK_ALLOWED_ACL',
+                    func=set_label,
+                    description=''))
+labels.append(Label(name='TCP_BACKEND_NETWORK_ALLOWED_ACL',
                     func=set_label,
                     description=''))
 

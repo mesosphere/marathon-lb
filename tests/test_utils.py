@@ -1,6 +1,8 @@
 import unittest
-import utils
+
 from mock import Mock, patch
+
+import utils
 from utils import ServicePortAssigner
 
 
@@ -34,6 +36,86 @@ class TestUtils(unittest.TestCase):
         }
         task = {
             "id": "testtaskid"
+        }
+
+        result = utils.get_task_ip_and_ports(app, task)
+        expected = (None, None)
+
+        self.assertEquals(result, expected)
+
+    def test_get_task_ip_and_ports_ip_per_task_marathon13(self):
+        app = {
+            'ipAddress': {},
+            'container': {
+                'type': 'DOCKER',
+                'docker': {
+                    'network': 'USER',
+                    'portMappings': [
+                        {
+                            'containerPort': 80,
+                            'servicePort': 10000,
+                        },
+                        {
+                            'containerPort': 81,
+                            'servicePort': 10001,
+                        },
+                     ],
+                },
+            },
+        }
+        task = {
+            "id": "testtaskid",
+            "ipAddresses": [{"ipAddress": "1.2.3.4"}]
+        }
+
+        result = utils.get_task_ip_and_ports(app, task)
+        expected = ("1.2.3.4", [80, 81])
+
+        self.assertEquals(result, expected)
+
+    def test_get_task_ip_and_ports_ip_per_task_no_ip_marathon13(self):
+        app = {
+            'ipAddress': {},
+            'container': {
+                'type': 'DOCKER',
+                'docker': {
+                    'network': 'USER',
+                    'portMappings': [
+                        {
+                            'containerPort': 80,
+                            'servicePort': 10000,
+                        },
+                        {
+                            'containerPort': 81,
+                            'servicePort': 10001,
+                        },
+                     ],
+                },
+            },
+        }
+        task = {
+            "id": "testtaskid",
+        }
+
+        result = utils.get_task_ip_and_ports(app, task)
+        expected = (None, None)
+
+        self.assertEquals(result, expected)
+
+    def test_get_task_ip_and_ports_portmapping_null(self):
+        app = {
+            'ipAddress': {},
+            'container': {
+                'type': 'DOCKER',
+                'docker': {
+                    'network': 'USER',
+                    'portMappings': [{
+                    }]
+                },
+            },
+        }
+        task = {
+            "id": "testtaskid",
         }
 
         result = utils.get_task_ip_and_ports(app, task)
@@ -180,18 +262,72 @@ class TestServicePortAssigner(unittest.TestCase):
         self.assertEquals(ports[-3:], [None] * 3)
         self.assertEquals(sorted(ports[:-3]), list(range(10000, 10021)))
 
+    def test_ip_per_task_marathon13(self):
+        app = {
+            'ipAddress': {},
+            'container': {
+                'type': 'DOCKER',
+                'docker': {
+                    'network': 'USER',
+                    'portMappings': [
+                        {
+                            'containerPort': 80,
+                            'servicePort': 10000,
+                        },
+                        {
+                            'containerPort': 81,
+                            'servicePort': 10001,
+                        },
+                     ],
+                },
+            },
+            'tasks': [{
+                "id": "testtaskid",
+                "ipAddresses": [{"ipAddress": "1.2.3.4"}]
+            }],
+        }
+        self.assertEquals(self.assigner.get_service_ports(app),
+                          [10000, 10001])
+
+    def test_ip_per_task_portMappings_null(self):
+        app = {
+            'ipAddress': {},
+            'container': {
+                'type': 'DOCKER',
+                'docker': {
+                    'network': 'USER',
+                    'portMappings': None,
+                },
+            },
+            'tasks': [{
+                "id": "testtaskid",
+                "ipAddresses": [{"ipAddress": "1.2.3.4"}]
+            }],
+            "portDefinitions": [
+                {
+                    'port': 10000,
+                },
+                {
+                    'port': 10001,
+                },
+            ],
+        }
+        self.assertEquals(self.assigner.get_service_ports(app),
+                          [10000, 10001])
+
 
 def _get_app(idx=1, num_ports=3, num_tasks=1, ip_per_task=True,
              inc_service_ports=False):
     app = {
         "id": "app-%d" % idx,
         "tasks": [_get_task(idx*10 + idx2) for idx2 in range(num_tasks)],
-        "ports": [],
+        "portDefinitions": [],
         "ipAddress": None,
     }
 
     if inc_service_ports:
-        app["ports"] = list(range(100, 100 + num_ports))
+        app["portDefinitions"] = \
+          [{'port': p} for p in list(range(100, 100 + num_ports))]
 
     if ip_per_task:
         app["ipAddress"] = {
