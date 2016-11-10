@@ -35,6 +35,7 @@ import sys
 import threading
 import time
 import traceback
+import datetime
 from itertools import cycle
 from operator import attrgetter
 from shutil import move
@@ -1256,13 +1257,11 @@ def get_apps(marathon):
             prev = deployment_groups[deployment_group]
             cur = app
 
-            # TODO(brenden): do something more intelligent when the label is
-            # missing.
             if 'HAPROXY_DEPLOYMENT_STARTED_AT' in prev['labels']:
                 prev_date = dateutil.parser.parse(
                     prev['labels']['HAPROXY_DEPLOYMENT_STARTED_AT'])
             else:
-                prev_date = ''
+                prev_date = datetime.datetime.min
             if 'HAPROXY_DEPLOYMENT_STARTED_AT' in cur['labels']:
                 cur_date = dateutil.parser.parse(
                     cur['labels']['HAPROXY_DEPLOYMENT_STARTED_AT'])
