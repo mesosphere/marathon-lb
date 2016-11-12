@@ -236,6 +236,14 @@ Here is an example for a service called `http-service` which requires that
 The full list of per service port templates which can be specified
 are [documented here](Longhelp.md#templates).
 
+#### HAProxy Global Default Options
+
+As a shortcut to add haproxy global default options (without overriding the global template) a comma-separated
+list of options may be specified via the `HAPROXY_GLOBAL_DEFAULT_OPTIONS` environment variable.
+The default value when not specified is `redispatch,http-server-close,dontlognull`; as an example, to add the
+`httplog` option (and keep the existing defaults), one should specify `HAPROXY_GLOBAL_DEFAULT_OPTIONS=redispatch,http-server-close,dontlognull,httplog`.
+ - _Note that this setting has no effect when the `HAPROXY_HEAD` template has been overridden._
+
 ## Operational Best Practices
 
  * Use service ports within the reserved range (which is 10000 to 10100 by default). This will prevent port conflicts, and ensure reloads don't result in connection errors.

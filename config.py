@@ -20,6 +20,14 @@ class ConfigTemplater(object):
     def add_template(self, template):
         self.t[template.name] = template
 
+    def global_default_options(self):
+        default = 'redispatch,http-server-close,dontlognull'
+        options = os.getenv('HAPROXY_GLOBAL_DEFAULT_OPTIONS', default)
+        template = '  option            {opt}\n'
+        lines = set(template.format(opt=opt.strip())
+                    for opt in options.split(','))
+        return ''.join(lines)
+
     def load(self):
         self.add_template(
             ConfigTemplate(name='HEAD',
@@ -77,9 +85,7 @@ defaults
   timeout http-request    15s
   timeout queue           30s
   timeout tarpit          60s
-  option            redispatch
-  option            http-server-close
-  option            dontlognull
+''' + self.additional_default_options() + '''\
 listen stats
   bind 0.0.0.0:9090
   balance
