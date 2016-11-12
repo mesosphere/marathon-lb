@@ -1,6 +1,7 @@
 import copy
 import json
 import unittest
+import os
 
 import marathon_lb
 
@@ -8,6 +9,8 @@ import marathon_lb
 class TestMarathonUpdateHaproxy(unittest.TestCase):
 
     def setUp(self):
+        if 'HAPROXY_GLOBAL_DEFAULT_OPTIONS' in os.environ:
+            del os.environ['HAPROXY_GLOBAL_DEFAULT_OPTIONS']
         self.base_config = '''global
   daemon
   log /dev/log local0
@@ -61,9 +64,9 @@ defaults
   timeout http-request    15s
   timeout queue           30s
   timeout tarpit          60s
-  option            redispatch
-  option            http-server-close
   option            dontlognull
+  option            http-server-close
+  option            redispatch
 listen stats
   bind 0.0.0.0:9090
   balance
@@ -107,6 +110,8 @@ frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
 '''
+        print("actual config:\n")
+        print(config)
         self.assertMultiLineEqual(config, expected)
 
     def test_config_with_ssl_no_apps(self):

@@ -88,7 +88,7 @@ optional arguments:
                         ports for IP-per-task applications (default: 10100)
   --syslog-socket SYSLOG_SOCKET
                         Socket to write syslog messages to. Use '/dev/null' to
-                        disable logging to syslog (default: /var/run/syslog)
+                        disable logging to syslog (default: /dev/log)
   --log-format LOG_FORMAT
                         Set log message format (default: %(asctime)-15s
                         %(name)s: %(message)s)
@@ -396,9 +396,9 @@ defaults
   timeout http-request    15s
   timeout queue           30s
   timeout tarpit          60s
-  option            redispatch
-  option            http-server-close
   option            dontlognull
+  option            http-server-close
+  option            redispatch
 listen stats
   bind 0.0.0.0:9090
   balance
