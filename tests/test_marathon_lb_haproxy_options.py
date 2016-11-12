@@ -108,8 +108,8 @@ class TestDuplicatedOptions(TestMarathonUpdateHaproxy):
         os.environ['HAPROXY_GLOBAL_DEFAULT_OPTIONS'] = \
             'httplog,tcplog,dontlognull,tcplog'
         base_config = base_config_prefix
-        base_config += template_option('httplog')
         base_config += template_option('dontlognull')
+        base_config += template_option('httplog')
         base_config += template_option('tcplog')
         base_config += base_config_suffix
         self.base_config = base_config
