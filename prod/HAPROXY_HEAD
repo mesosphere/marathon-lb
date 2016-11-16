@@ -15,6 +15,8 @@ global
   server-state-base /var/state/haproxy/
   lua-load /marathon-lb/getpids.lua
   lua-load /marathon-lb/getconfig.lua
+  lua-load /marathon-lb/getmaps.lua
+  lua-load /marathon-lb/signalmlb.lua
 
 defaults
   load-server-state-from-file global
