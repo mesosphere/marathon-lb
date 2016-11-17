@@ -32,6 +32,8 @@ make -j4 \
   CPU=x86_64 \
   USE_PCRE=1 \
   USE_PCRE_JIT=1 \
+  USE_REGPARM=1 \
+  USE_STATIC_PCRE=1 \
   USE_OPENSSL=1 \
   USE_LUA=1 \
   LUA_LIB=/usr/local/lib/ \
