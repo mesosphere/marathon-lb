@@ -32,17 +32,14 @@ make -j4 \
   CPU=x86_64 \
   USE_PCRE=1 \
   USE_PCRE_JIT=1 \
-  USE_LIBCRYPT=1 \
-  USE_LINUX_SPLICE=1 \
-  USE_LINUX_TPROXY=1 \
+  USE_REGPARM=1 \
+  USE_STATIC_PCRE=1 \
   USE_OPENSSL=1 \
-  USE_DL=1 \
   USE_LUA=1 \
   LUA_LIB=/usr/local/lib/ \
   LUA_INC=/usr/local/include/ \
-  USE_ZLIB=1 \
-  LDFLAGS="-lcrypt  -lssl -lcrypto -L/usr/local/lib/ -llua -lm -L/usr/lib -lpcreposix -lpcre"
-make -j4 install-bin LDFLAGS="-lcrypt  -lssl -lcrypto -L/usr/local/lib/ -llua -lm -L/usr/lib -lpcreposix -lpcre -ldl"
+  USE_ZLIB=1
+make install-bin
 
 # Clean up
 cd /
