@@ -69,14 +69,23 @@ fi
 if [ -n "${MESOS_SANDBOX-}" ] && [ -d "$MESOS_SANDBOX/templates" ]; then
   mkdir -p templates
   cp -v "$MESOS_SANDBOX/templates/"* templates/
-fi
+fi 
 
-if [[ $NM_ENV == prod ]]; then
-  cp prod/* templates/
-else
-  cp dev/* templates/
-fi
+# Shared, common, templates.
+cp config/common/* templates/
 
+# If this is the 'internal' group then add in the internal services (mesos, marathon, etc).
+if [[ "$NM_GROUP" == "internal" ]]; then
+  echo "Updating the $NM_ENV internal configuration..."
+  for f in $(ls config/internal/*);
+  do
+    echo "Updating: $f"
+    sed -i "s|{{NM_ENV}}|$NM_ENV|g" $f 
+
+    echo "Appending $f to templates/$(basename $f)"
+    cat $f >> templates/$(basename $f)
+  done
+fi
 
 if [ -n "${HAPROXY_SYSCTL_PARAMS-}" ]; then
   echo "setting sysctl params to: ${HAPROXY_SYSCTL_PARAMS}"

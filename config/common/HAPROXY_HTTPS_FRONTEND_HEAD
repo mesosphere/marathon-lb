@@ -1,0 +1,7 @@
+
+frontend marathon_https_in
+  bind *:443 ssl {sslCerts}
+  mode http
+
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if {{ ssl_fc }}

@@ -1,0 +1,47 @@
+
+# START: HAPROXY_HEAD append.
+# This file is appended to the main HAPROXY_HEAD file for marathon-lb
+# instances with an NM_GROUP of internal.
+
+backend mesos
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  option  httpchk GET /health
+  timeout check 10s
+  server mesos1 leader.mesos:5050 resolvers dns check inter 5s fall 4
+
+backend marathon
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  option  httpchk GET /
+  http-check expect status 401
+  timeout check 10s
+  server marathon1 marathon.mesos:8080 resolvers dns check inter 5s fall 4
+
+backend consul
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  option  httpchk GET /
+  timeout check 10s
+  server consul1 master.mesos:8500 resolvers dns check inter 1s
+
+backend singularity
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  option  httpchk GET /ui/
+  timeout check 10s
+  server singularity1 singularity.mesos:7099 resolvers dns check inter 5s fall 4
+
+# END: HAPROXY_HEAD append.
