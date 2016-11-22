@@ -1,0 +1,13 @@
+  
+  # START: HAPROXY_HTTPS_FRONTEND_HEAD append.
+  # This file is appended to the main HAPROXY_HTTPS_FRONTEND_HEAD file 
+  # for marathon-lb instances with an NM_GROUP of internal.
+  # All instances of '{{NM_ENV}}' are replaced with the correct $NM_ENV var.
+
+  use_backend mesos if {{ ssl_fc_sni mesos.{{NM_ENV}}.nutmeg.co.uk }}
+  use_backend marathon if {{ ssl_fc_sni marathon.{{NM_ENV}}.nutmeg.co.uk }}
+  use_backend consul if {{ ssl_fc_sni consul.{{NM_ENV}}.nutmeg.co.uk }}
+  use_backend singularity if {{ ssl_fc_sni singularity.{{NM_ENV}}.nutmeg.co.uk }}
+
+  # END: HAPROXY_HTTPS_FRONTEND_HEAD append.
+
