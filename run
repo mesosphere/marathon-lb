@@ -76,10 +76,10 @@ cp config/common/* templates/
 
 # If this is the 'internal' group then add in the internal services (mesos, marathon, etc).
 if [[ "$NM_GROUP" == "internal" ]]; then
-  echo "Updating the $NM_ENV internal configuration..."
+  echo "Updating the $NM_ENV internal configuration files..."
   for f in $(ls config/internal/*);
   do
-    echo "Updating: $f"
+    echo "Replacing occurences of '{{NM_ENV}}' with '$NM_ENV' in '$f'"
     sed -i "s|{{NM_ENV}}|$NM_ENV|g" $f 
 
     echo "Appending $f to templates/$(basename $f)"
