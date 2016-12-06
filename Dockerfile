@@ -21,6 +21,7 @@ RUN set -x \
         libpcre3-dev \
         libreadline-dev \
         libssl-dev \
+        zlib1g-dev \
         make \
         python3-dev \
         python3-pip \
