@@ -1257,16 +1257,19 @@ def get_apps(marathon):
             prev = deployment_groups[deployment_group]
             cur = app
 
+            # If for some reason neither label is set correctly, then it's a
+            # crapshoot.
             if 'HAPROXY_DEPLOYMENT_STARTED_AT' in prev['labels']:
                 prev_date = dateutil.parser.parse(
                     prev['labels']['HAPROXY_DEPLOYMENT_STARTED_AT'])
             else:
                 prev_date = datetime.datetime.min
+
             if 'HAPROXY_DEPLOYMENT_STARTED_AT' in cur['labels']:
                 cur_date = dateutil.parser.parse(
                     cur['labels']['HAPROXY_DEPLOYMENT_STARTED_AT'])
             else:
-                cur_date = ''
+                prev_date = datetime.datetime.min
 
             old = new = None
             if prev_date < cur_date:
