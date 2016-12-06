@@ -1153,7 +1153,7 @@ def set_backend_weight(x, k, v):
 
 
 def set_mode(x, k, v):
-    x.mode = v
+    x.mode = v.lower()
 
 
 def set_balance(x, k, v):
