@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
 import hashlib
+from io import BytesIO
 import logging
 import socket
+
+import pycurl
 
 from lrucache import LRUCache
 
@@ -140,6 +143,96 @@ class ServicePortAssigner(object):
                          for task_port in task_ports]
         logger.debug("Service ports: %r", ports)
         return ports
+
+
+class CurlHttpEventStream(object):
+    def __init__(self, url, auth, verify):
+        self.url = url
+        self.received_buffer = BytesIO()
+
+        self.curl = pycurl.Curl()
+        self.curl.setopt(pycurl.URL, url)
+        self.curl.setopt(pycurl.HTTPHEADER, ['Cache-Control: no-cache', 'Accept: text/event-stream'])
+        self.curl.setopt(pycurl.ENCODING, 'gzip')
+        self.curl.setopt(pycurl.CONNECTTIMEOUT, 5)
+        self.curl.setopt(pycurl.WRITEDATA, self.received_buffer)
+        if auth:
+            self.curl.setopt(pycurl.HTTPAUTH, pycurl.HTTPAUTH_BASIC)
+            self.curl.setopt(pycurl.USERPWD, '%s:%s' % auth)
+        if verify:
+            self.curl.setopt(pycurl.CA_INFO, verify)
+
+        self.curlmulti = pycurl.CurlMulti()
+        self.curlmulti.add_handle(self.curl)
+
+        self.status_code = 0
+
+    SELECT_TIMEOUT = 10
+
+    def _any_data_received(self):
+        return self.received_buffer.tell() != 0
+
+    def _get_received_data(self):
+        result = self.received_buffer.getvalue()
+        self.received_buffer.truncate(0)
+        self.received_buffer.seek(0)
+        return result
+
+    def _check_status_code(self):
+        if self.status_code == 0:
+            self.status_code = self.curl.getinfo(pycurl.HTTP_CODE)
+        if self.status_code != 0 and self.status_code != 200:
+            raise Exception(str(self.status_code) + ' ' + self.url)
+
+    def _perform_on_curl(self):
+        while True:
+            ret, num_handles = self.curlmulti.perform()
+            if ret != pycurl.E_CALL_MULTI_PERFORM:
+                break
+        return num_handles
+
+    def _iter_chunks(self):
+        while True:
+            remaining = self._perform_on_curl()
+            if self._any_data_received():
+                self._check_status_code()
+                yield self._get_received_data()
+            if remaining == 0:
+                break
+            self.curlmulti.select(self.SELECT_TIMEOUT)
+
+        self._check_status_code()
+        self._check_curl_errors()
+
+    def _check_curl_errors(self):
+        for f in self.curlmulti.info_read()[2]:
+            raise pycurl.error(*f[1:])
+
+    def iter_lines(self):
+        chunks = self._iter_chunks()
+        return self._split_lines_from_chunks(chunks)
+
+    @staticmethod
+    def _split_lines_from_chunks(chunks):
+        #same behaviour as requests' Response.iter_lines(...)
+
+        pending = None
+        for chunk in chunks:
+
+            if pending is not None:
+                chunk = pending + chunk
+            lines = chunk.splitlines()
+
+            if lines and lines[-1] and chunk and lines[-1][-1] == chunk[-1]:
+                pending = lines.pop()
+            else:
+                pending = None
+
+            for line in lines:
+                yield line
+
+        if pending is not None:
+            yield pending
 
 
 def resolve_ip(host):

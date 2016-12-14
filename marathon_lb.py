@@ -50,7 +50,8 @@ from common import (get_marathon_auth_params, set_logging_args,
                     set_marathon_auth_args, setup_logging)
 from config import ConfigTemplater, label_keys
 from lrucache import LRUCache
-from utils import get_task_ip_and_ports, ServicePortAssigner, set_ip_cache
+from utils import (CurlHttpEventStream, get_task_ip_and_ports,
+                   ServicePortAssigner, set_ip_cache)
 
 
 logger = logging.getLogger('marathon_lb')
@@ -238,17 +239,7 @@ class Marathon(object):
         logger.info(
             "SSE Active, trying fetch events from {0}".format(url))
 
-        headers = {
-            'Cache-Control': 'no-cache',
-            'Accept': 'text/event-stream'
-        }
-
-        resp = requests.get(url,
-                            stream=True,
-                            headers=headers,
-                            timeout=(3.05, 46),
-                            auth=self.__auth,
-                            verify=self.__verify)
+        resp = CurlHttpEventStream(url, self.__auth, self.__verify)
 
         class Event(object):
             def __init__(self, data):

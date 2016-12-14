@@ -4,7 +4,10 @@ FROM debian:stretch
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
         iptables \
+        libcurl3 \
         liblua5.3-0 \
+        libssl1.0.2 \
+        openssl \
         procps \
         python3 \
         runit \
@@ -37,6 +40,7 @@ COPY requirements.txt /marathon-lb/
 RUN set -x \
     && buildDeps=' \
         gcc \
+        libcurl4-openssl-dev \
         libffi-dev \
         liblua5.3-dev \
         libpcre3-dev \

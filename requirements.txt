@@ -1,5 +1,6 @@
 cryptography
 PyJWT==1.4.0
+pycurl
 python-dateutil
 requests
 six
