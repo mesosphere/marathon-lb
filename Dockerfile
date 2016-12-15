@@ -37,6 +37,9 @@ RUN set -x \
 # will probably be uninstalled with the build dependencies.
     && pip3 install --no-cache --upgrade --force-reinstall -r /marathon-lb/requirements.txt \
     && /marathon-lb/build-haproxy.sh \
+    && wget -O - https://github.com/prometheus/haproxy_exporter/releases/download/v0.7.1/haproxy_exporter-0.7.1.linux-amd64.tar.gz | tar zxf - \
+    && mv haproxy_exporter-0.7.1.linux-amd64/haproxy_exporter /marathon-lb/haproxy_exporter \
+    && rm -rf haproxy_exporter-0.7.1.linux-amd64 \
     && apt-get purge -y --auto-remove $buildDeps
 
 COPY  . /marathon-lb
@@ -47,4 +50,4 @@ ENTRYPOINT [ "/marathon-lb/run" ]
 
 CMD [ "sse", "--health-check", "--group", "external" ]
 
-EXPOSE 80 443 9090 9091
+EXPOSE 80 443 9090 9091 9101

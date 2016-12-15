@@ -1,0 +1,3 @@
+#!/bin/sh
+exec 2>&1
+exec /marathon-lb/haproxy_exporter -haproxy.scrape-uri=unix:/var/run/haproxy/socket

@@ -18,6 +18,7 @@ fast, efficient, battle-tested, highly available load balancer with many advance
  * Automated Docker image builds ([mesosphere/marathon-lb](https://hub.docker.com/r/mesosphere/marathon-lb))
  * Global HAProxy templates which can be supplied at launch
  * Supports IP-per-task integration, such as [Project Calico](https://github.com/projectcalico/calico-containers)
+ * Prometheus haproxy exporter
 
 ### Getting Started
 
@@ -348,6 +349,11 @@ specify it.  The range is configured using the `--min-serv-port-ip-per-task` and
 `--max-serv-port-ip-per-task` options. While port assignment is deterministic, the
 assignment is not guaranteed if you change the current set of deployed apps. In
 other words, when you deploy a new app, the port assignments may change.
+
+
+# Prometheus exporter
+
+A Prometheus [haproxy_exporter](https://github.com/prometheus/haproxy_exporter) is exposed on port 9101
 
 ## Contributing
 
