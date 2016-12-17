@@ -7,9 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         procps \
         python3 \
         runit \
-        socat \
-        gpg \
-        dirmngr 
+        socat
 
 COPY requirements.txt build-haproxy.sh \
     /marathon-lb/
@@ -32,6 +30,8 @@ RUN set -x \
         python3-pip \
         python3-setuptools \
         wget \
+        gpg \
+        dirmngr \
     ' \
     && apt-get update \
     && apt-get install -y --no-install-recommends $buildDeps \
