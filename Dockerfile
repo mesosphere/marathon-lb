@@ -3,6 +3,7 @@ FROM debian:stretch
 # runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
         openssl \
+        libssl1.0.2 \
         procps \
         python3 \
         runit \
