@@ -19,6 +19,7 @@ fast, efficient, battle-tested, highly available load balancer with many advance
  * Global HAProxy templates which can be supplied at launch
  * Supports IP-per-task integration, such as [Project Calico](https://github.com/projectcalico/calico-containers)
  * Prometheus haproxy exporter
+ * Include [tini](https://github.com/krallin/tini) zombies reaper
 
 ### Getting Started
 
@@ -351,9 +352,18 @@ assignment is not guaranteed if you change the current set of deployed apps. In
 other words, when you deploy a new app, the port assignments may change.
 
 
-# Prometheus exporter
+## Prometheus exporter
 
 A Prometheus [haproxy_exporter](https://github.com/prometheus/haproxy_exporter) is exposed on port 9101
+
+
+## Zombies reaping
+
+When running within isolated containers, you may have to care about reaping orphan child processes.
+Haproxy typicaly produce orphan processes because of it's two steps reload machanism.
+Marathon-lb is using [tini](https://github.com/krallin/tini) for this purpose.
+When running in a container whitout pid namespace isolation, setting the `TINI_SUBREAPER` environnement variable is recommended.
+
 
 ## Contributing
 
