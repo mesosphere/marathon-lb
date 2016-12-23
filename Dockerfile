@@ -20,7 +20,7 @@ RUN set -x \
     && export GNUPGHOME="$(mktemp -d)" \
     && gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$TINI_GPG_KEY" \
     && gpg --batch --verify tini.asc tini \
-    && rm -r "$GNUPGHOME" tini.asc \
+    && rm -rf "$GNUPGHOME" tini.asc \
     && mv tini /usr/bin/tini \
     && chmod +x /usr/bin/tini \
     && tini -- true \
