@@ -354,7 +354,8 @@ other words, when you deploy a new app, the port assignments may change.
 
 ## Prometheus exporter
 
-A Prometheus [haproxy_exporter](https://github.com/prometheus/haproxy_exporter) is exposed on port 9101
+A Prometheus [haproxy_exporter](https://github.com/prometheus/haproxy_exporter) is available on port 9101.
+set `PROM_EXPORTER_ENABLED=1` env var to enable.
 
 
 ## Zombies reaping
