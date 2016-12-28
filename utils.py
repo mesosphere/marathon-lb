@@ -7,6 +7,7 @@ import socket
 
 import pycurl
 
+from common import DCOSAuth
 from lrucache import LRUCache
 
 logger = logging.getLogger('utils')
@@ -150,17 +151,23 @@ class CurlHttpEventStream(object):
         self.url = url
         self.received_buffer = BytesIO()
 
+        headers = ['Cache-Control: no-cache', 'Accept: text/event-stream']
+
         self.curl = pycurl.Curl()
         self.curl.setopt(pycurl.URL, url)
-        self.curl.setopt(pycurl.HTTPHEADER, ['Cache-Control: no-cache', 'Accept: text/event-stream'])
         self.curl.setopt(pycurl.ENCODING, 'gzip')
-        self.curl.setopt(pycurl.CONNECTTIMEOUT, 5)
+        self.curl.setopt(pycurl.CONNECTTIMEOUT, 10)
         self.curl.setopt(pycurl.WRITEDATA, self.received_buffer)
-        if auth:
+        if auth and type(auth) is DCOSAuth:
+            auth.refresh_auth_header()
+            headers.append('Authorization: %s' % auth.auth_header)
+        elif auth:
             self.curl.setopt(pycurl.HTTPAUTH, pycurl.HTTPAUTH_BASIC)
             self.curl.setopt(pycurl.USERPWD, '%s:%s' % auth)
         if verify:
             self.curl.setopt(pycurl.CA_INFO, verify)
+
+        self.curl.setopt(pycurl.HTTPHEADER, headers)
 
         self.curlmulti = pycurl.CurlMulti()
         self.curlmulti.add_handle(self.curl)

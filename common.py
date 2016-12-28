@@ -35,9 +35,8 @@ def setup_logging(logger, syslog_socket, log_format, log_level='DEBUG'):
 
 def set_marathon_auth_args(parser):
     parser.add_argument("--marathon-auth-credential-file",
-                        help="Path to file containing a user/pass for "
-                        "the Marathon HTTP API in the format of 'user:pass'."
-                        )
+                        help="Path to file containing a user/pass for the "
+                        "Marathon HTTP API in the format of 'user:pass'.")
     parser.add_argument("--auth-credentials",
                         help="user/pass for the Marathon HTTP API in the "
                              "format of 'user:pass'.")
@@ -63,12 +62,18 @@ class DCOSAuth(AuthBase):
             self.verify = ca_cert
 
     def __call__(self, auth_request):
-        if not self.auth_header or int(time.time()) >= self.expiry - 10:
-            self.expiry = int(time.time()) + 3600
+        self.refresh_auth_header()
+        auth_request.headers['Authorization'] = self.auth_header
+        return auth_request
+
+    def refresh_auth_header(self):
+        now = int(time.time())
+        if not self.auth_header or now >= self.expiry - 10:
+            self.expiry = now + 3600
             payload = {
                 'uid': self.uid,
                 # This is the expiry of the auth request params
-                'exp': int(time.time()) + 60,
+                'exp': now + 60,
             }
             token = jwt.encode(payload, self.private_key, 'RS256')
 
@@ -86,9 +91,6 @@ class DCOSAuth(AuthBase):
 
             self.auth_header = 'token=' + r.cookies['dcos-acs-auth-cookie']
 
-        auth_request.headers['Authorization'] = self.auth_header
-        return auth_request
-
 
 def get_marathon_auth_params(args):
     marathon_auth = None
@@ -99,8 +101,7 @@ def get_marathon_auth_params(args):
         if line:
             marathon_auth = tuple(line.split(':'))
     elif args.auth_credentials:
-        marathon_auth = \
-            tuple(args.auth_credentials.split(':'))
+        marathon_auth = tuple(args.auth_credentials.split(':'))
     elif args.dcos_auth_credentials:
         return DCOSAuth(args.dcos_auth_credentials, args.marathon_ca_cert)
 
@@ -119,14 +120,11 @@ def set_logging_args(parser):
     parser.add_argument("--syslog-socket",
                         help="Socket to write syslog messages to. "
                         "Use '/dev/null' to disable logging to syslog",
-                        default=default_log_socket
-                        )
+                        default=default_log_socket)
     parser.add_argument("--log-format",
                         help="Set log message format",
-                        default="%(asctime)-15s %(name)s: %(message)s"
-                        )
+                        default="%(asctime)-15s %(name)s: %(message)s")
     parser.add_argument("--log-level",
                         help="Set log level",
-                        default="DEBUG"
-                        )
+                        default="DEBUG")
     return parser
