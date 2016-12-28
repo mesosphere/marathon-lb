@@ -82,17 +82,8 @@ case "$MODE" in
   sse)
     ARGS="--sse"
     ;;
-  event)
-    URL=$1; shift
-    if [ -z "$URL" ] || echo "$URL" | grep -q '^-'; then
-      echo "$0 event callback-url [marathon_lb.py args]" >&2
-      exit 1
-    fi
-    echo "Using $URL as event callback-url"
-    ARGS="-u $URL"
-    ;;
   *)
-    echo "Unknown mode $MODE. Synopsis: $0 poll|sse|event [marathon_lb.py args]" >&2
+    echo "Unknown mode $MODE. Synopsis: $0 poll|sse [marathon_lb.py args]" >&2
     exit 1
     ;;
 esac

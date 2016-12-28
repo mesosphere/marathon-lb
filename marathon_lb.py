@@ -14,8 +14,6 @@ Every service port in Marathon can be configured independently.
 ### Configuration
 Service configuration lives in Marathon via labels.
 Marathon-lb just needs to know where to find Marathon.
-To run in listening mode you must also specify the address + port at
-which marathon-lb can be reached by Marathon.
 
 ### Command Line Usage
 """
@@ -40,7 +38,6 @@ from itertools import cycle
 from operator import attrgetter
 from shutil import move
 from tempfile import mkstemp
-from wsgiref.simple_server import make_server
 
 import dateutil.parser
 import requests
@@ -222,18 +219,6 @@ class Marathon(object):
         logger.info('fetching tasks')
         return self.api_req('GET', ['tasks'])["tasks"]
 
-    def add_subscriber(self, callbackUrl):
-        return self.api_req(
-                'POST',
-                ['eventSubscriptions'],
-                params={'callbackUrl': callbackUrl})
-
-    def remove_subscriber(self, callbackUrl):
-        return self.api_req(
-                'DELETE',
-                ['eventSubscriptions'],
-                params={'callbackUrl': callbackUrl})
-
     def get_event_stream(self):
         url = self.host + "/v2/events"
         logger.info(
@@ -344,7 +329,7 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
     config = templater.haproxy_head
     groups = frozenset(groups)
     duplicate_map = {}
-    # donot repeat use backend multiple times since map file is same.
+    # do not repeat use backend multiple times since map file is same.
     _ssl_certs = ssl_certs or "/etc/ssl/cert.pem"
     _ssl_certs = _ssl_certs.split(",")
 
@@ -1588,14 +1573,6 @@ def get_arg_parser():
                              "-m http://marathon1:8080 http://marathon2:8080",
                         default=["http://master.mesos:8080"]
                         )
-    parser.add_argument("--listening", "-l",
-                        help="(deprecated) The address this script listens " +
-                        " on for marathon events (e.g., http://0.0.0.0:8080)"
-                        )
-    parser.add_argument("--callback-url", "-u",
-                        help="The HTTP address that Marathon can call this " +
-                             "script back at (http://lb1:8080)"
-                        )
     parser.add_argument("--haproxy-config",
                         help="Location of haproxy configuration",
                         default="/etc/haproxy/haproxy.cfg"
@@ -1610,8 +1587,7 @@ def get_arg_parser():
                         help="If set, run this command to reload haproxy.",
                         default=None)
     parser.add_argument("--sse", "-s",
-                        help="Use Server Sent Events instead of HTTP "
-                        "Callbacks",
+                        help="Use Server Sent Events",
                         action="store_true")
     parser.add_argument("--health-check", "-H",
                         help="If set, respect Marathon's health check "
@@ -1652,35 +1628,6 @@ def get_arg_parser():
     parser = set_logging_args(parser)
     parser = set_marathon_auth_args(parser)
     return parser
-
-
-def run_server(marathon, listen_addr, callback_url, processor):
-    try:
-        processor.start()
-        marathon.add_subscriber(callback_url)
-
-        # TODO(cmaloney): Switch to a sane http server
-        # TODO(cmaloney): Good exception catching, etc
-        def wsgi_app(env, start_response):
-            length = int(env['CONTENT_LENGTH'])
-            data = env['wsgi.input'].read(length)
-            processor.handle_event(json.loads(data.decode('utf-8')))
-            # TODO(cmaloney): Make this have a simple useful webui for
-            # debugging / monitoring
-            start_response('200 OK', [('Content-Type', 'text/html')])
-
-            return ["Got it\n".encode('utf-8')]
-
-        listen_uri = parse.urlparse(listen_addr)
-        httpd = make_server(listen_uri.hostname, listen_uri.port, wsgi_app)
-        httpd.serve_forever()
-    finally:
-        processor.stop()
-
-
-def clear_callbacks(marathon, callback_url):
-    logger.info("Cleanup, removing subscription to {0}".format(callback_url))
-    marathon.remove_subscriber(callback_url)
 
 
 def process_sse_events(marathon, processor):
@@ -1728,9 +1675,6 @@ if __name__ == '__main__':
     else:
         if args.marathon is None:
             arg_parser.error('argument --marathon/-m is required')
-        if args.sse and args.listening:
-            arg_parser.error(
-                'cannot use --listening and --sse at the same time')
         if bool(args.min_serv_port_ip_per_task) != \
            bool(args.max_serv_port_ip_per_task):
             arg_parser.error(
@@ -1771,7 +1715,7 @@ if __name__ == '__main__':
 
     # If we're going to be handling events, set up the event processor and
     # hook it up to the process signals.
-    if args.listening or args.sse:
+    if args.sse:
         processor = MarathonEventProcessor(marathon,
                                            args.haproxy_config,
                                            args.group,
@@ -1780,18 +1724,6 @@ if __name__ == '__main__':
                                            args.haproxy_map)
         signal.signal(signal.SIGHUP, processor.handle_signal)
         signal.signal(signal.SIGUSR1, processor.handle_signal)
-
-    # If in listening mode, spawn a webserver waiting for events. Otherwise
-    # just write the config.
-    if args.listening:
-        logger.warning("The event callback mode is deprecated "
-                       "and will be removed in future releases")
-        callback_url = args.callback_url or args.listening
-        try:
-            run_server(marathon, args.listening, callback_url, processor)
-        finally:
-            clear_callbacks(marathon, callback_url)
-    elif args.sse:
         backoff = 3
         while True:
             stream_started = time.time()

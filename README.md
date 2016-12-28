@@ -86,14 +86,6 @@ newer versions.
 
 Syntax: `docker run mesosphere/marathon-lb sse [other args]`
 
-#### `event` mode
-**NOTE**: `event` mode is deprecated and will be removed from marathon-lb in future releases.
-
-In event mode, the script registers a HTTP callback in marathon to get
-notified when state changes.
-
-Syntax: `docker run mesosphere/marathon-lb event callback-addr:port [other args]`
-
 #### `poll` mode
 If you can't use the HTTP callbacks, the script can poll the APIs to get
 the schedulers state periodically.
