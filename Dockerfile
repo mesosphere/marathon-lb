@@ -4,7 +4,6 @@ FROM debian:stretch
 RUN apt-get update && apt-get install -y --no-install-recommends \
         iptables \
         openssl \
-        libssl1.0.2 \
         procps \
         python3 \
         runit \
@@ -25,7 +24,7 @@ RUN set -x \
         libffi-dev \
         libpcre3-dev \
         libreadline-dev \
-        libssl1.0-dev \
+        libssl-dev \
         zlib1g-dev \
         make \
         python3-dev \
