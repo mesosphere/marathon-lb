@@ -8,7 +8,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         procps \
         python3 \
         runit \
-        socat
+        socat \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt build-haproxy.sh \
     /marathon-lb/
