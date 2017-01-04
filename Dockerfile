@@ -72,7 +72,7 @@ RUN set -x \
     && rm haproxy.tar.gz \
     && make -C /usr/src/haproxy \
         TARGET=linux2628 \
-        CPU=x86_64 \
+        ARCH=x86_64 \
         USE_LUA=1 \
         LUA_INC=/usr/local/include/ \
         LUA_LIB=/usr/local/lib/ \
