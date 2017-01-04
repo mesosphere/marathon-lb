@@ -61,7 +61,7 @@ RUN set -x \
     && mkdir -p /usr/src/lua \
     && tar -xzf lua.tar.gz -C /usr/src/lua --strip-components=1 \
     && rm lua.tar.gz \
-    && make -C /usr/src/lua linux install LUA_LIB_NAME=lua53 \
+    && make -C /usr/src/lua linux install \
     && rm -rf /usr/src/lua \
     \
 # Build HAProxy
