@@ -61,7 +61,7 @@ RUN set -x \
     && mkdir -p /usr/src/lua \
     && tar -xzf lua.tar.gz -C /usr/src/lua --strip-components=1 \
     && rm lua.tar.gz \
-    && make -j4 -C /usr/src/lua linux install LUA_LIB_NAME=lua53 \
+    && make -C /usr/src/lua linux install LUA_LIB_NAME=lua53 \
     && rm -rf /usr/src/lua \
     \
 # Build HAProxy
@@ -70,7 +70,7 @@ RUN set -x \
     && mkdir -p /usr/src/haproxy \
     && tar -xzf haproxy.tar.gz -C /usr/src/haproxy --strip-components=1 \
     && rm haproxy.tar.gz \
-    && make -j4 -C /usr/src/haproxy \
+    && make -C /usr/src/haproxy \
         TARGET=linux2628 \
         CPU=x86_64 \
         USE_PCRE=1 \
