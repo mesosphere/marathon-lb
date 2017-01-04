@@ -73,14 +73,14 @@ RUN set -x \
     && make -C /usr/src/haproxy \
         TARGET=linux2628 \
         CPU=x86_64 \
-        USE_PCRE=1 \
+        USE_LUA=1 \
+        LUA_INC=/usr/local/include/ \
+        LUA_LIB=/usr/local/lib/ \
+        USE_OPENSSL=1 \
         USE_PCRE_JIT=1 \
+        USE_PCRE=1 \
         USE_REGPARM=1 \
         USE_STATIC_PCRE=1 \
-        USE_OPENSSL=1 \
-        USE_LUA=1 \
-        LUA_LIB=/usr/local/lib/ \
-        LUA_INC=/usr/local/include/ \
         USE_ZLIB=1 \
         all \
         install-bin \
