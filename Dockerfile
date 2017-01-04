@@ -10,12 +10,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         socat \
     && rm -rf /var/lib/apt/lists/*
 
+ENV TINI_VERSION=v0.13.1 \
+    TINI_GPG_KEY=595E85A6B1B4779EA4DAAEC70B588DFF0527A9B7
+RUN set -x \
+    && apt-get update && apt-get install -y --no-install-recommends dirmngr gpg wget \
+        && rm -rf /var/lib/apt/lists/* \
+    && wget -O tini "https://github.com/krallin/tini/releases/download/$TINI_VERSION/tini-amd64" \
+    && wget -O tini.asc "https://github.com/krallin/tini/releases/download/$TINI_VERSION/tini-amd64.asc" \
+    && export GNUPGHOME="$(mktemp -d)" \
+    && gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$TINI_GPG_KEY" \
+    && gpg --batch --verify tini.asc tini \
+    && rm -r "$GNUPGHOME" tini.asc \
+    && mv tini /usr/bin/tini \
+    && chmod +x /usr/bin/tini \
+    && tini -- true \
+    && apt-get purge -y --auto-remove dirmngr gpg wget
+
 COPY requirements.txt build-haproxy.sh \
     /marathon-lb/
-
-ENV TINI_VERSION v0.13.1
-ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
-ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini.asc /tini.asc
 
 RUN set -x \
     && buildDeps=' \
@@ -31,8 +43,6 @@ RUN set -x \
         python3-pip \
         python3-setuptools \
         wget \
-        gpg \
-        dirmngr \
     ' \
     && apt-get update \
     && apt-get install -y --no-install-recommends $buildDeps \
@@ -43,16 +53,13 @@ RUN set -x \
 # will probably be uninstalled with the build dependencies.
     && pip3 install --no-cache --upgrade --force-reinstall -r /marathon-lb/requirements.txt \
     && /marathon-lb/build-haproxy.sh \
-    && gpg --keyserver ha.pool.sks-keyservers.net --recv-keys 595E85A6B1B4779EA4DAAEC70B588DFF0527A9B7 \
-    && gpg --verify /tini.asc \
-    && chmod +x /tini \
     && apt-get purge -y --auto-remove $buildDeps
 
 COPY  . /marathon-lb
 
 WORKDIR /marathon-lb
 
-ENTRYPOINT [ "/tini", "-g", "--", "/marathon-lb/run" ]
+ENTRYPOINT [ "tini", "-g", "--", "/marathon-lb/run" ]
 CMD [ "sse", "--health-check", "--group", "external" ]
 
 EXPOSE 80 443 9090 9091
