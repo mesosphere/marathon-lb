@@ -26,8 +26,15 @@ RUN set -x \
     && tini -- true \
     && apt-get purge -y --auto-remove dirmngr gpg wget
 
-COPY requirements.txt build-haproxy.sh \
-    /marathon-lb/
+
+ENV LUA_VERSION=5.3.3 \
+    LUA_SHA1=a0341bc3d1415b814cc738b2ec01ae56045d64ef
+
+ENV HAPROXY_MAJOR=1.7 \
+    HAPROXY_VERSION=1.7.1 \
+    HAPROXY_MD5=d0acaae02e444039e11892ea31dde478
+
+COPY requirements.txt /marathon-lb/
 
 RUN set -x \
     && buildDeps=' \
@@ -47,12 +54,45 @@ RUN set -x \
     && apt-get update \
     && apt-get install -y --no-install-recommends $buildDeps \
     && rm -rf /var/lib/apt/lists/* \
+    \
+# Build Lua
+    && wget -O lua.tar.gz "http://www.lua.org/ftp/lua-$LUA_VERSION.tar.gz" \
+    && echo "$LUA_SHA1  lua.tar.gz" | sha1sum -c \
+    && mkdir -p /usr/src/lua \
+    && tar -xzf lua.tar.gz -C /usr/src/lua --strip-components=1 \
+    && rm lua.tar.gz \
+    && make -j4 -C /usr/src/lua linux install LUA_LIB_NAME=lua53 \
+    && rm -rf /usr/src/lua \
+    \
+# Build HAProxy
+    && wget -O haproxy.tar.gz "http://www.haproxy.org/download/$HAPROXY_MAJOR/src/haproxy-$HAPROXY_VERSION.tar.gz" \
+    && echo "$HAPROXY_MD5  haproxy.tar.gz" | md5sum -c \
+    && mkdir -p /usr/src/haproxy \
+    && tar -xzf haproxy.tar.gz -C /usr/src/haproxy --strip-components=1 \
+    && rm haproxy.tar.gz \
+    && make -j4 -C /usr/src/haproxy \
+        TARGET=linux2628 \
+        CPU=x86_64 \
+        USE_PCRE=1 \
+        USE_PCRE_JIT=1 \
+        USE_REGPARM=1 \
+        USE_STATIC_PCRE=1 \
+        USE_OPENSSL=1 \
+        USE_LUA=1 \
+        LUA_LIB=/usr/local/lib/ \
+        LUA_INC=/usr/local/include/ \
+        USE_ZLIB=1 \
+        all \
+        install-bin \
+    && rm -rf /usr/src/haproxy \
+    \
+# Install Python dependencies
 # Install Python packages with --upgrade so we get new packages even if a system
 # package is already installed. Combine with --force-reinstall to ensure we get
 # a local package even if the system package is up-to-date as the system package
 # will probably be uninstalled with the build dependencies.
     && pip3 install --no-cache --upgrade --force-reinstall -r /marathon-lb/requirements.txt \
-    && /marathon-lb/build-haproxy.sh \
+    \
     && apt-get purge -y --auto-remove $buildDeps
 
 COPY  . /marathon-lb
