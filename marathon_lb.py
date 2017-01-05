@@ -1258,18 +1258,17 @@ def get_apps(marathon):
             cur = app
 
             # If for some reason neither label is set correctly, then it's a
-            # crapshoot.
+            # crapshoot. Most likely, whichever one is unset was not deployed
+            # with ZDD, so we should prefer the one with a date set.
+            cur_date = datetime.datetime.min
+            prev_date = datetime.datetime.min
             if 'HAPROXY_DEPLOYMENT_STARTED_AT' in prev['labels']:
                 prev_date = dateutil.parser.parse(
                     prev['labels']['HAPROXY_DEPLOYMENT_STARTED_AT'])
-            else:
-                prev_date = datetime.datetime.min
 
             if 'HAPROXY_DEPLOYMENT_STARTED_AT' in cur['labels']:
                 cur_date = dateutil.parser.parse(
                     cur['labels']['HAPROXY_DEPLOYMENT_STARTED_AT'])
-            else:
-                prev_date = datetime.datetime.min
 
             old = new = None
             if prev_date < cur_date:
