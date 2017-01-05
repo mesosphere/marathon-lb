@@ -56,7 +56,7 @@ RUN set -x \
     && rm -rf /var/lib/apt/lists/* \
     \
 # Build Lua
-    && wget -O lua.tar.gz "http://www.lua.org/ftp/lua-$LUA_VERSION.tar.gz" \
+    && wget -O lua.tar.gz "https://www.lua.org/ftp/lua-$LUA_VERSION.tar.gz" \
     && echo "$LUA_SHA1  lua.tar.gz" | sha1sum -c \
     && mkdir -p /usr/src/lua \
     && tar -xzf lua.tar.gz -C /usr/src/lua --strip-components=1 \
@@ -65,7 +65,7 @@ RUN set -x \
     && rm -rf /usr/src/lua \
     \
 # Build HAProxy
-    && wget -O haproxy.tar.gz "http://www.haproxy.org/download/$HAPROXY_MAJOR/src/haproxy-$HAPROXY_VERSION.tar.gz" \
+    && wget -O haproxy.tar.gz "https://www.haproxy.org/download/$HAPROXY_MAJOR/src/haproxy-$HAPROXY_VERSION.tar.gz" \
     && echo "$HAPROXY_MD5  haproxy.tar.gz" | md5sum -c \
     && mkdir -p /usr/src/haproxy \
     && tar -xzf haproxy.tar.gz -C /usr/src/haproxy --strip-components=1 \
