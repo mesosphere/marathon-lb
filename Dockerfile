@@ -2,20 +2,39 @@ FROM debian:stretch
 
 # runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates \
         iptables \
-        openssl \
-        libssl1.0.2 \
         procps \
         python3 \
         runit \
-        socat
+        socat \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt build-haproxy.sh \
-    /marathon-lb/
+ENV TINI_VERSION=v0.13.2 \
+    TINI_GPG_KEY=595E85A6B1B4779EA4DAAEC70B588DFF0527A9B7
+RUN set -x \
+    && apt-get update && apt-get install -y --no-install-recommends dirmngr gpg wget \
+        && rm -rf /var/lib/apt/lists/* \
+    && wget -O tini "https://github.com/krallin/tini/releases/download/$TINI_VERSION/tini-amd64" \
+    && wget -O tini.asc "https://github.com/krallin/tini/releases/download/$TINI_VERSION/tini-amd64.asc" \
+    && export GNUPGHOME="$(mktemp -d)" \
+    && gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$TINI_GPG_KEY" \
+    && gpg --batch --verify tini.asc tini \
+    && rm -r "$GNUPGHOME" tini.asc \
+    && mv tini /usr/bin/tini \
+    && chmod +x /usr/bin/tini \
+    && tini -- true \
+    && apt-get purge -y --auto-remove dirmngr gpg wget
 
-ENV TINI_VERSION v0.13.1
-ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
-ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini.asc /tini.asc
+
+ENV LUA_VERSION=5.3.3 \
+    LUA_SHA1=a0341bc3d1415b814cc738b2ec01ae56045d64ef
+
+ENV HAPROXY_MAJOR=1.7 \
+    HAPROXY_VERSION=1.7.1 \
+    HAPROXY_MD5=d0acaae02e444039e11892ea31dde478
+
+COPY requirements.txt /marathon-lb/
 
 RUN set -x \
     && buildDeps=' \
@@ -24,35 +43,63 @@ RUN set -x \
         libffi-dev \
         libpcre3-dev \
         libreadline-dev \
-        libssl1.0-dev \
+        libssl-dev \
         zlib1g-dev \
         make \
         python3-dev \
         python3-pip \
         python3-setuptools \
         wget \
-        gpg \
-        dirmngr \
     ' \
     && apt-get update \
     && apt-get install -y --no-install-recommends $buildDeps \
     && rm -rf /var/lib/apt/lists/* \
+    \
+# Build Lua
+    && wget -O lua.tar.gz "https://www.lua.org/ftp/lua-$LUA_VERSION.tar.gz" \
+    && echo "$LUA_SHA1  lua.tar.gz" | sha1sum -c \
+    && mkdir -p /usr/src/lua \
+    && tar -xzf lua.tar.gz -C /usr/src/lua --strip-components=1 \
+    && rm lua.tar.gz \
+    && make -C /usr/src/lua linux install \
+    && rm -rf /usr/src/lua \
+    \
+# Build HAProxy
+    && wget -O haproxy.tar.gz "https://www.haproxy.org/download/$HAPROXY_MAJOR/src/haproxy-$HAPROXY_VERSION.tar.gz" \
+    && echo "$HAPROXY_MD5  haproxy.tar.gz" | md5sum -c \
+    && mkdir -p /usr/src/haproxy \
+    && tar -xzf haproxy.tar.gz -C /usr/src/haproxy --strip-components=1 \
+    && rm haproxy.tar.gz \
+    && make -C /usr/src/haproxy \
+        TARGET=linux2628 \
+        ARCH=x86_64 \
+        USE_LUA=1 \
+        LUA_INC=/usr/local/include/ \
+        LUA_LIB=/usr/local/lib/ \
+        USE_OPENSSL=1 \
+        USE_PCRE_JIT=1 \
+        USE_PCRE=1 \
+        USE_REGPARM=1 \
+        USE_STATIC_PCRE=1 \
+        USE_ZLIB=1 \
+        all \
+        install-bin \
+    && rm -rf /usr/src/haproxy \
+    \
+# Install Python dependencies
 # Install Python packages with --upgrade so we get new packages even if a system
 # package is already installed. Combine with --force-reinstall to ensure we get
 # a local package even if the system package is up-to-date as the system package
 # will probably be uninstalled with the build dependencies.
     && pip3 install --no-cache --upgrade --force-reinstall -r /marathon-lb/requirements.txt \
-    && /marathon-lb/build-haproxy.sh \
-    && gpg --keyserver ha.pool.sks-keyservers.net --recv-keys 595E85A6B1B4779EA4DAAEC70B588DFF0527A9B7 \
-    && gpg --verify /tini.asc \
-    && chmod +x /tini \
+    \
     && apt-get purge -y --auto-remove $buildDeps
 
 COPY  . /marathon-lb
 
 WORKDIR /marathon-lb
 
-ENTRYPOINT [ "/tini", "-g", "--", "/marathon-lb/run" ]
+ENTRYPOINT [ "tini", "-g", "--", "/marathon-lb/run" ]
 CMD [ "sse", "--health-check", "--group", "external" ]
 
 EXPOSE 80 443 9090 9091
