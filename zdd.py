@@ -172,7 +172,10 @@ def parse_haproxy_stats(csv_data):
 
 
 def get_deployment_label(app):
-    return get_deployment_group(app) + "_" + app['labels']['HAPROXY_0_PORT']
+    if 'HAPROXY_0_PORT' in app['labels']:
+        return get_deployment_group(app) + "_" + app['labels']['HAPROXY_0_PORT']
+    else:
+        return get_deployment_group(app) + "_" + str(app['ports'][0])
 
 
 def _if_app_listener(app, listener):
@@ -286,7 +289,7 @@ def find_tasks_to_kill(args, new_app, old_app, timestamp):
     marathon_lb_urls = get_marathon_lb_urls(args)
     haproxy_count = len(marathon_lb_urls)
     try:
-        listeners = fetch_app_listeners(new_app, marathon_lb_urls)
+        listeners = fetch_app_listeners(old_app, marathon_lb_urls)
     except requests.exceptions.RequestException:
         raise MarathonLbEndpointException(
             "Error while querying Marathon-LB",
@@ -303,7 +306,7 @@ def find_tasks_to_kill(args, new_app, old_app, timestamp):
             continue
 
         try:
-            listeners = fetch_app_listeners(new_app, marathon_lb_urls)
+            listeners = fetch_app_listeners(old_app, marathon_lb_urls)
         except requests.exceptions.RequestException:
             # Restart loop if we hit an exception while loading listeners,
             # this may be normal behaviour
@@ -526,7 +529,9 @@ def validate_app(app):
         raise MissingFieldException("Please define the "
                                     "HAPROXY_DEPLOYMENT_GROUP label",
                                     'HAPROXY_DEPLOYMENT_GROUP')
-    if 'HAPROXY_DEPLOYMENT_ALT_PORT' not in app['labels']:
+    if ('servicePort' not in app['container']['docker']['portMappings'][0] \
+        or app['container']['docker']['portMappings'][0]['servicePort'] != 0) \
+        and 'HAPROXY_DEPLOYMENT_ALT_PORT' not in app['labels']:
         raise MissingFieldException("Please define the "
                                     "HAPROXY_DEPLOYMENT_ALT_PORT label",
                                     'HAPROXY_DEPLOYMENT_ALT_PORT')
@@ -543,7 +548,9 @@ def set_app_ids(app, colour):
 
 
 def set_service_ports(app, servicePort):
-    app['labels']['HAPROXY_0_PORT'] = str(get_service_port(app))
+    if 'servicePort' not in app['container']['docker']['portMappings'][0] \
+        or app['container']['docker']['portMappings'][0]['servicePort'] != 0:
+        app['labels']['HAPROXY_0_PORT'] = str(get_service_port(app))
     try:
         app['container']['docker']['portMappings'][0]['servicePort'] = \
           int(servicePort)
@@ -554,6 +561,8 @@ def set_service_ports(app, servicePort):
 
 
 def select_next_port(app):
+    if not 'HAPROXY_0_PORT' in app['labels']:
+        return app['container']['docker']['portMappings'][0]['servicePort']
     alt_port = int(app['labels']['HAPROXY_DEPLOYMENT_ALT_PORT'])
     if int(app['ports'][0]) == alt_port:
         return int(app['labels']['HAPROXY_0_PORT'])
