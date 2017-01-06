@@ -191,7 +191,10 @@ def waiting_for_listeners(new_app, old_app, listeners, haproxy_count):
 
 
 def get_deployment_target(app):
-    return int(app['labels']['HAPROXY_DEPLOYMENT_TARGET_INSTANCES'])
+    if 'HAPROXY_DEPLOYMENT_TARGET_INSTANCES' in app['labels']:
+        return int(app['labels']['HAPROXY_DEPLOYMENT_TARGET_INSTANCES'])
+    else:
+        return app['instances']
 
 
 def get_new_instance_count(app):
