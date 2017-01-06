@@ -40,7 +40,7 @@ make -j4 \
   LUA_LIB=/usr/local/lib/ \
   LUA_INC=/usr/local/include/ \
   USE_ZLIB=1
-make install-bin
+make EXTRA=haproxy-systemd-wrapper install-bin
 
 # Clean up
 cd /
