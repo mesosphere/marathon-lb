@@ -105,9 +105,7 @@ def get_marathon_auth_params(args):
         return DCOSAuth(args.dcos_auth_credentials, args.marathon_ca_cert)
 
     if marathon_auth and len(marathon_auth) != 2:
-        print(
-            "Please provide marathon credentials in user:pass format"
-        )
+        print("Please provide marathon credentials in user:pass format")
         sys.exit(1)
 
     return marathon_auth

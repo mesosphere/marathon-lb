@@ -279,7 +279,7 @@ def find_draining_task_ids(app, listeners, haproxy_count):
 
 
 def max_wait_not_exceeded(max_wait, timestamp):
-    return (time.time() - timestamp < max_wait)
+    return time.time() - timestamp < max_wait
 
 
 def find_tasks_to_kill(args, new_app, old_app, timestamp):
@@ -358,7 +358,7 @@ def _swap_zdd_apps(args, new_app, old_app):
 
     if deployment_in_progress(new_app):
         time.sleep(args.step_delay)
-        return (args, new_app, old_app)
+        return args, new_app, old_app
 
     tasks_to_kill = find_tasks_to_kill(args, new_app, old_app, time.time())
 
@@ -592,7 +592,7 @@ def fetch_previous_deploys(args, app):
 
 
 def prepare_deploy(args, previous_deploys, app):
-    """ Return a blue or a green version of `app` based on prexisting deploys
+    """ Return a blue or a green version of `app` based on preexisting deploys
     """
     if len(previous_deploys) > 0:
         last_deploy = select_last_deploy(previous_deploys)
@@ -637,7 +637,7 @@ def load_app_json(args):
 
 def safe_resume_deploy(args, previous_deploys):
     if args.complete_cur:
-        logger.info("Coverting all instances to current config")
+        logger.info("Converting all instances to current config")
         new_app, old_app = select_last_two_deploys(previous_deploys)
         logger.info("Current config color is %s" % new_app[
             'labels']['HAPROXY_DEPLOYMENT_COLOUR'])
@@ -647,7 +647,7 @@ def safe_resume_deploy(args, previous_deploys):
                     % new_app['labels']['HAPROXY_DEPLOYMENT_COLOUR'])
         return swap_zdd_apps(args, new_app, old_app)
     elif args.complete_prev:
-        logger.info("Coverting all instances to previous config")
+        logger.info("Converting all instances to previous config")
         old_app, new_app = select_last_two_deploys(previous_deploys)
         logger.info("Previous config color is %s" % new_app[
             'labels']['HAPROXY_DEPLOYMENT_COLOUR'])
