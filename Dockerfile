@@ -36,17 +36,16 @@ COPY requirements.txt /marathon-lb/
 RUN set -x \
     && buildDeps=' \
         gcc \
-        libc6-dev \
         libffi-dev \
         liblua5.3-dev \
         libpcre3-dev \
         libssl-dev \
-        zlib1g-dev \
         make \
         python3-dev \
         python3-pip \
         python3-setuptools \
         wget \
+        zlib1g-dev \
     ' \
     && apt-get update \
     && apt-get install -y --no-install-recommends $buildDeps \
