@@ -27,9 +27,6 @@ RUN set -x \
     && apt-get purge -y --auto-remove dirmngr gpg wget
 
 
-ENV LUA_VERSION=5.3.3 \
-    LUA_SHA1=a0341bc3d1415b814cc738b2ec01ae56045d64ef
-
 ENV HAPROXY_MAJOR=1.7 \
     HAPROXY_VERSION=1.7.1 \
     HAPROXY_MD5=d0acaae02e444039e11892ea31dde478
@@ -41,8 +38,8 @@ RUN set -x \
         gcc \
         libc6-dev \
         libffi-dev \
+        liblua5.3-dev \
         libpcre3-dev \
-        libreadline-dev \
         libssl-dev \
         zlib1g-dev \
         make \
@@ -55,15 +52,6 @@ RUN set -x \
     && apt-get install -y --no-install-recommends $buildDeps \
     && rm -rf /var/lib/apt/lists/* \
     \
-# Build Lua
-    && wget -O lua.tar.gz "https://www.lua.org/ftp/lua-$LUA_VERSION.tar.gz" \
-    && echo "$LUA_SHA1  lua.tar.gz" | sha1sum -c \
-    && mkdir -p /usr/src/lua \
-    && tar -xzf lua.tar.gz -C /usr/src/lua --strip-components=1 \
-    && rm lua.tar.gz \
-    && make -C /usr/src/lua linux install \
-    && rm -rf /usr/src/lua \
-    \
 # Build HAProxy
     && wget -O haproxy.tar.gz "https://www.haproxy.org/download/$HAPROXY_MAJOR/src/haproxy-$HAPROXY_VERSION.tar.gz" \
     && echo "$HAPROXY_MD5  haproxy.tar.gz" | md5sum -c \
@@ -74,8 +62,6 @@ RUN set -x \
         TARGET=linux2628 \
         ARCH=x86_64 \
         USE_LUA=1 \
-        LUA_INC=/usr/local/include/ \
-        LUA_LIB=/usr/local/lib/ \
         USE_OPENSSL=1 \
         USE_PCRE_JIT=1 \
         USE_PCRE=1 \
