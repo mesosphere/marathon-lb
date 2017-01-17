@@ -62,6 +62,7 @@ RUN set -x \
         TARGET=linux2628 \
         ARCH=x86_64 \
         USE_LUA=1 \
+        LUA_INC=/usr/include/lua5.3/ \
         USE_OPENSSL=1 \
         USE_PCRE_JIT=1 \
         USE_PCRE=1 \
