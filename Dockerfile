@@ -4,6 +4,7 @@ FROM debian:stretch
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
         iptables \
+        liblua5.3-0 \
         procps \
         python3 \
         runit \
@@ -27,42 +28,29 @@ RUN set -x \
     && apt-get purge -y --auto-remove dirmngr gpg wget
 
 
-ENV LUA_VERSION=5.3.3 \
-    LUA_SHA1=a0341bc3d1415b814cc738b2ec01ae56045d64ef
-
 ENV HAPROXY_MAJOR=1.7 \
-    HAPROXY_VERSION=1.7.1 \
-    HAPROXY_MD5=d0acaae02e444039e11892ea31dde478
+    HAPROXY_VERSION=1.7.2 \
+    HAPROXY_MD5=7330b36f3764ebe409e9305803dc30e2
 
 COPY requirements.txt /marathon-lb/
 
 RUN set -x \
     && buildDeps=' \
         gcc \
-        libc6-dev \
         libffi-dev \
+        liblua5.3-dev \
         libpcre3-dev \
-        libreadline-dev \
         libssl-dev \
-        zlib1g-dev \
         make \
         python3-dev \
         python3-pip \
         python3-setuptools \
         wget \
+        zlib1g-dev \
     ' \
     && apt-get update \
     && apt-get install -y --no-install-recommends $buildDeps \
     && rm -rf /var/lib/apt/lists/* \
-    \
-# Build Lua
-    && wget -O lua.tar.gz "https://www.lua.org/ftp/lua-$LUA_VERSION.tar.gz" \
-    && echo "$LUA_SHA1  lua.tar.gz" | sha1sum -c \
-    && mkdir -p /usr/src/lua \
-    && tar -xzf lua.tar.gz -C /usr/src/lua --strip-components=1 \
-    && rm lua.tar.gz \
-    && make -C /usr/src/lua linux install \
-    && rm -rf /usr/src/lua \
     \
 # Build HAProxy
     && wget -O haproxy.tar.gz "https://www.haproxy.org/download/$HAPROXY_MAJOR/src/haproxy-$HAPROXY_VERSION.tar.gz" \
@@ -74,8 +62,7 @@ RUN set -x \
         TARGET=linux2628 \
         ARCH=x86_64 \
         USE_LUA=1 \
-        LUA_INC=/usr/local/include/ \
-        LUA_LIB=/usr/local/lib/ \
+        LUA_INC=/usr/include/lua5.3/ \
         USE_OPENSSL=1 \
         USE_PCRE_JIT=1 \
         USE_PCRE=1 \
