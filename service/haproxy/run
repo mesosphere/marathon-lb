@@ -33,7 +33,7 @@ reload() {
 
     # Trigger reload
     LATEST_HAPROXY_PID=$(cat $PIDFILE)
-    /marathon-lb/haproxy_wrapper.py `which haproxy` -p $PIDFILE -f /marathon-lb/haproxy.cfg -sf $LATEST_HAPROXY_PID 200>&-
+    /marathon-lb/haproxy_wrapper.py `which haproxy` -D -p $PIDFILE -f /marathon-lb/haproxy.cfg -sf $LATEST_HAPROXY_PID 200>&-
     local exit_code=$?
     if [ $exit_code -ne 0 ]; then
       echo "HAProxy reload failed" 1>&2
