@@ -7,6 +7,8 @@ import errno
 
 def create_haproxy_pipe():
     pipefd = os.pipe()
+    os.set_inheritable(pipefd[0], True)
+    os.set_inheritable(pipefd[1], True)
     return pipefd
 
 
@@ -24,6 +26,7 @@ def wait_on_haproxy_pipe(pipefd):
         if len(ret) == 0:
             close_and_swallow(pipefd[0])
             close_and_swallow(pipefd[1])
+            return False
     except OSError as e:
         if e.args[0] != errno.EINTR:
             close_and_swallow(pipefd[0])
