@@ -12,14 +12,11 @@ Every service port in Marathon can be configured independently.
 ### Configuration
 Service configuration lives in Marathon via labels.
 Marathon-lb just needs to know where to find Marathon.
-To run in listening mode you must also specify the address + port at
-which marathon-lb can be reached by Marathon.
 
 ### Command Line Usage
 
 ```
 usage: marathon_lb.py [-h] [--longhelp] [--marathon MARATHON [MARATHON ...]]
-                      [--listening LISTENING] [--callback-url CALLBACK_URL]
                       [--haproxy-config HAPROXY_CONFIG] [--group GROUP]
                       [--command COMMAND] [--sse] [--health-check]
                       [--lru-cache-capacity LRU_CACHE_CAPACITY]
@@ -43,13 +40,6 @@ optional arguments:
                         [required] Marathon endpoint, eg. -m
                         http://marathon1:8080 http://marathon2:8080 (default:
                         ['http://master.mesos:8080'])
-  --listening LISTENING, -l LISTENING
-                        (deprecated) The address this script listens on for
-                        marathon events (e.g., http://0.0.0.0:8080) (default:
-                        None)
-  --callback-url CALLBACK_URL, -u CALLBACK_URL
-                        The HTTP address that Marathon can call this script
-                        back at (http://lb1:8080) (default: None)
   --haproxy-config HAPROXY_CONFIG
                         Location of haproxy configuration (default:
                         /etc/haproxy/haproxy.cfg)
@@ -59,8 +49,7 @@ optional arguments:
   --command COMMAND, -c COMMAND
                         If set, run this command to reload haproxy. (default:
                         None)
-  --sse, -s             Use Server Sent Events instead of HTTP Callbacks
-                        (default: False)
+  --sse, -s             Use Server Sent Events (default: False)
   --health-check, -H    If set, respect Marathon's health check statuses
                         before adding the app instance into the backend pool.
                         (default: False)
