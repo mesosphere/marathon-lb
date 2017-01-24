@@ -91,7 +91,7 @@ class MarathonBackend(object):
 
 class MarathonService(object):
 
-    def __init__(self, appId, servicePort, healthCheck):
+    def __init__(self, appId, servicePort, healthCheck, strictMode):
         self.appId = appId
         self.servicePort = servicePort
         self.backends = set()
@@ -105,6 +105,7 @@ class MarathonService(object):
         self.authUser = None
         self.authPasswd = None
         self.sticky = False
+        self.enabled = not strictMode
         self.redirectHttpToHttps = False
         self.useHsts = False
         self.sslCert = None
@@ -153,10 +154,11 @@ class MarathonApp(object):
 
 
 class Marathon(object):
-    def __init__(self, hosts, health_check, auth, ca_cert=None):
+    def __init__(self, hosts, health_check, strict_mode, auth, ca_cert=None):
         # TODO(cmaloney): Support getting master list from zookeeper
         self.__hosts = hosts
         self.__health_check = health_check
+        self.__strict_mode = strict_mode
         self.__auth = auth
         self.__cycle_hosts = cycle(self.__hosts)
         self.__verify = False
@@ -214,6 +216,9 @@ class Marathon(object):
 
     def health_check(self):
         return self.__health_check
+
+    def strict_mode(self):
+        return self.__strict_mode
 
     def tasks(self):
         logger.info('fetching tasks')
@@ -360,6 +365,9 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
         else:
             if not has_group(groups, app.groups):
                 continue
+        # Skip if it's not actually enabled
+        if not app.enabled:
+            continue
 
         logger.debug("configuring app %s", app.appId)
         if len(app.backends) < 1:
@@ -1333,8 +1341,9 @@ def get_apps(marathon):
                 logger.warning("Skipping undefined service port")
                 continue
 
-            service = MarathonService(
-                        appId, servicePort, get_health_check(app, i))
+            service = MarathonService(appId, servicePort,
+                                      get_health_check(app, i),
+                                      marathon.strict_mode())
 
             for key_unformatted in label_keys:
                 key = key_unformatted.format(i)
@@ -1580,12 +1589,17 @@ def get_arg_parser():
     parser.add_argument("--group",
                         help="[required] Only generate config for apps which"
                         " list the specified names. Use '*' to match all"
-                        " groups",
+                        " groups, including those without a group specified.",
                         action="append",
                         default=list())
     parser.add_argument("--command", "-c",
                         help="If set, run this command to reload haproxy.",
                         default=None)
+    parser.add_argument("--strict-mode",
+                        help="If set, backends are only advertised if"
+                        " HAPROXY_{n}_ENABLED=true. Strict mode will be"
+                        " enabled by default in a future release.",
+                        action="store_true")
     parser.add_argument("--sse", "-s",
                         help="Use Server Sent Events",
                         action="store_true")
@@ -1710,6 +1724,7 @@ if __name__ == '__main__':
     # Marathon API connector
     marathon = Marathon(args.marathon,
                         args.health_check,
+                        args.strict_mode,
                         get_marathon_auth_params(args),
                         args.marathon_ca_cert)
 
