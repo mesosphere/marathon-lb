@@ -100,7 +100,7 @@ You can also run the update script directly.
 To generate an HAProxy configuration from Marathon running at `localhost:8080` with the `marathon_lb.py` script, run:
 
 ```console
-$ ./marathon_lb.py --marathon http://localhost:8080 --group external
+$ ./marathon_lb.py --marathon http://localhost:8080 --group external --strict-mode --health-check
 ```
 
 It is possible to pass `--auth-credentials=` option if your Marathon requires authentication:
@@ -123,7 +123,7 @@ $ ./marathon_lb.py --help
 You can provide your SSL certificate paths to be placed in frontend marathon_https_in section with `--ssl-certs`.
 
 ``` console
-$ ./marathon_lb.py --marathon http://localhost:8080 --group external --ssl-certs /etc/ssl/site1.co,/etc/ssl/site2.co
+$ ./marathon_lb.py --marathon http://localhost:8080 --group external --ssl-certs /etc/ssl/site1.co,/etc/ssl/site2.co --health-check --strict-mode
 ```
 
 If you are using the script directly, you have two options:

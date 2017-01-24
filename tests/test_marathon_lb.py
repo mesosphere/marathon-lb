@@ -161,6 +161,7 @@ frontend marathon_https_in
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {
             "path": "/",
@@ -171,7 +172,8 @@ frontend marathon_https_in
             "timeoutSeconds": 10,
             "maxConsecutiveFailures": 10
         }
-        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                          strictMode)
         app.groups = ['external']
         app.add_backend("agent1", "1.1.1.1", 1024, False)
         apps = [app]
@@ -216,6 +218,7 @@ backend nginx_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {
             "path": "/",
@@ -229,7 +232,8 @@ backend nginx_10000
             "timeoutSeconds": 10,
             "maxConsecutiveFailures": 10
         }
-        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                          strictMode)
         app.groups = ['external']
         app.add_backend("agent1", "1.1.1.1", 1024, False)
         apps = [app]
@@ -267,6 +271,7 @@ backend nginx_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {
             "path": "/",
@@ -277,7 +282,8 @@ backend nginx_10000
             "timeoutSeconds": 10,
             "maxConsecutiveFailures": 10
         }
-        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                          strictMode)
         app.hostname = "test.example.com"
         app.groups = ['external']
         app.add_backend("agent1", "1.1.1.1", 1024, False)
@@ -326,6 +332,7 @@ backend nginx_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {
             "path": "/",
@@ -336,7 +343,8 @@ backend nginx_10000
             "timeoutSeconds": 10,
             "maxConsecutiveFailures": 10
         }
-        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                          strictMode)
         app.hostname = "test.example.com,test"
         app.groups = ['external']
         app.add_backend("agent1", "192.0.2.1", 1234, False)
@@ -387,6 +395,7 @@ backend nginx_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {
             "path": "/",
@@ -397,7 +406,8 @@ backend nginx_10000
             "timeoutSeconds": 10,
             "maxConsecutiveFailures": 10
         }
-        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                          strictMode)
         app.hostname = "test.example.com"
         app.groups = ['external']
         app.add_backend("agent1", "1.1.1.1", 1024, False)
@@ -447,6 +457,7 @@ backend nginx_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {
             "path": "/",
@@ -457,7 +468,8 @@ backend nginx_10000
             "timeoutSeconds": 10,
             "maxConsecutiveFailures": 10
         }
-        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                          strictMode)
         app.hostname = "test.example.com,test"
         app.groups = ['external']
         app.redirectHttpToHttps = True
@@ -509,6 +521,7 @@ backend nginx_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {
             "path": "/",
@@ -519,7 +532,8 @@ backend nginx_10000
             "timeoutSeconds": 10,
             "maxConsecutiveFailures": 10
         }
-        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                          strictMode)
         app.hostname = "test.example.com"
         app.groups = ['external']
         app.authRealm = "realm"
@@ -580,6 +594,7 @@ backend nginx_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {
             "path": "/",
@@ -590,7 +605,8 @@ backend nginx_10000
             "timeoutSeconds": 10,
             "maxConsecutiveFailures": 10
         }
-        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                          strictMode)
         app.hostname = "test.example.com,test"
         app.authRealm = "realm"
         app.authUser = "testuser"
@@ -656,6 +672,7 @@ backend nginx_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {
             "path": "/",
@@ -666,7 +683,8 @@ backend nginx_10000
             "timeoutSeconds": 10,
             "maxConsecutiveFailures": 10
         }
-        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                          strictMode)
         app.hostname = "test.example.com"
         app.path = '/some/path'
         app.groups = ['external']
@@ -730,6 +748,7 @@ backend nginx_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {
             "path": "/",
@@ -740,7 +759,8 @@ backend nginx_10000
             "timeoutSeconds": 10,
             "maxConsecutiveFailures": 10
         }
-        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                          strictMode)
         app.hostname = "test.example.com,test"
         app.path = '/some/path'
         app.groups = ['external']
@@ -810,6 +830,7 @@ backend nginx_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {
             "path": "/",
@@ -820,7 +841,8 @@ backend nginx_10000
             "timeoutSeconds": 10,
             "maxConsecutiveFailures": 10
         }
-        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                          strictMode)
         app.hostname = "test.example.com"
         app.path = '/some/path'
         app.groups = ['external']
@@ -872,6 +894,7 @@ backend nginx_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {
             "path": "/",
@@ -882,7 +905,8 @@ backend nginx_10000
             "timeoutSeconds": 10,
             "maxConsecutiveFailures": 10
         }
-        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                          strictMode)
         app.hostname = "test.example.com,test"
         app.path = '/some/path'
         app.groups = ['external']
@@ -937,6 +961,7 @@ backend nginx_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {
             "path": "/",
@@ -947,7 +972,8 @@ backend nginx_10000
             "timeoutSeconds": 10,
             "maxConsecutiveFailures": 10
         }
-        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                          strictMode)
         app.hostname = "test.example.com"
         app.path = '/some/path'
         app.groups = ['external']
@@ -1001,6 +1027,7 @@ backend nginx_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {
             "path": "/",
@@ -1011,7 +1038,8 @@ backend nginx_10000
             "timeoutSeconds": 10,
             "maxConsecutiveFailures": 10
         }
-        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                          strictMode)
         app.hostname = "test.example.com,test"
         app.path = '/some/path'
         app.groups = ['external']
@@ -1068,6 +1096,7 @@ backend nginx_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {
             "path": "/",
@@ -1078,7 +1107,8 @@ backend nginx_10000
             "timeoutSeconds": 10,
             "maxConsecutiveFailures": 10
         }
-        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                          strictMode)
         app.hostname = "test.example.com,test"
         app.path = '/some/path'
         app.groups = ['external']
@@ -1137,6 +1167,7 @@ backend nginx_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {
             "path": "/",
@@ -1147,7 +1178,8 @@ backend nginx_10000
             "timeoutSeconds": 10,
             "maxConsecutiveFailures": 10
         }
-        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                          strictMode)
         app.balance = "leastconn"
         app.groups = ['external']
         app.add_backend("agent1", "1.1.1.1", 1024, False)
@@ -1201,6 +1233,9 @@ backend nginx_10000
             def health_check(self):
                 return True
 
+            def strict_mode(self):
+                return False
+
         groups = ['external']
         bind_http_https = True
         ssl_certs = ""
@@ -1249,6 +1284,7 @@ backend nginx_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {
             "path": "/",
@@ -1259,7 +1295,8 @@ backend nginx_10000
             "timeoutSeconds": 10,
             "maxConsecutiveFailures": 10
         }
-        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                          strictMode)
         app.groups = ['external']
         app.add_backend("agent1", "1.1.1.1", 1024, False)
         apps = [app]
@@ -1304,6 +1341,7 @@ backend nginx_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {
             "path": "/",
@@ -1314,11 +1352,13 @@ backend nginx_10000
             "timeoutSeconds": 10,
             "maxConsecutiveFailures": 10
         }
-        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                          strictMode)
         app.groups = ['external']
         app.add_backend("agent1", "192.0.2.1", 1024, False)
         app.healthcheck_port_index = 1
-        admin_app = marathon_lb.MarathonService('/nginx', 10001, healthCheck)
+        admin_app = marathon_lb.MarathonService('/nginx', 10001, healthCheck,
+                                                strictMode)
         admin_app.groups = ['external']
         admin_app.add_backend("agent1", "192.0.2.1", 1025, False)
         apps = [app, admin_app]
@@ -1378,6 +1418,7 @@ backend nginx_10001
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {
             "path": "/",
@@ -1388,11 +1429,13 @@ backend nginx_10001
             "timeoutSeconds": 10,
             "maxConsecutiveFailures": 10
         }
-        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                          strictMode)
         app.groups = ['external']
         app.add_backend("agent1", "192.0.2.1", 1024, False)
         app.healthcheck_port_index = 1
-        admin_app = marathon_lb.MarathonService('/nginx', 10001, healthCheck)
+        admin_app = marathon_lb.MarathonService('/nginx', 10001, healthCheck,
+                                                strictMode)
         admin_app.groups = ['internal']
         admin_app.add_backend("agent1", "192.0.2.1", 1025, False)
         apps = [app, admin_app]
@@ -1459,6 +1502,7 @@ backend nginx_10001
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {
             "path": "/",
@@ -1469,11 +1513,13 @@ backend nginx_10001
             "timeoutSeconds": 10,
             "maxConsecutiveFailures": 10
         }
-        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                          strictMode)
         app.groups = ['external']
         app.add_backend("agent1", "192.0.2.1", 1024, False)
         app.healthcheck_port_index = 3
-        admin_app = marathon_lb.MarathonService('/nginx', 10001, healthCheck)
+        admin_app = marathon_lb.MarathonService('/nginx', 10001, healthCheck,
+                                                strictMode)
         admin_app.groups = ['external']
         admin_app.add_backend("agent1", "192.0.2.1", 1025, False)
         apps = [app, admin_app]
@@ -1533,6 +1579,7 @@ backend nginx_10001
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {
             "protocol": "TCP",
@@ -1542,7 +1589,8 @@ backend nginx_10001
             "timeoutSeconds": 10,
             "maxConsecutiveFailures": 10
         }
-        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                          strictMode)
         app.groups = ['external']
         app.add_backend("agent1", "1.1.1.1", 1024, False)
         app.hostname = "test.example.com"
@@ -1589,12 +1637,15 @@ backend nginx_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {}
-        app1 = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app1 = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                           strictMode)
         app1.groups = ['external', 'internal']
         app1.add_backend("agent1", "1.1.1.1", 1024, False)
-        app2 = marathon_lb.MarathonService('/nginx', 10001, healthCheck)
+        app2 = marathon_lb.MarathonService('/nginx', 10001, healthCheck,
+                                           strictMode)
         app2.groups = ['external', 'internal']
         app2.add_backend("agent1", "1.1.1.1", 1025, False)
         apps = [app1, app2]
@@ -1641,12 +1692,15 @@ backend nginx_10001
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {}
-        app1 = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app1 = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                           strictMode)
         app1.haproxy_groups = ['external']
         app1.add_backend("agent1", "1.1.1.1", 1024, False)
-        app2 = marathon_lb.MarathonService('/nginx', 10001, healthCheck)
+        app2 = marathon_lb.MarathonService('/nginx', 10001, healthCheck,
+                                           strictMode)
         app2.haproxy_groups = ['internal']
         app2.add_backend("agent1", "1.1.1.1", 1025, False)
         apps = [app1, app2]
@@ -1683,12 +1737,15 @@ backend nginx_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {}
-        app1 = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app1 = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                           strictMode)
         app1.haproxy_groups = ['internal']
         app1.add_backend("agent1", "1.1.1.1", 1024, False)
-        app2 = marathon_lb.MarathonService('/nginx', 10001, healthCheck)
+        app2 = marathon_lb.MarathonService('/nginx', 10001, healthCheck,
+                                           strictMode)
         app2.groups = ['external']
         app2.add_backend("agent1", "1.1.1.1", 1025, False)
         apps = [app1, app2]
@@ -1727,9 +1784,11 @@ backend nginx_10001
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {}
-        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                          strictMode)
         app.groups = ['external']
         app.hostname = 'test.example.com'
         app.proxypath = '/test/'
@@ -1779,9 +1838,11 @@ backend nginx_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {}
-        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                          strictMode)
         app.groups = ['external']
         app.hostname = 'test.example.com'
         app.revproxypath = '/test'
@@ -1832,9 +1893,11 @@ backend nginx_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {}
-        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                          strictMode)
         app.groups = ['external']
         app.hostname = 'test.example.com'
         app.redirpath = '/test'
@@ -1885,9 +1948,11 @@ backend nginx_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {}
-        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                          strictMode)
         app.groups = ['external']
         app.add_backend("agent1", "1.1.1.1", 1024, False)
         app.sticky = True
@@ -1927,6 +1992,7 @@ backend nginx_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {
             "path": "/",
@@ -1937,7 +2003,8 @@ backend nginx_10000
             "timeoutSeconds": 10,
             "maxConsecutiveFailures": 10
         }
-        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                          strictMode)
         app.hostname = "test.example.com,test"
         app.path = '/some/path'
         app.groups = ['external']
@@ -2075,6 +2142,7 @@ backend nginx3_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {}
         healthCheck = {
@@ -2087,11 +2155,13 @@ backend nginx3_10000
             "maxConsecutiveFailures": 10
         }
 
-        app1 = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app1 = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                           strictMode)
         app1.hostname = "server.nginx.net,server.nginx1.net"
         app1.haproxy_groups = ['external']
         app1.add_backend("agent1", "1.1.1.1", 1024, False)
-        app2 = marathon_lb.MarathonService('/apache', 10001, healthCheck)
+        app2 = marathon_lb.MarathonService('/apache', 10001, healthCheck,
+                                           strictMode)
         app2.hostname = "server.apache.net"
         app2.haproxy_groups = ['external']
         app2.add_backend("agent2", "2.2.2.2", 1025, False)
@@ -2180,6 +2250,7 @@ backend nginx_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {}
         healthCheck = {
@@ -2192,11 +2263,13 @@ backend nginx_10000
             "maxConsecutiveFailures": 10
         }
 
-        app1 = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app1 = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                           strictMode)
         app1.hostname = "server.nginx.net,server.nginx1.net"
         app1.haproxy_groups = ['external']
         app1.add_backend("agent1", "1.1.1.1", 1024, False)
-        app2 = marathon_lb.MarathonService('/apache', 10001, healthCheck)
+        app2 = marathon_lb.MarathonService('/apache', 10001, healthCheck,
+                                           strictMode)
         app2.hostname = "server.apache.net"
         app2.path = "/apache"
         app2.haproxy_groups = ['external']
@@ -2296,6 +2369,7 @@ backend nginx_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {}
         healthCheck = {
@@ -2308,11 +2382,13 @@ backend nginx_10000
             "maxConsecutiveFailures": 10
         }
 
-        app1 = marathon_lb.MarathonService('/nginx1', 10000, healthCheck)
+        app1 = marathon_lb.MarathonService('/nginx1', 10000, healthCheck,
+                                           strictMode)
         app1.hostname = "server.nginx.net"
         app1.haproxy_groups = ['external']
         app1.add_backend("agent1", "1.1.1.1", 1024, False)
-        app2 = marathon_lb.MarathonService('/nginx2', 10001, healthCheck)
+        app2 = marathon_lb.MarathonService('/nginx2', 10001, healthCheck,
+                                           strictMode)
         app2.hostname = "server.nginx.net"
         app2.authRealm = "realm"
         app2.authUser = "testuser"
@@ -2414,6 +2490,7 @@ backend nginx2_10001
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {}
         healthCheck = {
@@ -2426,11 +2503,13 @@ backend nginx2_10001
             "maxConsecutiveFailures": 10
         }
 
-        app1 = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app1 = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                           strictMode)
         app1.hostname = "server.nginx.net,server.nginx1.net"
         app1.haproxy_groups = ['external']
         app1.add_backend("agent1", "1.1.1.1", 1024, False)
-        app2 = marathon_lb.MarathonService('/apache', 10001, healthCheck)
+        app2 = marathon_lb.MarathonService('/apache', 10001, healthCheck,
+                                           strictMode)
         app2.hostname = "server.apache.net,server.apache1.net"
         app2.path = "/apache"
         app2.haproxy_groups = ['external']
@@ -2528,6 +2607,7 @@ backend nginx_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {}
         healthCheck = {
@@ -2540,11 +2620,13 @@ backend nginx_10000
             "maxConsecutiveFailures": 10
         }
 
-        app1 = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app1 = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                           strictMode)
         app1.hostname = "server.nginx.net,server.nginx1.net"
         app1.haproxy_groups = ['external']
         app1.add_backend("agent1", "1.1.1.1", 1024, False)
-        app2 = marathon_lb.MarathonService('/apache', 10001, healthCheck)
+        app2 = marathon_lb.MarathonService('/apache', 10001, healthCheck,
+                                           strictMode)
         app2.hostname = "server.apache.net,server.apache1.net"
         app2.haproxy_groups = ['external']
         app2.add_backend("agent2", "2.2.2.2", 1025, False)
@@ -2638,6 +2720,7 @@ backend nginx_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {
             "path": "/",
@@ -2648,7 +2731,8 @@ backend nginx_10000
             "timeoutSeconds": 10,
             "maxConsecutiveFailures": 10
         }
-        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                          strictMode)
         app.proxypath = "/proxy/path"
         app.groups = ['external']
         app.add_backend("agent1", "1.1.1.1", 1024, False)
@@ -2696,6 +2780,7 @@ backend nginx_10000
         bind_http_https = True
         ssl_certs = ""
         templater = marathon_lb.ConfigTemplater()
+        strictMode = False
 
         healthCheck = {
             "path": "/",
@@ -2706,7 +2791,8 @@ backend nginx_10000
             "timeoutSeconds": 10,
             "maxConsecutiveFailures": 10
         }
-        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck)
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                          strictMode)
         app.revproxypath = "/proxy/path"
         app.groups = ['external']
         app.add_backend("agent1", "1.1.1.1", 1024, False)
@@ -2746,5 +2832,150 @@ backend nginx_10000
   option  httpchk GET /
   timeout check 10s
   server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
+'''
+        self.assertMultiLineEqual(config, expected)
+
+    def test_strict_mode_on_and_off(self):
+        apps = dict()
+        groups = ['external']
+        bind_http_https = True
+        ssl_certs = ""
+        templater = marathon_lb.ConfigTemplater()
+
+        healthCheck = {}
+        healthCheck = {
+            "path": "/",
+            "protocol": "HTTP",
+            "portIndex": 0,
+            "gracePeriodSeconds": 15,
+            "intervalSeconds": 3,
+            "timeoutSeconds": 15,
+            "maxConsecutiveFailures": 10
+        }
+
+        app1 = marathon_lb.MarathonService('/nginx1', 10000, healthCheck,
+                                           True)
+        app1.hostname = "server.nginx.net"
+        app1.haproxy_groups = ['external']
+        app1.add_backend("agent1", "1.1.1.1", 1024, False)
+        app2 = marathon_lb.MarathonService('/nginx2', 10001, healthCheck,
+                                           False)
+        app2.hostname = "server.nginx.net"
+        app2.haproxy_groups = ['external']
+        app2.add_backend("agent2", "2.2.2.2", 1025, False)
+        apps = [app1, app2]
+        haproxy_map = True
+        domain_map_array = []
+        app_map_array = []
+        config_file = "/etc/haproxy/haproxy.cfg"
+        config = marathon_lb.config(apps, groups, bind_http_https, ssl_certs,
+                                    templater, haproxy_map, domain_map_array,
+                                    app_map_array, config_file)
+        expected = self.base_config + '''
+frontend marathon_http_in
+  bind *:80
+  mode http
+  use_backend %[req.hdr(host),lower,regsub(:.*$,,),\
+map(/etc/haproxy/domain2backend.map)]
+
+frontend marathon_http_appid_in
+  bind *:9091
+  mode http
+  use_backend %[req.hdr(x-marathon-app-id),lower,\
+map(/etc/haproxy/app2backend.map)]
+
+frontend marathon_https_in
+  bind *:443 ssl crt /etc/ssl/cert.pem
+  mode http
+  use_backend %[ssl_fc_sni,lower,map(/etc/haproxy/domain2backend.map)]
+
+frontend nginx2_10001
+  bind *:10001
+  mode http
+  use_backend nginx2_10001
+
+backend nginx2_10001
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  option  httpchk GET /
+  timeout check 15s
+  server agent2_2_2_2_2_1025 2.2.2.2:1025 check inter 3s fall 11
+'''
+        self.assertMultiLineEqual(config, expected)
+
+    def test_backend_disabled_and_enablede(self):
+        apps = dict()
+        groups = ['external']
+        bind_http_https = True
+        ssl_certs = ""
+        templater = marathon_lb.ConfigTemplater()
+        strictMode = False
+
+        healthCheck = {}
+        healthCheck = {
+            "path": "/",
+            "protocol": "HTTP",
+            "portIndex": 0,
+            "gracePeriodSeconds": 15,
+            "intervalSeconds": 3,
+            "timeoutSeconds": 15,
+            "maxConsecutiveFailures": 10
+        }
+
+        app1 = marathon_lb.MarathonService('/nginx1', 10000, healthCheck,
+                                           strictMode)
+        app1.hostname = "server.nginx.net"
+        app1.haproxy_groups = ['external']
+        app1.enabled = False
+        app1.add_backend("agent1", "1.1.1.1", 1024, False)
+        app2 = marathon_lb.MarathonService('/nginx2', 10001, healthCheck,
+                                           strictMode)
+        app2.hostname = "server.nginx.net"
+        app2.haproxy_groups = ['external']
+        app2.enabled = True
+        app2.add_backend("agent2", "2.2.2.2", 1025, False)
+        apps = [app1, app2]
+        haproxy_map = True
+        domain_map_array = []
+        app_map_array = []
+        config_file = "/etc/haproxy/haproxy.cfg"
+        config = marathon_lb.config(apps, groups, bind_http_https, ssl_certs,
+                                    templater, haproxy_map, domain_map_array,
+                                    app_map_array, config_file)
+        expected = self.base_config + '''
+frontend marathon_http_in
+  bind *:80
+  mode http
+  use_backend %[req.hdr(host),lower,regsub(:.*$,,),\
+map(/etc/haproxy/domain2backend.map)]
+
+frontend marathon_http_appid_in
+  bind *:9091
+  mode http
+  use_backend %[req.hdr(x-marathon-app-id),lower,\
+map(/etc/haproxy/app2backend.map)]
+
+frontend marathon_https_in
+  bind *:443 ssl crt /etc/ssl/cert.pem
+  mode http
+  use_backend %[ssl_fc_sni,lower,map(/etc/haproxy/domain2backend.map)]
+
+frontend nginx2_10001
+  bind *:10001
+  mode http
+  use_backend nginx2_10001
+
+backend nginx2_10001
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  option  httpchk GET /
+  timeout check 15s
+  server agent2_2_2_2_2_1025 2.2.2.2:1025 check inter 3s fall 11
 '''
         self.assertMultiLineEqual(config, expected)

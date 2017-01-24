@@ -1116,6 +1116,10 @@ def set_sticky(x, k, v):
     x.sticky = string_to_bool(v)
 
 
+def set_enabled(x, k, v):
+    x.enabled = string_to_bool(v)
+
+
 def set_redirect_http_to_https(x, k, v):
     x.redirectHttpToHttps = string_to_bool(v)
 
@@ -1308,6 +1312,14 @@ labels.append(Label(name='STICKY',
 Enable sticky request routing for the service.
 
 Ex: `HAPROXY_0_STICKY = true`
+                    '''))
+labels.append(Label(name='ENABLED',
+                    func=set_enabled,
+                    description='''\
+Enable this backend. By default, all backends are enabled. To disable
+backends by default, specify the `--strict-mode` flag.
+
+Ex: `HAPROXY_0_ENABLED = true`
                     '''))
 labels.append(Label(name='REDIRECT_TO_HTTPS',
                     func=set_redirect_http_to_https,

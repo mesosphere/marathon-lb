@@ -18,7 +18,8 @@ Marathon-lb just needs to know where to find Marathon.
 ```
 usage: marathon_lb.py [-h] [--longhelp] [--marathon MARATHON [MARATHON ...]]
                       [--haproxy-config HAPROXY_CONFIG] [--group GROUP]
-                      [--command COMMAND] [--sse] [--health-check]
+                      [--command COMMAND] [--strict-mode] [--sse]
+                      [--health-check]
                       [--lru-cache-capacity LRU_CACHE_CAPACITY]
                       [--haproxy-map] [--dont-bind-http-https]
                       [--ssl-certs SSL_CERTS] [--skip-validation] [--dry]
@@ -44,11 +45,15 @@ optional arguments:
                         Location of haproxy configuration (default:
                         /etc/haproxy/haproxy.cfg)
   --group GROUP         [required] Only generate config for apps which list
-                        the specified names. Use '*' to match all groups
-                        (default: [])
+                        the specified names. Use '*' to match all groups,
+                        including those without a group specified. (default:
+                        [])
   --command COMMAND, -c COMMAND
                         If set, run this command to reload haproxy. (default:
                         None)
+  --strict-mode         If set, backends are only advertised if
+                        HAPROXY_{n}_ENABLED=true. Strict mode will be enabled
+                        by default in a future release. (default: False)
   --sse, -s             Use Server Sent Events (default: False)
   --health-check, -H    If set, respect Marathon's health check statuses
                         before adding the app instance into the backend pool.
@@ -1050,6 +1055,17 @@ Specified as `HAPROXY_DEPLOYMENT_TARGET_INSTANCES`.
 The target number of app instances to seek during deployment. You
 generally do not need to modify this unless you implement your
 own deployment orchestrator.
+                    
+
+## `HAPROXY_{n}_ENABLED`
+  *per service port*
+
+Specified as `HAPROXY_{n}_ENABLED`.
+
+Enable this backend. By default, all backends are enabled. To disable
+backends by default, specify the `--strict-mode` flag.
+
+Ex: `HAPROXY_0_ENABLED = true`
                     
 
 ## `HAPROXY_{n}_GROUP`
