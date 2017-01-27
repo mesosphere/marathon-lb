@@ -18,7 +18,7 @@ fast, efficient, battle-tested, highly available load balancer with many advance
  * Automated Docker image builds ([mesosphere/marathon-lb](https://hub.docker.com/r/mesosphere/marathon-lb))
  * Global HAProxy templates which can be supplied at launch
  * Supports IP-per-task integration, such as [Project Calico](https://github.com/projectcalico/calico-containers)
- * Include [tini](https://github.com/krallin/tini) zombies reaper
+ * Includes [tini](https://github.com/krallin/tini) zombies reaper
 
 ### Getting Started
 
