@@ -21,6 +21,7 @@ global
 defaults
   load-server-state-from-file global
   log               global
+  log-format "%ci:%cp [%tr] %ft %b/%s %TR/%Tw/%Tc/%Tr/%Ta %ST %B %CC %CS %tsc %ac/%fc/%bc/%sc/%rc %sq/%bq %hr %hs %{+Q}r [%ID]"
   retries                   3
   backlog               10000
   maxconn               10000
@@ -40,6 +41,8 @@ defaults
   option            httplog
   option            splice-auto
   option            forwardfor
+  unique-id-header X-NUTMEG-ID
+  unique-id-format %{+X}o\ %ci:%cp_%fi:%fp_%Ts_%rt:%pid
 
 listen stats
   bind 0.0.0.0:9090
