@@ -243,24 +243,33 @@ class CurlHttpEventStream(object):
 
 
 def resolve_ip(host):
-    cached_ip = ip_cache.get(host, None)
+    cached_ip = ip_cache.get().get(host, None)
     if cached_ip:
         return cached_ip
     else:
         try:
             logger.debug("trying to resolve ip address for host %s", host)
             ip = socket.gethostbyname(host)
-            ip_cache.set(host, ip)
+            ip_cache.get().set(host, ip)
             return ip
         except socket.gaierror:
             return None
 
 
-ip_cache = LRUCache()
+class LRUCacheSingleton(object):
+    def __init__(self):
+        self.lru_cache = None
+
+    def get(self):
+        if self.lru_cache is None:
+            self.lru_cache = LRUCache()
+        return self.lru_cache
+
+    def set(self, lru_cache):
+        self.lru_cache = lru_cache
 
 
-def set_ip_cache(new_ip_cache):
-    ip_cache = new_ip_cache
+ip_cache = LRUCacheSingleton()
 
 
 def is_ip_per_task(app):
