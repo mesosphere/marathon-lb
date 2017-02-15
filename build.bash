@@ -8,6 +8,6 @@ else
   PIPCMD='pip3'
 fi
 
-$PIPCMD install -r requirements.txt -r requirements-dev.txt
+$PIPCMD install -r requirements-dev.txt
 
 PYTHONPATH=. nosetests
