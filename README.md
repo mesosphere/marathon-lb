@@ -360,7 +360,7 @@ PRs are welcome, but here are a few general guidelines:
 
    ```
    pip install -r requirements.txt -r requirements-dev.txt
-   pytest --pep8 --cov
+   nosetests
    ```
  - Use the pre-commit hook to automatically generate docs:
 
