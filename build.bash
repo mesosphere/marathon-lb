@@ -8,6 +8,10 @@ else
   PIPCMD='pip3'
 fi
 
-$PIPCMD install -r requirements.txt -r requirements-dev.txt nose
+$PIPCMD install -r requirements-dev.txt
 
-PYTHONPATH=. nosetests
+PYTHONPATH=. coverage run "$(which nosetests)"
+
+coverage report
+
+flake8 .

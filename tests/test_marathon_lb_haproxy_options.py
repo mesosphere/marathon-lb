@@ -1,9 +1,5 @@
-import copy
-import json
-import unittest
 import os
 
-import marathon_lb
 from tests.test_marathon_lb import TestMarathonUpdateHaproxy
 
 

@@ -41,14 +41,13 @@ from tempfile import mkstemp
 
 import dateutil.parser
 import requests
-from six.moves.urllib import parse
 
 from common import (get_marathon_auth_params, set_logging_args,
                     set_marathon_auth_args, setup_logging)
 from config import ConfigTemplater, label_keys
 from lrucache import LRUCache
-from utils import (CurlHttpEventStream, get_task_ip_and_ports,
-                   ServicePortAssigner, set_ip_cache)
+from utils import (CurlHttpEventStream, get_task_ip_and_ports, ip_cache,
+                   ServicePortAssigner)
 
 
 logger = logging.getLogger('marathon_lb')
@@ -1213,6 +1212,7 @@ def get_health_check(app, portIndex):
             return check
     return None
 
+
 healthCheckResultCache = LRUCache()
 
 
@@ -1719,7 +1719,7 @@ if __name__ == '__main__':
     # initialize health check LRU cache
     if args.health_check:
         healthCheckResultCache = LRUCache(args.lru_cache_capacity)
-    set_ip_cache(LRUCache(args.lru_cache_capacity))
+    ip_cache.set(LRUCache(args.lru_cache_capacity))
 
     # Marathon API connector
     marathon = Marathon(args.marathon,

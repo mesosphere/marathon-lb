@@ -359,8 +359,8 @@ PRs are welcome, but here are a few general guidelines:
  - Update/include tests for new functionality. To install dependencies and run tests:
 
    ```
-   pip install -r requirements.txt -r requirements-dev.txt
-   pytest --pep8 --cov
+   pip install -r requirements-dev.txt
+   nosetests
    ```
  - Use the pre-commit hook to automatically generate docs:
 
