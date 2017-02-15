@@ -10,4 +10,6 @@ fi
 
 $PIPCMD install -r requirements-dev.txt
 
-PYTHONPATH=. nosetests
+PYTHONPATH=. coverage run "$(which nosetests)"
+
+coverage report
