@@ -221,7 +221,7 @@ class CurlHttpEventStream(object):
 
     @staticmethod
     def _split_lines_from_chunks(chunks):
-        #same behaviour as requests' Response.iter_lines(...)
+        # same behaviour as requests' Response.iter_lines(...)
 
         pending = None
         for chunk in chunks:
@@ -254,6 +254,8 @@ def resolve_ip(host):
             return ip
         except socket.gaierror:
             return None
+
+
 ip_cache = LRUCache()
 
 

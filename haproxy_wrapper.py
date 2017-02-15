@@ -34,6 +34,7 @@ def wait_on_haproxy_pipe(pipefd):
             return False
     return True
 
+
 pipefd = create_haproxy_pipe()
 
 pid = os.fork()

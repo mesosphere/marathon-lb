@@ -41,7 +41,6 @@ from tempfile import mkstemp
 
 import dateutil.parser
 import requests
-from six.moves.urllib import parse
 
 from common import (get_marathon_auth_params, set_logging_args,
                     set_marathon_auth_args, setup_logging)
@@ -1212,6 +1211,7 @@ def get_health_check(app, portIndex):
         if check.get('portIndex') == portIndex:
             return check
     return None
+
 
 healthCheckResultCache = LRUCache()
 

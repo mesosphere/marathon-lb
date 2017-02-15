@@ -1199,6 +1199,7 @@ class Label:
         self.func = func
         self.description = description
 
+
 labels = []
 labels.append(Label(name='AUTH',
                     func=set_auth,
