@@ -165,7 +165,7 @@ class CurlHttpEventStream(object):
             self.curl.setopt(pycurl.HTTPAUTH, pycurl.HTTPAUTH_BASIC)
             self.curl.setopt(pycurl.USERPWD, '%s:%s' % auth)
         if verify:
-            self.curl.setopt(pycurl.CA_INFO, verify)
+            self.curl.setopt(pycurl.CAINFO, verify)
 
         self.curl.setopt(pycurl.HTTPHEADER, headers)
 
