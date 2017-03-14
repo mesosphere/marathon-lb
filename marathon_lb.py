@@ -776,7 +776,9 @@ https://docs.mesosphere.com/services/marathon-lb/advanced/#global-template.\
     config += frontends
     config += backends
 
-    return config
+    # python replaces '\r\n' with '\n' on read in text mode
+    # replace it here to get consistent comparison
+    return config.replace('\r\n', '\n')
 
 
 def defaultValue(col, default):
