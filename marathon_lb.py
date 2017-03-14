@@ -601,7 +601,9 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
     config += frontends
     config += backends
 
-    return config
+    # python replaces '\r\n' with '\n' on read in text mode
+    # replace it here to get consistent comparison
+    return config.replace('\r\n', '\n')
 
 
 def get_haproxy_pids():
