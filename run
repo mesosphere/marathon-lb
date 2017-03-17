@@ -88,6 +88,13 @@ case "$MODE" in
     ;;
 esac
 
+if [ -n "${VAULT_TOKEN-}" ] && [ -n "${VAULT_HOST-}" ] && [ -n "${VAULT_PORT-}" ] && [ -n "${VAULT_PATH-}" ]; then
+  export MARATHON_LB_USER=$(curl -k -L -H "X-Vault-Token:$VAULT_TOKEN"  "https://$VAULT_HOST:$VAULT_PORT$VAULT_PATH" -s | jq -r ".data .\"user\"")
+  export MARATHON_LB_PASSWORD=$(curl -k -L -H "X-Vault-Token:$VAULT_TOKEN"  "https://$VAULT_HOST:$VAULT_PORT$VAULT_PATH" -s | jq -r ".data .\"pass\"")
+  export CREDENTIALS="$MARATHON_LB_USER:$MARATHON_LB_PASSWORD"
+  ARGS="$ARGS --auth-credentials $CREDENTIALS"
+fi
+
 for arg in "$@"; do
     escaped=$(printf %q "$arg")
     ARGS="$ARGS $escaped"
