@@ -401,6 +401,8 @@ This is the counterpart to `HAPROXY_HTTP_FRONTEND_ACL_ONLY_WITH_PATH` which
 glues the acl names to the appropriate backend
 '''))
 
+        # XXX Missing function set label in app, as well as not appending
+        # a label. Since neither exist, not adding this for now.
         self.add_template(
             ConfigTemplate(name='\
 HTTPS_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH',
@@ -474,6 +476,8 @@ The ACL that glues a backend to the corresponding virtual host
 of the `HAPROXY_HTTPS_FRONTEND_HEAD` thru HTTP basic auth.
 '''))
 
+        # XXX Missing function set label in app, as well as not appending
+        # a label. Since neither exist, not adding this for now.
         self.add_template(
             ConfigTemplate(name='HTTPS_FRONTEND_AUTH_ACL_ONLY',
                            value='''\
@@ -484,6 +488,8 @@ of the `HAPROXY_HTTPS_FRONTEND_HEAD` thru HTTP basic auth.
 The http auth ACL to the corresponding virtual host.
 '''))
 
+        # XXX Missing function set label in app, as well as not appending
+        # a label. Since neither exist, not adding this for now.
         self.add_template(
             ConfigTemplate(name='HTTPS_FRONTEND_AUTH_REQUEST_ONLY',
                            value='''\
@@ -1466,6 +1472,9 @@ labels.append(Label(name='USERLIST_HEAD',
 labels.append(Label(name='BACKEND_REDIRECT_HTTP_TO_HTTPS',
                     func=set_label,
                     description=''))
+labels.append(Label(name='BACKEND_REDIRECT_HTTP_TO_HTTPS_WITH_PATH',
+                    func=set_label,
+                    description=''))
 labels.append(Label(name='BACKEND_HEAD',
                     func=set_label,
                     description=''))
@@ -1484,10 +1493,16 @@ labels.append(Label(name='MAP_HTTP_FRONTEND_ACL_ONLY',
 labels.append(Label(name='HTTP_FRONTEND_ROUTING_ONLY',
                     func=set_label,
                     description=''))
+labels.append(Label(name='HTTP_FRONTEND_ROUTING_ONLY_WITH_AUTH',
+                    func=set_label,
+                    description=''))
 labels.append(Label(name='HTTP_FRONTEND_ACL_WITH_AUTH',
                     func=set_label,
                     description=''))
 labels.append(Label(name='HTTP_FRONTEND_ACL_WITH_PATH',
+                    func=set_label,
+                    description=''))
+labels.append(Label(name='HTTP_FRONTEND_ACL_WITH_AUTH_AND_PATH',
                     func=set_label,
                     description=''))
 labels.append(Label(name='HTTP_FRONTEND_ACL_ONLY_WITH_PATH',
@@ -1527,6 +1542,12 @@ labels.append(Label(name='HTTPS_FRONTEND_ACL_WITH_AUTH_AND_PATH',
                     func=set_label,
                     description=''))
 labels.append(Label(name='BACKEND_HTTP_OPTIONS',
+                    func=set_label,
+                    description=''))
+labels.append(Label(name='HTTP_BACKEND_PROXYPASS_GLUE',
+                    func=set_label,
+                    description=''))
+labels.append(Label(name='HTTP_BACKEND_REVPROXY_GLUE',
                     func=set_label,
                     description=''))
 labels.append(Label(name='BACKEND_HSTS_OPTIONS',
