@@ -88,6 +88,13 @@ case "$MODE" in
     ;;
 esac
 
+if [ -n "${VAULT_TOKEN-}" ] && [ -n "${VAULT_HOST-}" ] && [ -n "${VAULT_PORT-}" ] && [ -n "${VAULT_PATH-}" ]; then 
+  MARATHON_LB_PASSWORD=$(curl -k -L -H "X-Vault-Token:$VAULT_TOKEN" "$VAULT_URL" -s| python -m json.tool | python -c 'import json,sys;obj=json.load(sys.stdin);print obj["data"]["pass"]')
+  MARATHON_LB_USER=$(curl -k -L -H "X-Vault-Token:$VAULT_TOKEN" "$VAULT_URL" -s | python -m json.tool | python -c 'import json,sys;obj=json.load(sys.stdin);print obj["data"]["user"]')
+  CREDENTIALS="$MARATHON_LB_USER:$MARATHON_LB_PASSWORD"
+  ARGS="$ARGS --auth-credentials $CREDENTIALS"
+fi
+
 for arg in "$@"; do
     escaped=$(printf %q "$arg")
     ARGS="$ARGS $escaped"

@@ -108,6 +108,10 @@ It is possible to pass `--auth-credentials=` option if your Marathon requires au
 $ ./marathon_lb.py --marathon http://localhost:8080 --auth-credentials=admin:password
 ```
 
+It is possible to get the auth credentials (user & password) from VAULT if you define the following 
+environment variables before running marathon-lb: VAULT_TOKEN, VAULT_HOST, VAULT_PORT, VAULT_PATH 
+where VAULT_PATH is the root path where your user and password are located.
+
 This will refresh `haproxy.cfg`, and if there were any changes, then it will
 automatically reload HAProxy. Only apps with the label `HAPROXY_GROUP=external`
 will be exposed on this LB.
