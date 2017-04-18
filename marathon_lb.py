@@ -381,7 +381,7 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
 
         # If app has HAPROXY_{n}_MODE set, use that setting.
         # Otherwise use 'http' if HAPROXY_{N}_VHOST is set, and 'tcp' if not.
-        if not app.mode:
+        if app.mode is None:
             if app.hostname:
                 app.mode = 'http'
             else:
