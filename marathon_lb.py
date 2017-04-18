@@ -111,7 +111,7 @@ class MarathonService(object):
         self.bindOptions = None
         self.bindAddr = '*'
         self.groups = frozenset()
-        self.mode = 'tcp'
+        self.mode = None
         self.balance = 'roundrobin'
         self.healthCheck = healthCheck
         self.labels = {}
@@ -379,10 +379,13 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
         logger.debug("frontend at %s:%d with backend %s",
                      app.bindAddr, app.servicePort, backend)
 
-        # if the app has a hostname set force mode to http
-        # otherwise recent versions of haproxy refuse to start
-        if app.hostname:
-            app.mode = 'http'
+        # If app has HAPROXY_{n}_MODE set, use that setting.
+        # Otherwise use 'http' if HAPROXY_{N}_VHOST is set, and 'tcp' if not.
+        if not app.mode:
+            if app.hostname:
+                app.mode = 'http'
+            else:
+                app.mode = 'tcp'
 
         if app.authUser:
             userlist_head = templater.haproxy_userlist_head(app)
