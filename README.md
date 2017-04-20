@@ -349,9 +349,9 @@ other words, when you deploy a new app, the port assignments may change.
 ## Zombies reaping
 
 When running within isolated containers, you may have to care about reaping orphan child processes.
-Haproxy typicaly produce orphan processes because of it's two steps reload machanism.
+HAProxy typically produces orphan processes because of its two step reload machanism.
 Marathon-lb is using [tini](https://github.com/krallin/tini) for this purpose.
-When running in a container whitout pid namespace isolation, setting the `TINI_SUBREAPER` environnement variable is recommended.
+When running in a container without pid namespace isolation, setting the `TINI_SUBREAPER` environment variable is recommended.
 
 
 ## Contributing
