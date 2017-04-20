@@ -85,7 +85,10 @@ RUN set -x \
     && pip3 install --no-cache --upgrade --force-reinstall -r /marathon-lb/requirements.txt \
     \
     && apt-get purge -y --auto-remove $buildDeps
-
+    
+ADD https://github.com/nutmegdevelopment/nutcracker-cli/releases/download/0.0.2/nutcracker-cli /usr/local/bin/nutcracker-cli
+RUN chmod +x /usr/local/bin/nutcracker-cli
+    
 COPY  . /marathon-lb
 
 WORKDIR /marathon-lb

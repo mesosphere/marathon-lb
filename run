@@ -6,6 +6,9 @@ SYSLOG_SOCKET=${SYSLOG_SOCKET:-/dev/null}
 LB_SERVICE="/marathon-lb/service/lb"
 mkdir -p $LB_SERVICE
 
+SSL_SERVICE="/marathon-lb/service/ssl"
+mkdir -p $SSL_SERVICE
+
 HAPROXY_SERVICE="/marathon-lb/service/haproxy"
 mkdir -p $HAPROXY_SERVICE/env
 
@@ -61,6 +64,22 @@ fi
 if [ -n "${MESOS_SANDBOX-}" ] && [ -d "$MESOS_SANDBOX/templates" ]; then
   mkdir -p templates
   cp -v "$MESOS_SANDBOX/templates/"* templates/
+fi 
+
+# Shared, common, templates.
+cp config/common/* templates/
+
+# If this is the 'internal' group then add in the internal services (mesos, marathon, etc).
+if [[ "$NM_GROUP" == "internal" ]]; then
+  echo "Updating the $NM_ENV internal configuration files..."
+  for f in $(ls config/internal/*);
+  do
+    echo "Replacing occurences of '{{NM_ENV}}' with '$NM_ENV' in '$f'"
+    sed -i "s|{{NM_ENV}}|$NM_ENV|g" $f 
+
+    echo "Appending $f to templates/$(basename $f)"
+    cat $f >> templates/$(basename $f)
+  done
 fi
 
 if [ -n "${HAPROXY_SYSCTL_PARAMS-}" ]; then
@@ -99,6 +118,51 @@ for arg in "$@"; do
     escaped=$(printf %q "$arg")
     ARGS="$ARGS $escaped"
 done
+
+cat > $SSL_SERVICE/run << 'EOF'
+#!/bin/bash
+
+ssl_dir=/etc/ssl/private
+ssl_staging_dir=/etc/ssl/staging
+mkdir -p $ssl_dir
+mkdir -p $ssl_staging_dir
+chmod 700 $ssl_dir
+chmod 700 $ssl_staging_dir
+
+# Download certs from nutcracker.
+# Required environment variables:
+# NC_ID - Nutcracker ID
+# NC_KEY - Nutcracker key
+# NC_SERVER - Nutcracker server
+get_ssl() {
+  bin=/usr/local/bin/nutcracker-cli
+  certlist=( $($bin -i "$NC_ID" -k "$NC_KEY" -s "$NC_SERVER" list ) )
+
+  for cert in "${certlist[@]}"; do
+      file="$cert.pem"
+      # Give up on first failure, but do not error out.
+      $bin -i "$NC_ID" -k "$NC_KEY" -s "$NC_SERVER" get -n "$cert" > "$ssl_staging_dir/$file" || break
+      # Only replace the cert if we downloaded it successfully.  Success is defined as a file with
+      # actual content in it.
+      if (( $(stat -c %s $ssl_staging_dir/$file) > 0 )); then
+        mv "$ssl_staging_dir/$file" "$ssl_dir/$file"
+      fi
+  done
+}
+
+update_ssl() {
+  while sleep 86400; do
+    get_ssl
+  done
+}
+
+while true; do
+  get_ssl
+  update_ssl
+done
+
+EOF
+chmod 755 $SSL_SERVICE/run
 
 cat > $LB_SERVICE/run << EOF
 #!/bin/sh

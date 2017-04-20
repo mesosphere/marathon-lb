@@ -1,0 +1,17 @@
+
+  # START: HAPROXY_HTTP_FRONTEND_HEAD append.
+  # This file is appended to the main HAPROXY_HTTP_FRONTEND_HEAD file 
+  # for marathon-lb instances with an NM_GROUP of internal.
+  # All instances of '{{NM_ENV}}' are replaced with the correct $NM_ENV var.
+
+  acl host_mesos hdr(host) -i mesos.{{NM_ENV}}.nutmeg.co.uk
+  redirect scheme https code 301 if !{ ssl_fc } host_mesos
+  acl host_marathon hdr(host) -i marathon.{{NM_ENV}}.nutmeg.co.uk
+  redirect scheme https code 301 if !{ ssl_fc } host_marathon
+  acl host_consul hdr(host) -i consul.{{NM_ENV}}.nutmeg.co.uk
+  redirect scheme https code 301 if !{ ssl_fc } host_consul
+  acl host_singularity hdr(host) -i singularity.{{NM_ENV}}.nutmeg.co.uk
+  redirect scheme https code 301 if !{ ssl_fc } host_singularity
+
+  # END: HAPROXY_HTTP_FRONTEND_HEAD append.
+  

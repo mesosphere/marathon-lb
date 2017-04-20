@@ -1,0 +1,50 @@
+id: /{{app_name}}
+cpus: 0.01
+mem: 256
+instances: {{count}}
+args: [ 
+    "sse",
+    "--group={{marathon_group_name}}",
+    "--marathon={{marathon_url}}",
+    "--auth-credentials={{marathon_creds}}",
+    "--syslog-socket=/dev/log",
+    "--log-level=INFO",
+    "--ssl-certs=/etc/ssl/private"
+    ]
+container:
+  docker:
+    image: registry.nutmeg.co.uk:8443/marathon-lb:{{version}}
+    forcePullImage: true
+    network: HOST
+    parameters:
+      -
+        key: "label"
+        value: "APP_NAME={{app_name}}"
+      -
+        key: "label"
+        value: "APP_BUILD={{version}}"
+      -
+        key: "cap-add"
+        value: "NET_ADMIN"
+  volumes:
+  -
+    containerPath: /dev/log
+    hostPath: /dev/log
+    mode: RW
+env:
+  NC_ID: {{nutcracker_id}}
+  NC_KEY: {{nutcracker_key}}
+  NC_SERVER: {{nutcracker_server}}
+  NM_ENV: {{env}}
+  NM_GROUP: {{marathon_group_name}}
+constraints:
+  -
+    - hostname
+    - UNIQUE
+  -
+    - {{cluster_key}}
+    - CLUSTER
+    - {{cluster_value}}
+upgradeStrategy:
+  minimumHealthCapacity: 0.75
+  maximumOverCapacity: 0
