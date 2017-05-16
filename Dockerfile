@@ -73,6 +73,7 @@ RUN set -x \
         USE_REGPARM=1 \
         USE_STATIC_PCRE=1 \
         USE_ZLIB=1 \
+        DEFINE=-DREQURI_LEN=4096 \
         all \
         install-bin \
     && rm -rf /usr/src/haproxy \
