@@ -211,7 +211,7 @@ class Marathon(object):
     def list(self):
         logger.info('fetching apps')
         return self.api_req('GET', ['apps'],
-                            params={'embed': 'apps.tasks'})["apps"]
+                            params={'embed': ['apps.tasks', 'apps.readiness']})["apps"]
 
     def health_check(self):
         return self.__health_check
@@ -1217,7 +1217,7 @@ def get_health_check(app, portIndex):
 
 
 healthCheckResultCache = LRUCache()
-
+readinessCheckResultCache = LRUCache()
 
 def get_apps(marathon):
     apps = marathon.list()
@@ -1407,6 +1407,24 @@ def get_apps(marathon):
                     if not alive:
                         continue
 
+            if marathon.health_check() and 'readinessChecks' in app and \
+               len(app['readinessChecks']) > 0:
+                ready = False
+                if 'readinessCheckResults' not in app:
+                    # use previously cached result, if it exists
+                    if not readinessCheckResultCache.get(task['id'], False):
+                        continue
+                else:
+                    if len(app['readinessCheckResults']) == 0:
+                        ready = True
+                    else:
+                        for result in app['readinessCheckResults']:
+                            if result['taskId'] == task['id']:
+                                ready = result['ready']
+                    readinessCheckResultCache.set(task['id'], ready)
+                    if not ready:
+                        continue
+
             task_ip, task_ports = get_task_ip_and_ports(app, task)
             if not task_ip:
                 logger.warning("Task has no resolvable IP address - skip")
@@ -1557,7 +1575,8 @@ class MarathonEventProcessor(object):
     def handle_event(self, event):
         if event['eventType'] == 'status_update_event' or \
                 event['eventType'] == 'health_status_changed_event' or \
-                event['eventType'] == 'api_post_event':
+                event['eventType'] == 'api_post_event' or \
+                event['eventType'] == 'deployment_step_success':
             self.reset_from_tasks()
 
     def handle_signal(self, sig, stack):
@@ -1722,6 +1741,7 @@ if __name__ == '__main__':
     # initialize health check LRU cache
     if args.health_check:
         healthCheckResultCache = LRUCache(args.lru_cache_capacity)
+        readinessCheckResultCache = LRUCache(args.lru_cache_capacity)
     ip_cache.set(LRUCache(args.lru_cache_capacity))
 
     # Marathon API connector
