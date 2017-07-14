@@ -127,6 +127,9 @@ class TestBluegreenDeploy(unittest.TestCase):
                       zdd.find_drained_task_ids(app,
                                                 listeners,
                                                 haproxy_instance_count)
+            from pprint import pprint
+            pprint(app['tasks'][0]['id'])
+            pprint(results)
             assert app['tasks'][0]['id'] in results  # 2 l's down, no sessions
             assert app['tasks'][1]['id'] not in results  # 1 l up, 1 down
             assert app['tasks'][2]['id'] not in results  # 2 l's d, 1 w/ scur/qcur
@@ -260,7 +263,7 @@ class TestBluegreenDeploy(unittest.TestCase):
       "maxConsecutiveFailures": 10,
       "path": "/",
       "portIndex": 0,
-      "protocol": "MESOS_HTTP",
+      "protocol": "HTTP",
       "timeoutSeconds": 15
     }
   ],
@@ -329,7 +332,7 @@ class TestBluegreenDeploy(unittest.TestCase):
       "maxConsecutiveFailures": 10,
       "path": "/",
       "portIndex": 0,
-      "protocol": "HTTP",
+      "protocol": "MESOS_HTTP",
       "timeoutSeconds": 15
     }
   ],

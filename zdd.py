@@ -257,9 +257,13 @@ def find_drained_task_ids(app, listeners, haproxy_count):
     tasks = zip(get_svnames_from_tasks(app, app['tasks']), app['tasks'])
     drained_listeners = select_drained_listeners(listeners)
 
+    from pprint import pprint
+    pprint(drained_listeners)
+
     drained_task_ids = []
     for svname, task in tasks:
         task_listeners = [l for l in drained_listeners if l.svname == svname]
+        pprint(svname)
         if len(task_listeners) == haproxy_count:
             drained_task_ids.append(task['id'])
 

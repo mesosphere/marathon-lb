@@ -92,14 +92,14 @@
           "stagedAt": "2017-07-14T15:13:35.804Z",
           "state": "TASK_RUNNING",
           "ports": [
-            26281
+            16916
           ],
           "startedAt": "2017-07-14T15:13:58.326Z",
           "version": "2017-07-14T15:13:34.402Z",
           "id": "nginx-green.01da9a15-68a7-11e7-a229-e6a514ca0c21",
           "appId": "/nginx-green",
           "slaveId": "c28a2184-c702-482c-91c8-5af9318434d4-S0",
-          "host": "10.0.3.60",
+          "host": "10.0.6.25",
           "healthCheckResults": [
             {
               "alive": true,
@@ -122,14 +122,14 @@
           "stagedAt": "2017-07-14T15:13:35.816Z",
           "state": "TASK_RUNNING",
           "ports": [
-            7694
+            31184
           ],
           "startedAt": "2017-07-14T15:13:57.633Z",
           "version": "2017-07-14T15:13:34.402Z",
           "id": "nginx-green.01dc95e6-68a7-11e7-a229-e6a514ca0c21",
           "appId": "/nginx-green",
           "slaveId": "c28a2184-c702-482c-91c8-5af9318434d4-S1",
-          "host": "10.0.4.97",
+          "host": "10.0.6.25",
           "healthCheckResults": [
             {
               "alive": true,
@@ -152,14 +152,14 @@
           "stagedAt": "2017-07-14T15:13:35.760Z",
           "state": "TASK_RUNNING",
           "ports": [
-            22328
+            23336
           ],
           "startedAt": "2017-07-14T15:13:57.639Z",
           "version": "2017-07-14T15:13:34.402Z",
           "id": "nginx-green.01bf22d4-68a7-11e7-a229-e6a514ca0c21",
           "appId": "/nginx-green",
           "slaveId": "c28a2184-c702-482c-91c8-5af9318434d4-S1",
-          "host": "10.0.4.97",
+          "host": "10.0.6.25",
           "healthCheckResults": [
             {
               "alive": true,
