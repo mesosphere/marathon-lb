@@ -127,12 +127,6 @@ class MarathonService(object):
     def add_backend(self, host, ip, port, draining):
         self.backends.add(MarathonBackend(host, ip, port, draining))
 
-    # def set_healthcheck_mode(healthcheck):
-    #     healthProto = healthCheck['protocol']
-    #     if healthProto in ['HTTP', 'HTTPS', 'MESOS_HTTP',
-    #                        'MESOS_HTTPS']:
-    #         return 'http'
-
     def __hash__(self):
         return hash(self.servicePort)
 
@@ -1216,6 +1210,8 @@ def compareMapFile(map_file, map_string):
 
 
 def get_health_check(app, portIndex):
+    if 'healthChecks' not in app:
+        return None
     for check in app['healthChecks']:
         if check.get('port'):
             return check
