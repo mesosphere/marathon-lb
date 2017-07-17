@@ -139,23 +139,28 @@ class TestUtils(unittest.TestCase):
 
     def test_get_task_ip_and_ports_ip_per_task_no_ip_marathon15(self):
         app = {
-            'ipAddress': {},
             'container': {
                 'type': 'DOCKER',
                 'docker': {
-                    'network': 'USER',
-                    'portMappings': [
-                        {
-                            'containerPort': 80,
-                            'servicePort': 10000,
-                        },
-                        {
-                            'containerPort': 81,
-                            'servicePort': 10001,
-                        },
-                     ],
+                    'image': 'nginx'
                 },
+                'portMappings': [
+                    {
+                        'containerPort': 80,
+                        'servicePort': 10000,
+                    },
+                    {
+                        'containerPort': 81,
+                        'servicePort': 10001,
+                    },
+                ]
             },
+            'networks': [
+                {
+                    'mode': 'container',
+                    'name': 'dcos'
+                }
+            ]
         }
         task = {
             "id": "testtaskid",
@@ -345,6 +350,38 @@ class TestServicePortAssigner(unittest.TestCase):
                      ],
                 },
             },
+            'tasks': [{
+                "id": "testtaskid",
+                "ipAddresses": [{"ipAddress": "1.2.3.4"}]
+            }],
+        }
+        self.assertEquals(self.assigner.get_service_ports(app),
+                          [10000, 10001])
+
+    def test_ip_per_task_marathon15(self):
+        app = {
+            'container': {
+                'type': 'DOCKER',
+                'docker': {
+                    'image': 'nginx'
+                },
+                'portMappings': [
+                    {
+                        'containerPort': 80,
+                        'servicePort': 10000,
+                    },
+                    {
+                        'containerPort': 81,
+                        'servicePort': 10001,
+                    },
+                ],
+            },
+            'networks': [
+                {
+                    'mode': 'container',
+                    'name': 'dcos'
+                }
+            ],
             'tasks': [{
                 "id": "testtaskid",
                 "ipAddresses": [{"ipAddress": "1.2.3.4"}]

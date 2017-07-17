@@ -332,8 +332,6 @@ def get_app_port_mappings(app):
 
 
 def get_app_task_ports(app, task, mode):
-    from pprint import pprint
-    pprint(mode)
     if mode == 'host' or mode == 'container/bridge':
         task_ports = task.get('ports')
         if task_ports:
