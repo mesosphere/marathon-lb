@@ -18,7 +18,7 @@ import six.moves.urllib as urllib
 
 from common import (get_marathon_auth_params, set_logging_args,
                     set_marathon_auth_args, setup_logging)
-from utils import get_task_ip_and_ports
+from utils import (get_task_ip_and_ports, get_app_port_mappings)
 from zdd_exceptions import (
     AppCreateException, AppDeleteException, AppScaleException,
     InvalidArgException, MarathonEndpointException,
@@ -500,10 +500,7 @@ def deploy_marathon_app(args, app):
 
 
 def get_service_port(app):
-    container = app.get('container', {})
-    portMappings = container.get('docker', {}).get('portMappings', [])
-    if len(portMappings) == 0:
-        portMappings = container.get('portMappings', [])
+    portMappings = get_app_port_mappings(app)
     if len(portMappings) > 0:
         servicePort = portMappings[0].get('servicePort')
         if servicePort:
