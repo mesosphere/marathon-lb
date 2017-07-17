@@ -521,7 +521,8 @@ def set_service_port(app, servicePort):
     container = app.get('container', {})
     portMappings = container.get('docker', {}).get('portMappings', [])
     if len(portMappings) > 0:
-        app['container']['docker']['portMappings'][0]['servicePort'] = int(servicePort)
+        portMappings[0]['servicePort'] = int(servicePort)
+        app['container']['docker']['portMappings'] = portMappings
         return app
     portMappings = container.get('portMappings', [])
     if len(portMappings) > 0:

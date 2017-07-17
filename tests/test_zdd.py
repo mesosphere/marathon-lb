@@ -47,10 +47,12 @@ def _arg_cases():
     args2.json = 'tests/1-nginx-marathon1.5.json'
     return [args1, args2]
 
+
 def _apps_cases():
     apps1 = json.loads(open('tests/zdd_app_blue.json').read())
     apps2 = json.loads(open('tests/zdd_app_blue_marathon1.5.json').read())
     return [apps1, apps2]
+
 
 class TestBluegreenDeploy(unittest.TestCase):
 
@@ -123,16 +125,15 @@ class TestBluegreenDeploy(unittest.TestCase):
             listeners = _load_listeners()
             haproxy_instance_count = 2
             app = apps['apps'][0]
-            results = \
-                      zdd.find_drained_task_ids(app,
+            results = zdd.find_drained_task_ids(app,
                                                 listeners,
                                                 haproxy_instance_count)
             from pprint import pprint
             pprint(app['tasks'][0]['id'])
             pprint(results)
-            assert app['tasks'][0]['id'] in results  # 2 l's down, no sessions
-            assert app['tasks'][1]['id'] not in results  # 1 l up, 1 down
-            assert app['tasks'][2]['id'] not in results  # 2 l's d, 1 w/ scur/qcur
+            assert app['tasks'][0]['id'] in results  # 2l's down, no sessions
+            assert app['tasks'][1]['id'] not in results  # 1l up, 1down
+            assert app['tasks'][2]['id'] not in results  # 2l's d, 1w/scur/qcur
         for a in _apps_cases():
             run(a)
 
@@ -141,13 +142,12 @@ class TestBluegreenDeploy(unittest.TestCase):
             listeners = _load_listeners()
             haproxy_instance_count = 2
             app = apps['apps'][0]
-            results = \
-                      zdd.find_draining_task_ids(app,
+            results = zdd.find_draining_task_ids(app,
                                                  listeners,
                                                  haproxy_instance_count)
-            assert app['tasks'][0]['id'] in results  # 2 l's down, no sessions
-            assert app['tasks'][1]['id'] not in results  # 1 l up, 1 down
-            assert app['tasks'][2]['id'] in results  # 2 l's down, 1 w/ scur/qcur
+            assert app['tasks'][0]['id'] in results  # 2l's down, no sessions
+            assert app['tasks'][1]['id'] not in results  # 1l up, 1 down
+            assert app['tasks'][2]['id'] in results  # 2l's down, 1w/scur/qcur
         for a in _apps_cases():
             run(a)
 
