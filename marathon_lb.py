@@ -119,9 +119,7 @@ class MarathonService(object):
         self.network_allowed = None
         self.healthcheck_port_index = None
         if healthCheck:
-            healthProto = healthCheck['protocol']
-            if healthProto in ['HTTP', 'HTTPS', 'MESOS_HTTP',
-                               'MESOS_HTTPS']:
+            if healthCheck['protocol'] == 'HTTP':
                 self.mode = 'http'
 
     def add_backend(self, host, ip, port, draining):
