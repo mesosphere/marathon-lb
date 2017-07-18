@@ -128,9 +128,6 @@ class TestBluegreenDeploy(unittest.TestCase):
             results = zdd.find_drained_task_ids(app,
                                                 listeners,
                                                 haproxy_instance_count)
-            from pprint import pprint
-            pprint(app['tasks'][0]['id'])
-            pprint(results)
             assert app['tasks'][0]['id'] in results  # 2l's down, no sessions
             assert app['tasks'][1]['id'] not in results  # 1l up, 1down
             assert app['tasks'][2]['id'] not in results  # 2l's d, 1w/scur/qcur
