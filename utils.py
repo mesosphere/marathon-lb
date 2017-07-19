@@ -115,7 +115,7 @@ class ServicePortAssigner(object):
         become exhausted, a port may be returned as None.
         """
         mode = get_app_networking_mode(app)
-        if mode == "container":
+        if mode == "container" or mode == "container/bridge":
             # Here we must use portMappings
             portMappings = get_app_port_mappings(app)
             if portMappings:
