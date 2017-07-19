@@ -133,6 +133,7 @@ class ServicePortAssigner(object):
                                app.get('portDefinitions', []))
                            )
         ports = list(ports)  # wtf python?
+        # This supports legacy ip-per-container for Marathon 1.4.x and prior
         if not ports and mode == "container" and self.can_assign \
                 and len(app['tasks']) > 0:
             task = app['tasks'][0]
@@ -290,7 +291,7 @@ def get_app_networking_mode(app):
     networks = app.get('networks', [])
     for n in networks:
         # Modes cannot be mixed, so assigning the last mode is fine
-        mode = n.get('mode', 'host')
+        mode = n.get('mode', 'container')
 
     return mode
 

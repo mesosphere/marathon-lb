@@ -257,13 +257,9 @@ def find_drained_task_ids(app, listeners, haproxy_count):
     tasks = zip(get_svnames_from_tasks(app, app['tasks']), app['tasks'])
     drained_listeners = select_drained_listeners(listeners)
 
-    from pprint import pprint
-    pprint(drained_listeners)
-
     drained_task_ids = []
     for svname, task in tasks:
         task_listeners = [l for l in drained_listeners if l.svname == svname]
-        pprint(svname)
         if len(task_listeners) == haproxy_count:
             drained_task_ids.append(task['id'])
 
@@ -521,16 +517,18 @@ def set_service_port(app, servicePort):
     container = app.get('container', {})
     portMappings = container.get('docker', {}).get('portMappings', [])
     if len(portMappings) > 0:
-        portMappings[0]['servicePort'] = int(servicePort)
-        app['container']['docker']['portMappings'] = portMappings
+        app['container']['docker']['portMappings'][0]['servicePort'] =\
+            int(servicePort)
         return app
     portMappings = container.get('portMappings', [])
     if len(portMappings) > 0:
-        app['container']['portMappings'][0]['servicePort'] = int(servicePort)
+        app['container']['portMappings'][0]['servicePort'] =\
+            int(servicePort)
         return app
     portDefinitions = app.get('portDefinitions', [])
     if len(portDefinitions) > 0:
-        ['portDefinitions'][0]['port'] = int(servicePort)
+        app['portDefinitions'][0]['port'] = int(servicePort)
+        return app
     app['ports'][0] = int(servicePort)
     return app
 
