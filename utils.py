@@ -332,35 +332,62 @@ def get_app_port_mappings(app):
     return portMappings
 
 
+def get_task_ports(task):
+    return task.get('ports')
+
+
+def get_port_definition_ports(app):
+    port_definitions = app.get('portDefinitions', [])
+    task_ports = [p['port']
+                  for p in port_definitions
+                  if 'port' in p]
+    if len(task_ports) == 0:
+        return None
+    return task_ports
+
+
+def get_ip_address_discovery_ports(app):
+    ip_address = app.get('ipAddress', {})
+    if ip_address:
+        discovery = app.get('ipAddress', {}).get('discovery', {})
+        task_ports = [int(p['number'])
+                      for p in discovery.get('ports', [])
+                      if 'number' in p]
+        if len(task_ports) > 0:
+            return task_ports
+    return None
+
+
+def get_port_mapping_ports(app):
+    port_mappings = get_app_port_mappings(app)
+    task_ports = [p['containerPort']
+                  for p in port_mappings
+                  if 'containerPort' in p]
+    if len(task_ports) == 0:
+        return None
+    return task_ports
+
+
 def get_app_task_ports(app, task, mode):
-    if mode == 'host' or mode == 'container/bridge':
-        task_ports = task.get('ports')
+    if mode == 'host':
+        task_ports = get_task_ports(task)
         if task_ports:
             return task_ports
-        port_definitions = app.get('portDefinitions', [])
-        task_ports = [p['port']
-                      for p in port_definitions
-                      if 'port' in p]
-        if len(task_ports) == 0:
-            return None
-        return task_ports
+        return get_port_definition_ports(app)
+    elif mode == 'container/bridge':
+        task_ports = get_task_ports(task)
+        if task_ports:
+            return task_ports
+        # Will only work for Marathon < 1.5
+        task_ports = get_port_definition_ports(app)
+        if task_ports:
+            return task_ports
+        return get_port_mapping_ports(app)
     else:
-        ip_address = app.get('ipAddress', {})
-        if ip_address:
-            discovery = app.get('ipAddress', {}).get('discovery', {})
-            task_ports = [int(p['number'])
-                          for p in discovery.get('ports', [])
-                          if 'number' in p]
-            if len(task_ports) > 0:
-                return task_ports
-
-        port_mappings = get_app_port_mappings(app)
-        task_ports = [p['containerPort']
-                      for p in port_mappings
-                      if 'containerPort' in p]
-        if len(task_ports) == 0:
-            return None
-        return task_ports
+        task_ports = get_ip_address_discovery_ports(app)
+        if task_ports:
+            return task_ports
+        return get_port_mapping_ports(app)
 
 
 def get_task_ip_and_ports(app, task):
