@@ -371,3 +371,14 @@ PRs are welcome, but here are a few general guidelines:
    ```
    bash /path/to/marathon-lb/scripts/install-git-hooks.sh
    ```
+
+## Release Process
+
+1. Create a Github release. Follow the convention of past releases. You can find
+something to copy/paste if you hit the "edit" button of a previous release.
+
+1. The Github release creates a tag, and Dockerhub will build off of that tag.
+
+1. Make a PR to Universe. The suggested way is to create one commit that **only** copies
+the previous dir to a new one, and then a second commit that makes the actual changes.
+If unsure, check out the previous commits to the marathon-lb directory in Universe.
