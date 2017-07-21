@@ -1208,6 +1208,8 @@ def compareMapFile(map_file, map_string):
 
 
 def get_health_check(app, portIndex):
+    if 'healthChecks' not in app:
+        return None
     for check in app['healthChecks']:
         if check.get('port'):
             return check

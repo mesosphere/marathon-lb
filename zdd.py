@@ -18,7 +18,7 @@ import six.moves.urllib as urllib
 
 from common import (get_marathon_auth_params, set_logging_args,
                     set_marathon_auth_args, setup_logging)
-from utils import get_task_ip_and_ports
+from utils import (get_task_ip_and_ports, get_app_port_mappings)
 from zdd_exceptions import (
     AppCreateException, AppDeleteException, AppScaleException,
     InvalidArgException, MarathonEndpointException,
@@ -496,24 +496,40 @@ def deploy_marathon_app(args, app):
 
 
 def get_service_port(app):
-    try:
-        return \
-            int(app['container']['docker']['portMappings'][0]['servicePort'])
-    except KeyError:
-        try:
-            return \
-                int(app['portDefinitions'][0]['port'])
-        except KeyError:
-            return int(app['ports'][0])
+    portMappings = get_app_port_mappings(app)
+    if len(portMappings) > 0:
+        servicePort = portMappings[0].get('servicePort')
+        if servicePort:
+            return servicePort
+    portDefinitions = app.get('portDefinitions', [])
+    if len(portDefinitions) > 0:
+        port = ['portDefinitions'][0].get('port')
+        if port:
+            return int(port)
+    ports = app.get('ports', [])
+    if len(ports) > 0:
+        return int(ports[0])
+    raise MissingFieldException("App doesn't contain a service port",
+                                'container.portMappings')
 
 
 def set_service_port(app, servicePort):
-    try:
-        app['container']['docker']['portMappings'][0]['servicePort'] = \
-          int(servicePort)
-    except KeyError:
-        app['ports'][0] = int(servicePort)
-
+    container = app.get('container', {})
+    portMappings = container.get('docker', {}).get('portMappings', [])
+    if len(portMappings) > 0:
+        app['container']['docker']['portMappings'][0]['servicePort'] =\
+            int(servicePort)
+        return app
+    portMappings = container.get('portMappings', [])
+    if len(portMappings) > 0:
+        app['container']['portMappings'][0]['servicePort'] =\
+            int(servicePort)
+        return app
+    portDefinitions = app.get('portDefinitions', [])
+    if len(portDefinitions) > 0:
+        app['portDefinitions'][0]['port'] = int(servicePort)
+        return app
+    app['ports'][0] = int(servicePort)
     return app
 
 
@@ -547,21 +563,15 @@ def set_app_ids(app, colour):
 
 def set_service_ports(app, servicePort):
     app['labels']['HAPROXY_0_PORT'] = str(get_service_port(app))
-    try:
-        app['container']['docker']['portMappings'][0]['servicePort'] = \
-          int(servicePort)
-        return app
-    except KeyError:
-        app['ports'][0] = int(servicePort)
-        return app
+    return set_service_port(app, servicePort)
 
 
 def select_next_port(app):
     alt_port = int(app['labels']['HAPROXY_DEPLOYMENT_ALT_PORT'])
-    if int(app['ports'][0]) == alt_port:
-        return int(app['labels']['HAPROXY_0_PORT'])
-    else:
-        return alt_port
+    if 'ports' in app:
+        if int(app['ports'][0]) == alt_port:
+            return int(app['labels']['HAPROXY_0_PORT'])
+    return alt_port
 
 
 def select_next_colour(app):

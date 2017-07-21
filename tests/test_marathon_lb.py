@@ -1219,6 +1219,63 @@ backend nginx_10000
 '''
         self.assertMultiLineEqual(config, expected)
 
+    def test_bridge_app_marathon15(self):
+        with open('tests/marathon15_apps.json') as data_file:
+            apps = json.load(data_file)
+
+        class Marathon:
+            def __init__(self, data):
+                self.data = data
+
+            def list(self):
+                return self.data
+
+            def health_check(self):
+                return True
+
+            def strict_mode(self):
+                return False
+
+        groups = ['external']
+        bind_http_https = True
+        ssl_certs = ""
+        templater = marathon_lb.ConfigTemplater()
+        apps = marathon_lb.get_apps(Marathon(apps['apps']))
+        config = marathon_lb.config(apps, groups, bind_http_https,
+                                    ssl_certs, templater)
+        expected = self.base_config + '''
+frontend marathon_http_in
+  bind *:80
+  mode http
+  acl host_myvhost_com_pywebserver hdr(host) -i myvhost.com
+  use_backend pywebserver_10101 if host_myvhost_com_pywebserver
+
+frontend marathon_http_appid_in
+  bind *:9091
+  mode http
+  acl app__pywebserver hdr(x-marathon-app-id) -i /pywebserver
+  use_backend pywebserver_10101 if app__pywebserver
+
+frontend marathon_https_in
+  bind *:443 ssl crt /etc/ssl/cert.pem
+  mode http
+  use_backend pywebserver_10101 if { ssl_fc_sni myvhost.com }
+
+frontend pywebserver_10101
+  bind *:10101
+  mode http
+  use_backend pywebserver_10101
+
+backend pywebserver_10101
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  server 10_0_2_148_1565 10.0.2.148:1565
+'''
+        self.assertMultiLineEqual(config, expected)
+
     def test_zdd_app(self):
         with open('tests/zdd_apps.json') as data_file:
             zdd_apps = json.load(data_file)
