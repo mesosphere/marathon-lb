@@ -95,6 +95,10 @@ if [ -n "${VAULT_TOKEN-}" ] && [ -n "${VAULT_HOST-}" ] && [ -n "${VAULT_PORT-}" 
   ARGS="$ARGS --auth-credentials $CREDENTIALS"
 fi
 
+if [ -n "${MARATHON_USER-}" ] && [ -n "${MARATHON_PASSWORD-}" ]; then
+  ARGS="$ARGS --auth-credentials $MARATHON_USER:$MARATHON_PASSWORD"
+fi
+
 for arg in "$@"; do
     escaped=$(printf %q "$arg")
     ARGS="$ARGS $escaped"
