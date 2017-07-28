@@ -1661,7 +1661,7 @@ def process_sse_events(marathon, processor):
                     # marathon sometimes sends more than one json per event
                     # e.g. {}\r\n{}\r\n\r\n
                     for real_event_data in re.split(r'\r\n', event.data):
-                        data = json.loads(real_event_data)
+                        data = json.loads(real_event_data, object_hook=remove_nulls)
                         logger.info(
                             "received event of type {0}"
                             .format(data['eventType']))
@@ -1675,6 +1675,10 @@ def process_sse_events(marathon, processor):
                 raise
     finally:
         processor.stop()
+
+
+def remove_nulls(d):
+    return {k: v for k, v in d.items() if v is not None}
 
 
 if __name__ == '__main__':

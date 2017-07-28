@@ -126,11 +126,11 @@ class ServicePortAssigner(object):
                 if ports:
                     return list(ports)
 
-        ports = app.get('ports') or []
+        ports = app.get('ports', [])
         if 'portDefinitions' in app:
             ports = filter(lambda p: p is not None,
                            map(lambda p: p.get('port', None),
-                               app.get('portDefinitions') or [])
+                               app.get('portDefinitions', []))
                            )
         ports = list(ports)  # wtf python?
         # This supports legacy ip-per-container for Marathon 1.4.x and prior
@@ -280,14 +280,15 @@ def get_app_networking_mode(app):
     if app.get('ipAddress'):
         mode = 'container'
 
-    _mode = ((app.get('container') or {}).get('docker') or {})\
-        .get('network') or ''
+    _mode = app.get('container', {})\
+               .get('docker', {})\
+               .get('network', '')
     if _mode == 'USER':
         mode = 'container'
     elif _mode == 'BRIDGE':
         mode = 'container/bridge'
 
-    networks = app.get('networks') or []
+    networks = app.get('networks', [])
     for n in networks:
         # Modes cannot be mixed, so assigning the last mode is fine
         mode = n.get('mode', 'container')
@@ -297,7 +298,7 @@ def get_app_networking_mode(app):
 
 def get_task_ip(task, mode):
     if mode == 'container':
-        task_ip_addresses = task.get('ipAddresses') or []
+        task_ip_addresses = task.get('ipAddresses', [])
         if not task_ip_addresses:
             logger.warning("Task %s does not yet have an ip address allocated",
                            task['id'])
@@ -320,12 +321,14 @@ def get_task_ip(task, mode):
 
 
 def get_app_port_mappings(app):
-    portMappings = ((app.get('container') or {}).get('docker') or {})\
+    portMappings = app.get('container', {})\
+                      .get('docker', {})\
                       .get('portMappings')
     if portMappings:
         return portMappings
 
-    portMappings = (app.get('container') or {}).get('portMappings')
+    portMappings = app.get('container', {})\
+                      .get('portMappings')
     return portMappings
 
 
@@ -334,7 +337,7 @@ def get_task_ports(task):
 
 
 def get_port_definition_ports(app):
-    port_definitions = app.get('portDefinitions') or []
+    port_definitions = app.get('portDefinitions', [])
     task_ports = [p['port']
                   for p in port_definitions
                   if 'port' in p]
@@ -346,9 +349,9 @@ def get_port_definition_ports(app):
 def get_ip_address_discovery_ports(app):
     ip_address = app.get('ipAddress', {})
     if ip_address:
-        discovery = (app.get('ipAddress') or {}).get('discovery') or {}
+        discovery = app.get('ipAddress', {}).get('discovery', {})
         task_ports = [int(p['number'])
-                      for p in (discovery.get('ports') or [])
+                      for p in discovery.get('ports', [])
                       if 'number' in p]
         if len(task_ports) > 0:
             return task_ports
