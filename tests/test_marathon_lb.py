@@ -3036,3 +3036,12 @@ backend nginx2_10001
   server agent2_2_2_2_2_1025 2.2.2.2:1025 check inter 3s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
+
+
+class TestFunctions(unittest.TestCase):
+
+    def test_load_json(self):
+        json_value = '{"key":null,"key2":"y","key3":{"key4":null,"key5":"x"}}'
+        data = marathon_lb.load_json(json_value)
+        expected = {'key3': {'key5': 'x'}, 'key2': 'y'}
+        self.assertEquals(data, expected)
