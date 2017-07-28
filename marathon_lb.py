@@ -1644,6 +1644,9 @@ def get_arg_parser():
                         help="Maximum port number to use when auto-assigning "
                              "service ports for IP-per-task applications",
                         type=int, default=10100)
+    parser.add_argument("--max-backoff",
+                        help="Maximum backoff to limit backoff size ",
+                        type=int, default=300)
     parser = set_logging_args(parser)
     parser = set_marathon_auth_args(parser)
     return parser
@@ -1752,8 +1755,8 @@ if __name__ == '__main__':
             except:
                 logger.exception("Caught exception")
                 backoff = backoff * 1.5
-                if backoff > 300:
-                    backoff = 300
+                if backoff > args.max_backoff:
+                    backoff = args.max_backoff
                 logger.error("Reconnecting in {}s...".format(backoff))
             # Reset the backoff if it's been more than 10 minutes
             if time.time() - stream_started > 600:
