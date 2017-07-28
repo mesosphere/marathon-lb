@@ -1165,7 +1165,7 @@ def set_balance(x, k, v):
 
 
 def set_label(x, k, v):
-    x.labels[k] = v
+    x.labels[k] = normalize_line_endings(v)
 
 
 def set_group(x, k, v):
@@ -1186,6 +1186,11 @@ def set_redirpath(x, k, v):
 
 def set_network_allowed(x, k, v):
     x.network_allowed = v
+
+# remove any line-ending inconsistencies
+# https://github.com/mesosphere/marathon-lb/pull/430
+def normalize_line_endings(v):
+    return v.replace("\r\n", "\n")
 
 
 class Label:
