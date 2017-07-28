@@ -281,7 +281,7 @@ def get_app_networking_mode(app):
         mode = 'container'
 
     _mode = ((app.get('container') or {}).get('docker') or {})\
-            .get('network') or ''
+        .get('network') or ''
     if _mode == 'USER':
         mode = 'container'
     elif _mode == 'BRIDGE':
