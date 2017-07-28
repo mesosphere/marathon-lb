@@ -501,12 +501,12 @@ def get_service_port(app):
         servicePort = portMappings[0].get('servicePort')
         if servicePort:
             return servicePort
-    portDefinitions = app.get('portDefinitions', [])
+    portDefinitions = app.get('portDefinitions') or []
     if len(portDefinitions) > 0:
         port = ['portDefinitions'][0].get('port')
         if port:
             return int(port)
-    ports = app.get('ports', [])
+    ports = app.get('ports') or []
     if len(ports) > 0:
         return int(ports[0])
     raise MissingFieldException("App doesn't contain a service port",
@@ -514,18 +514,18 @@ def get_service_port(app):
 
 
 def set_service_port(app, servicePort):
-    container = app.get('container', {})
-    portMappings = container.get('docker', {}).get('portMappings', [])
+    container = app.get('container') or {}
+    portMappings = (container.get('docker') or {}).get('portMappings') or []
     if len(portMappings) > 0:
         app['container']['docker']['portMappings'][0]['servicePort'] =\
             int(servicePort)
         return app
-    portMappings = container.get('portMappings', [])
+    portMappings = container.get('portMappings') or []
     if len(portMappings) > 0:
         app['container']['portMappings'][0]['servicePort'] =\
             int(servicePort)
         return app
-    portDefinitions = app.get('portDefinitions', [])
+    portDefinitions = app.get('portDefinitions') or []
     if len(portDefinitions) > 0:
         app['portDefinitions'][0]['port'] = int(servicePort)
         return app

@@ -389,6 +389,49 @@ class TestServicePortAssigner(unittest.TestCase):
         self.assertEquals(self.assigner.get_service_ports(app),
                           [10000, 10001])
 
+    def test_ip_per_task_docker_null(self):
+        app = {
+            'ipAddress': {},
+            'container': {
+                'type': 'MESOS',
+                'docker': None,
+            },
+            'tasks': [{
+                "id": "testtaskid",
+                "ipAddresses": [{"ipAddress": "1.2.3.4"}]
+            }],
+            "portDefinitions": [
+                {
+                    'port': 10000,
+                },
+                {
+                    'port': 10001,
+                },
+            ],
+        }
+        self.assertEquals(self.assigner.get_service_ports(app),
+                          [10000, 10001])
+
+    def test_ip_per_task_container_null(self):
+        app = {
+            'ipAddress': {},
+            'container': None,
+            'tasks': [{
+                "id": "testtaskid",
+                "ipAddresses": [{"ipAddress": "1.2.3.4"}]
+            }],
+            "portDefinitions": [
+                {
+                    'port': 10000,
+                },
+                {
+                    'port': 10001,
+                },
+            ],
+        }
+        self.assertEquals(self.assigner.get_service_ports(app),
+                          [10000, 10001])
+
 
 def _get_app(idx=1, num_ports=3, num_tasks=1, ip_per_task=True,
              inc_service_ports=False):
