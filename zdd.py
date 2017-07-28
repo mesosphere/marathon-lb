@@ -575,14 +575,14 @@ def select_next_port(app):
 
 
 def select_next_colour(app):
-    if app['labels'].get('HAPROXY_DEPLOYMENT_COLOUR') == 'blue':
+    if (app.get('labels') or {}).get('HAPROXY_DEPLOYMENT_COLOUR') == 'blue':
         return 'green'
     else:
         return 'blue'
 
 
 def sort_deploys(apps):
-    return sorted(apps, key=lambda a: a.get('labels', {})
+    return sorted(apps, key=lambda a: (a.get('labels') or {})
                   .get('HAPROXY_DEPLOYMENT_STARTED_AT', '0'))
 
 
@@ -595,7 +595,7 @@ def select_last_two_deploys(apps):
 
 
 def get_deployment_group(app):
-    return app.get('labels', {}).get('HAPROXY_DEPLOYMENT_GROUP')
+    return (app.get('labels') or {}).get('HAPROXY_DEPLOYMENT_GROUP')
 
 
 def fetch_previous_deploys(args, app):

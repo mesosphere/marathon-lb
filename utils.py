@@ -126,11 +126,11 @@ class ServicePortAssigner(object):
                 if ports:
                     return list(ports)
 
-        ports = app.get('ports', [])
+        ports = app.get('ports') or []
         if 'portDefinitions' in app:
             ports = filter(lambda p: p is not None,
                            map(lambda p: p.get('port', None),
-                               app.get('portDefinitions', []))
+                               app.get('portDefinitions') or [])
                            )
         ports = list(ports)  # wtf python?
         # This supports legacy ip-per-container for Marathon 1.4.x and prior
@@ -349,7 +349,7 @@ def get_ip_address_discovery_ports(app):
     if ip_address:
         discovery = (app.get('ipAddress') or {}).get('discovery') or {}
         task_ports = [int(p['number'])
-                      for p in discovery.get('ports', [])
+                      for p in (discovery.get('ports') or [])
                       if 'number' in p]
         if len(task_ports) > 0:
             return task_ports
