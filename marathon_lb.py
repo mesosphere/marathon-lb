@@ -43,7 +43,7 @@ import dateutil.parser
 import requests
 
 from common import (get_marathon_auth_params, set_logging_args,
-                    set_marathon_auth_args, setup_logging)
+                    set_marathon_auth_args, setup_logging, cleanup_json)
 from config import ConfigTemplater, label_keys
 from lrucache import LRUCache
 from utils import (CurlHttpEventStream, get_task_ip_and_ports, ip_cache,
@@ -189,16 +189,18 @@ class Marathon(object):
 
         response.raise_for_status()
 
-        if 'message' in response.json():
+        resp_json = cleanup_json(response.json())
+        if 'message' in resp_json:
             response.reason = "%s (%s)" % (
                 response.reason,
-                response.json()['message'])
+                resp_json['message'])
 
         return response
 
     def api_req(self, method, path, **kwargs):
-        return self.api_req_raw(method, path, self.__auth,
+        data = self.api_req_raw(method, path, self.__auth,
                                 verify=self.__verify, **kwargs).json()
+        return cleanup_json(data)
 
     def create(self, app_json):
         return self.api_req('POST', ['apps'], app_json)
@@ -1678,11 +1680,7 @@ def process_sse_events(marathon, processor):
 
 
 def load_json(data_str):
-    return json.loads(data_str, object_hook=remove_nulls)
-
-
-def remove_nulls(d):
-    return {k: v for k, v in d.items() if v is not None}
+    return cleanup_json(json.loads(data_str))
 
 
 if __name__ == '__main__':
