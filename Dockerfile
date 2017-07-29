@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         socat \
     && rm -rf /var/lib/apt/lists/*
 
-ENV TINI_VERSION=v0.13.2 \
+ENV TINI_VERSION=v0.15.0 \
     TINI_GPG_KEY=595E85A6B1B4779EA4DAAEC70B588DFF0527A9B7
 RUN set -x \
     && apt-get update && apt-get install -y --no-install-recommends dirmngr gpg wget \
@@ -32,8 +32,8 @@ RUN set -x \
 
 
 ENV HAPROXY_MAJOR=1.7 \
-    HAPROXY_VERSION=1.7.2 \
-    HAPROXY_MD5=7330b36f3764ebe409e9305803dc30e2
+    HAPROXY_VERSION=1.7.8 \
+    HAPROXY_MD5=7e94653cc5a1dba006bbe43736f53595
 
 COPY requirements.txt /marathon-lb/
 
