@@ -3064,7 +3064,7 @@ class TestFunctions(unittest.TestCase):
         expected = {'key3': {}, 'key2': 'y'}
         self.assertEquals(data, expected)
 
-    def test_json_list(self):
+    def test_json_simple_list_dict(self):
         json_value = '["k1",{"k2":null,"k3":"v3"},"k4"]'
         data = marathon_lb.load_json(json_value)
         expected = ['k1', {'k3': 'v3'}, 'k4']
