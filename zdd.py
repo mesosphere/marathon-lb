@@ -17,7 +17,7 @@ import requests
 import six.moves.urllib as urllib
 
 from common import (get_marathon_auth_params, set_logging_args,
-                    set_marathon_auth_args, setup_logging)
+                    set_marathon_auth_args, setup_logging, cleanup_json)
 from utils import (get_task_ip_and_ports, get_app_port_mappings)
 from zdd_exceptions import (
     AppCreateException, AppDeleteException, AppScaleException,
@@ -76,12 +76,12 @@ def marathon_get_request(args, path):
 
 def list_marathon_apps(args):
     response = marathon_get_request(args, "/v2/apps")
-    return response.json()['apps']
+    return cleanup_json(response.json())['apps']
 
 
 def fetch_marathon_app(args, app_id):
     response = marathon_get_request(args, "/v2/apps" + app_id)
-    return response.json()['app']
+    return cleanup_json(response.json())['app']
 
 
 def _get_alias_records(hostname):
@@ -575,7 +575,7 @@ def select_next_port(app):
 
 
 def select_next_colour(app):
-    if app['labels'].get('HAPROXY_DEPLOYMENT_COLOUR') == 'blue':
+    if app.get('labels', {}).get('HAPROXY_DEPLOYMENT_COLOUR') == 'blue':
         return 'green'
     else:
         return 'blue'

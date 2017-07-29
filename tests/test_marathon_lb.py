@@ -3036,3 +3036,42 @@ backend nginx2_10001
   server agent2_2_2_2_2_1025 2.2.2.2:1025 check inter 3s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
+
+
+class TestFunctions(unittest.TestCase):
+
+    def test_json_number(self):
+        json_value = '1'
+        data = marathon_lb.load_json(json_value)
+        expected = 1
+        self.assertEquals(data, expected)
+
+    def test_json_string(self):
+        json_value = '"1"'
+        data = marathon_lb.load_json(json_value)
+        expected = "1"
+        self.assertEquals(data, expected)
+
+    def test_json_nested_null_dict_remain(self):
+        json_value = '{"key":null,"key2":"y","key3":{"key4":null,"key5":"x"}}'
+        data = marathon_lb.load_json(json_value)
+        expected = {'key3': {'key5': 'x'}, 'key2': 'y'}
+        self.assertEquals(data, expected)
+
+    def test_json_nested_null_dict(self):
+        json_value = '{"key":null,"key2":"y","key3":{"key4":null}}'
+        data = marathon_lb.load_json(json_value)
+        expected = {'key3': {}, 'key2': 'y'}
+        self.assertEquals(data, expected)
+
+    def test_json_simple_list_dict(self):
+        json_value = '["k1",{"k2":null,"k3":"v3"},"k4"]'
+        data = marathon_lb.load_json(json_value)
+        expected = ['k1', {'k3': 'v3'}, 'k4']
+        self.assertEquals(data, expected)
+
+    def test_json_nested_null_dict_list(self):
+        json_value = '["k1",{"k2":null,"k3":["k4",{"k5":null}]},"k6"]'
+        data = marathon_lb.load_json(json_value)
+        expected = ['k1', {'k3': ['k4', {}]}, 'k6']
+        self.assertEquals(data, expected)
