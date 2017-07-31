@@ -1125,9 +1125,33 @@ def truncateMapFileIfExists(map_file):
         os.ftruncate(fd, 0)
         os.close(fd)
 
+def generateAndValidateConfig(config, config_file, domain_map_array,
+                                app_map_array, haproxy_map):
+    domain_map_file = os.path.join(os.path.dirname(config_file),
+                                   "domain2backend.map")
+    app_map_file = os.path.join(os.path.dirname(config_file),
+                                "app2backend.map")
+
+    domain_map_string = str()
+    app_map_string = str()
+    runningConfig = str()
+
+    if haproxy_map:
+        domain_map_string = generateMapString(domain_map_array)
+        app_map_string = generateMapString(app_map_array)
+
+    return writeConfigAndValidate(
+                config, config_file, domain_map_string, domain_map_file,
+                app_map_string, app_map_file, haproxy_map)
+            
+
 
 def compareWriteAndReloadConfig(config, config_file, domain_map_array,
                                 app_map_array, haproxy_map):
+    
+    changed = False
+    config_valid = False
+    
     # See if the last config on disk matches this, and if so don't reload
     # haproxy
     domain_map_file = os.path.join(os.path.dirname(config_file),
@@ -1159,10 +1183,16 @@ def compareWriteAndReloadConfig(config, config_file, domain_map_array,
                     config, config_file, domain_map_string, domain_map_file,
                     app_map_string, app_map_file, haproxy_map):
                 reloadConfig()
+                changed = True
+                config_valid = True
             else:
                 logger.warning("skipping reload: config/map not valid")
+                changed = True
+                config_valid = False
         else:
             logger.debug("skipping reload: config/map unchanged")
+            changed = False
+            config_valid = True
     else:
         truncateMapFileIfExists(domain_map_file)
         truncateMapFileIfExists(app_map_file)
@@ -1174,10 +1204,18 @@ def compareWriteAndReloadConfig(config, config_file, domain_map_array,
                     config, config_file, domain_map_string, domain_map_file,
                     app_map_string, app_map_file, haproxy_map):
                 reloadConfig()
+                changed = True
+                config_valid = True
             else:
                 logger.warning("skipping reload: config not valid")
+                changed = True
+                config_valid = False
         else:
+            changed = False
+            config_valid = True
             logger.debug("skipping reload: config unchanged")
+    
+    return changed, config_valid
 
 
 def generateMapString(map_array):
@@ -1221,8 +1259,10 @@ def get_health_check(app, portIndex):
 healthCheckResultCache = LRUCache()
 
 
-def get_apps(marathon):
-    apps = marathon.list()
+def get_apps(marathon, apps=[]):
+    if len(apps) == 0:
+        apps = marathon.list()
+
     logger.debug("got apps %s", [app["id"] for app in apps])
 
     marathon_apps = []
@@ -1437,17 +1477,77 @@ def get_apps(marathon):
     return apps_list
 
 
-def regenerate_config(apps, config_file, groups, bind_http_https,
+def regenerate_config(marathon, config_file, groups, bind_http_https,
                       ssl_certs, templater, haproxy_map):
     domain_map_array = []
     app_map_array = []
-
+    apps = get_apps(marathon)
     generated_config = config(apps, groups, bind_http_https, ssl_certs,
                               templater, haproxy_map, domain_map_array,
                               app_map_array, config_file)
 
-    compareWriteAndReloadConfig(generated_config, config_file,
-                                domain_map_array, app_map_array, haproxy_map)
+    (changed, config_valid) = compareWriteAndReloadConfig(generated_config, config_file,
+                                                          domain_map_array, app_map_array, haproxy_map)
+
+    if changed and not config_valid:
+        apps = make_config_valid_and_regenerate(marathon, groups, bind_http_https, ssl_certs,
+                                         templater, haproxy_map, domain_map_array,
+                                         app_map_array, config_file)
+
+    return apps
+
+# Build up a valid configuration by adding one app at a time and checking
+# for valid config file after each app
+def make_config_valid_and_regenerate(marathon, groups, bind_http_https, ssl_certs,
+                                     templater, haproxy_map, domain_map_array,
+                                     app_map_array, config_file):
+    try:
+        start_time = time.time()
+        
+        valid_marathon_apps = []
+        marathon_apps = marathon.list()
+        apps = []
+        excluded_ids = []
+
+        for app in marathon_apps:
+            
+            valid_marathon_apps.append(app)
+            apps = get_apps(marathon, valid_marathon_apps)
+
+            domain_map_array = []
+            app_map_array = []
+
+            generated_config = config(apps, groups, bind_http_https, ssl_certs,
+                                      templater, haproxy_map, domain_map_array,
+                                      app_map_array, config_file)
+            
+            if not generateAndValidateConfig(generated_config, config_file,
+                                             domain_map_array, app_map_array, haproxy_map):
+                invalid_id = valid_marathon_apps[-1]["id"]
+                logger.warn("invalid configuration caused by app %s; it will be excluded", invalid_id)
+                excluded_ids.append(invalid_id)
+                del valid_marathon_apps[-1]
+
+                if len(valid_marathon_apps) == 0:
+                    apps = []
+
+        if len(valid_marathon_apps) > 0:
+            logger.debug("regentrating valid config which excludes the following apps: %s", excluded_ids)
+            compareWriteAndReloadConfig(generated_config, config_file,
+                                        domain_map_array, app_map_array, haproxy_map)
+        else:
+            logger.error("A valid config file could not be generated after excluding all apps! skipping reload")
+        
+        logger.debug("regenerating while excluding invalid tasks finished, took %s seconds",
+                        time.time() - start_time)   
+
+        return apps
+
+    except requests.exceptions.ConnectionError as e:
+        logger.error("Connection error({0}): {1}".format(
+            e.errno, e.strerror))
+    except:
+        logger.exception("Unexpected error!")
 
 
 class MarathonEventProcessor(object):
@@ -1512,14 +1612,13 @@ class MarathonEventProcessor(object):
         try:
             start_time = time.time()
 
-            self.__apps = get_apps(self.__marathon)
-            regenerate_config(self.__apps,
-                              self.__config_file,
-                              self.__groups,
-                              self.__bind_http_https,
-                              self.__ssl_certs,
-                              self.__templater,
-                              self.__haproxy_map)
+            self.__apps = regenerate_config(self.__marathon,
+                                            self.__config_file,
+                                            self.__groups,
+                                            self.__bind_http_https,
+                                            self.__ssl_certs,
+                                            self.__templater,
+                                            self.__haproxy_map)
 
             logger.debug("updating tasks finished, took %s seconds",
                          time.time() - start_time)
@@ -1761,7 +1860,7 @@ if __name__ == '__main__':
             time.sleep(random.random() * backoff)
     else:
         # Generate base config
-        regenerate_config(get_apps(marathon),
+        regenerate_config(marathon,
                           args.haproxy_config,
                           args.group,
                           not args.dont_bind_http_https,
