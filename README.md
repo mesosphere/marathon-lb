@@ -277,6 +277,8 @@ The default value when not specified is `redispatch,http-server-close,dontlognul
 
 ## Zero-downtime Deployments
 
+* Please note that `zdd.py` is not to be used in a production environment and is purely developed for demonstration purposes.
+
 Marathon-lb is able to perform canary style blue/green deployment with zero downtime. To execute such deployments, you must follow certain patterns when using Marathon.
 
 The deployment method is described [in this Marathon document](https://mesosphere.github.io/marathon/docs/blue-green-deploy.html). Marathon-lb provides an implementation of the aforementioned deployment method with the script [`zdd.py`](zdd.py). To perform a zero downtime deploy using `zdd.py`, you must:
