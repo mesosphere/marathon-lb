@@ -157,6 +157,18 @@ class CurlHttpEventStream(object):
         self.curl.setopt(pycurl.ENCODING, 'gzip')
         self.curl.setopt(pycurl.CONNECTTIMEOUT, 10)
         self.curl.setopt(pycurl.WRITEDATA, self.received_buffer)
+
+        # The below settings are to prevent the connection from hanging if the
+        # connection breaks silently. Since marathon-lb only listens, silent
+        # connection failure results in marathon-lb waiting infinitely.
+        #
+        # Minimum bytes/second below which it is considered "low speed". So
+        # "low speed" here refers to 0 bytes/second.
+        self.curl.setopt(pycurl.LOW_SPEED_LIMIT, 1)
+        # How long (in seconds) it's allowed to go below the speed limit
+        # before it times out
+        self.curl.setopt(pycurl.LOW_SPEED_TIME, 300)
+
         if auth and type(auth) is DCOSAuth:
             auth.refresh_auth_header()
             headers.append('Authorization: %s' % auth.auth_header)
