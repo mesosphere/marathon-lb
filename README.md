@@ -372,6 +372,32 @@ PRs are welcome, but here are a few general guidelines:
    bash /path/to/marathon-lb/scripts/install-git-hooks.sh
    ```
 
+### Troubleshooting your development environment setup
+
+#### FileNotFoundError: [Errno 2] No such file or directory: 'curl-config'
+
+You need to install the curl development package.
+
+```sh
+# Fedora
+dnf install libcurl-devel
+
+# Ubuntu
+apt-get install libcurl-dev
+```
+
+#### ImportError: pycurl: libcurl link-time ssl backend (nss) is different from compile-time ssl backend (openssl)
+
+The `pycurl` package linked against the wrong SSL backend when you installed it.
+
+```sh
+pip uninstall pycurl
+export PYCURL_SSL_LIBRARY=nss
+pip install -r requirements-dev.txt
+```
+
+Swap `nss` for whatever backend it mentions.
+
 ## Release Process
 
 1. Create a Github release. Follow the convention of past releases. You can find
