@@ -770,17 +770,25 @@ Use with HAPROXY_TCP_BACKEND_ACL_ALLOW_DENY.
         self.__load_templates()
 
     def __load_templates(self):
-        '''Loads template files if they exist, othwerwise it sets defaults'''
+        '''Look in environment variables for templates.  If not set in env, 
+        load template files if they exist. Othwerwise it sets defaults'''
 
         for template in self.t:
             name = self.t[template].full_name
-            try:
-                filename = os.path.join(self.__template_directory, name)
-                with open(filename) as f:
-                    logger.info('overriding %s from %s', name, filename)
-                    self.t[template].value = f.read()
-            except IOError:
-                logger.debug("setting default value for %s", name)
+            if os.environ.get(name):
+                logger.info('overriding %s from environment variable', name)
+                env_template_val = os.environ.get(name)
+                # logger.info(env_template_val)
+                # Handle escaped endlines
+                self.t[template].value = env_template_val.replace("\\n","\n")
+            else:
+                try:
+                    filename = os.path.join(self.__template_directory, name)
+                    with open(filename) as f:
+                        logger.info('overriding %s from %s', name, filename)
+                        self.t[template].value = f.read()
+                except IOError:
+                    logger.debug("setting default value for %s", name)
 
     def get_descriptions(self):
         descriptions = '''\
