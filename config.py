@@ -770,7 +770,7 @@ Use with HAPROXY_TCP_BACKEND_ACL_ALLOW_DENY.
         self.__load_templates()
 
     def __load_templates(self):
-        '''Look in environment variables for templates.  If not set in env, 
+        '''Look in environment variables for templates.  If not set in env,
         load template files if they exist. Othwerwise it sets defaults'''
 
         for template in self.t:
@@ -780,7 +780,7 @@ Use with HAPROXY_TCP_BACKEND_ACL_ALLOW_DENY.
                 env_template_val = os.environ.get(name)
                 # logger.info(env_template_val)
                 # Handle escaped endlines
-                self.t[template].value = env_template_val.replace("\\n","\n")
+                self.t[template].value = env_template_val.replace("\\n", "\n")
             else:
                 try:
                     filename = os.path.join(self.__template_directory, name)
