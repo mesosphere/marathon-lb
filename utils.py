@@ -137,7 +137,7 @@ class ServicePortAssigner(object):
         if not ports and mode == "container" and self.can_assign \
                 and len(app['tasks']) > 0:
             task = app['tasks'][0]
-            _, task_ports = get_task_ip_and_ports(app, task)
+            task_ports = get_app_task_ports(app, task, mode)
             if task_ports is not None:
                 ports = [self._get_service_port(app, task_port)
                          for task_port in task_ports]
@@ -336,11 +336,11 @@ def get_app_port_mappings(app):
     portMappings = app.get('container', {})\
                       .get('docker', {})\
                       .get('portMappings')
-    if portMappings:
+    if portMappings is not None:
         return portMappings
 
     portMappings = app.get('container', {})\
-                      .get('portMappings')
+                      .get('portMappings', [])
     return portMappings
 
 

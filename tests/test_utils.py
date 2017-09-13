@@ -363,6 +363,32 @@ class TestServicePortAssigner(unittest.TestCase):
         self.assertEquals(self.assigner.get_service_ports(app),
                           [10000, 10001])
 
+    def test_ip_per_task_portMappings_empty(self):
+        app = {
+            'ipAddress': {
+                'networkName': 'testnet',
+                'discovery': {
+                    'ports': []
+                }
+            },
+            'container': {
+                'type': 'DOCKER',
+                'docker': {
+                    'network': 'USER',
+                    'portMappings': [],
+                }
+            },
+            'tasks': [
+                {
+                    'id': 'testtaskid',
+                    'ipAddresses': [{'ipAddress': '1.2.3.4'}],
+                    'ports': [],
+                    'host': '4.3.2.1'
+                }
+            ]
+        }
+        self.assertEquals(self.assigner.get_service_ports(app), [])
+
     def test_ip_per_task_portMappings_null(self):
         app = {
             'ipAddress': {},
