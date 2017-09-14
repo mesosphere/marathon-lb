@@ -261,8 +261,8 @@ def resolve_ip(host):
     :return: string, an empty string indicates that no ip was found.
     """
     cached_ip = ip_cache.get().get(host, "")
-    if cached_ip == "":
-        return ""
+    if cached_ip != "":
+        return cached_ip
     else:
         try:
             logger.debug("trying to resolve ip address for host %s", host)
