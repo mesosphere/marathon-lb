@@ -645,7 +645,7 @@ def prepare_deploy(args, previous_deploys, app):
 
 def load_app_json(args):
     with open(args.json) as content_file:
-        return json.load(content_file)
+        return cleanup_json(json.load(content_file))
 
 
 def safe_resume_deploy(args, previous_deploys):
