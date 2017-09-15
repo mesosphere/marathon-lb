@@ -659,9 +659,9 @@ def reloadConfig():
                              "new_pids: [%s])...", old_pids, new_pids)
                 if len(new_pids - old_pids) >= 1:
                     break
-                # TODO: REMOVEME Every one second force restart.
+                # TODO: REMOVEME Every 30 seconds force restart.
                 timeSinceCheckpoint = time.time() - checkpoint_time
-                if (timeSinceCheckpoint >= 1):
+                if (timeSinceCheckpoint >= 30):
                     logger.debug("Forcing restart after %s seconds",
                                  timeSinceCheckpoint)
                     subprocess.check_call(forceRestartCommand,
