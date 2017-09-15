@@ -1412,7 +1412,7 @@ def get_apps(marathon):
                         continue
 
             task_ip, task_ports = get_task_ip_and_ports(app, task)
-            if not task_ip:
+            if task_ip is None:
                 logger.warning("Task has no resolvable IP address - skip")
                 continue
 
