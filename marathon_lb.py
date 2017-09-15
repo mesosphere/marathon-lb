@@ -615,7 +615,8 @@ def get_haproxy_pids():
             "pidof haproxy",
             stderr=subprocess.STDOUT,
             shell=True).split()))
-    except subprocess.CalledProcessError:
+    except subprocess.CalledProcessError as ex:
+        logger.debug("Unable to get haproxy pids: %s", ex)
         return set()
 
 
@@ -649,8 +650,12 @@ def reloadConfig():
             old_pids = get_haproxy_pids()
             subprocess.check_call(reloadCommand, close_fds=True)
             # Wait until the reload actually occurs and there's a new PID
-            while len(get_haproxy_pids() - old_pids) < 1:
-                logger.debug("Waiting for new haproxy pid...")
+            while True:
+                new_pids = get_haproxy_pids()
+                logger.debug("Waiting for new haproxy pid (old pids: [%s], " +
+                             "new_pids: [%s])...", old_pids, new_pids)
+                if len(new_pids - old_pids) >= 1:
+                    break
                 time.sleep(0.1)
             logger.debug("reload finished, took %s seconds",
                          time.time() - start_time)
