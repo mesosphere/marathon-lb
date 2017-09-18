@@ -1195,10 +1195,11 @@ def generateHttpVhostAcl(
         else:
             if app.redirectHttpToHttps:
                 http_frontend_acl = \
-                    templater.haproxy_http_frontend_acl_only(app)
+                    templater.haproxy_http_frontend_acl(app)
                 staging_http_frontends += http_frontend_acl.format(
                     cleanedUpHostname=acl_name,
-                    hostname=app.hostname
+                    hostname=app.hostname,
+                    backend=backend
                 )
                 haproxy_backend_redirect_http_to_https = \
                     templater.\
