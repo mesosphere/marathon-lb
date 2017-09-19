@@ -222,7 +222,7 @@ def select_drained_listeners(listeners):
 
 def get_svnames_from_task(app, task):
     prefix = task['host'].replace('.', '_')
-    task_ip, task_port = get_task_ip_and_ports(app, task)
+    task_ip, _ = get_task_ip_and_ports(app, task)
     if task['host'] == task_ip:
         for port in task['ports']:
             yield('{}_{}'.format(prefix, port))
@@ -645,7 +645,7 @@ def prepare_deploy(args, previous_deploys, app):
 
 def load_app_json(args):
     with open(args.json) as content_file:
-        return json.load(content_file)
+        return cleanup_json(json.load(content_file))
 
 
 def safe_resume_deploy(args, previous_deploys):
