@@ -778,7 +778,7 @@ Use with HAPROXY_TCP_BACKEND_ACL_ALLOW_DENY.
             if os.environ.get(name):
                 logger.info('overriding %s from environment variable', name)
                 env_template_val = os.environ.get(name)
-                # logger.info(env_template_val)
+                
                 # Handle escaped endlines
                 self.t[template].value = env_template_val.replace("\\n", "\n")
             else:
