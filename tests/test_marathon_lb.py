@@ -2771,7 +2771,6 @@ backend nginx_10000
         expected_app_map["/nginx"] = "nginx_10000"
         self.assertEqual(app_config_map, expected_app_map)
 
-
     def test_config_simple_app_long_backend_proxypass(self):
         apps = dict()
         groups = ['external']
@@ -2805,7 +2804,7 @@ frontend marathon_http_in
   bind *:80
   mode http
   acl host_testhost_com_nginx hdr(host) -i testhost.com
-  acl path_nginx_10000 path_beg /testing1234_1234-1234-test123_testing
+  acl path_nginx_10000 path_beg ''' + app.path + '''
   use_backend nginx_10000 if host_testhost_com_nginx path_nginx_10000
 
 frontend marathon_http_appid_in
@@ -2817,7 +2816,7 @@ frontend marathon_http_appid_in
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
-  acl path_nginx_10000 path_beg /testing1234_1234-1234-test123_testing
+  acl path_nginx_10000 path_beg ''' + app.path + '''
   use_backend nginx_10000 if { ssl_fc_sni testhost.com } path_nginx_10000
 
 frontend nginx_10000
@@ -2832,7 +2831,7 @@ backend nginx_10000
   http-request set-header X-Forwarded-Port %[dst_port]
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   http-request set-header Host testhost.com
-  reqirep  "^([^ :]*)\ /testing1234_1234-1234-test123_testing/?(.*)" "\\1\ /\\2"
+  reqirep  "^([^ :]*)\ ''' + app.proxypath + '''/?(.*)" "\\1\ /\\2"
   option  httpchk GET /
   timeout check 10s
   server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
