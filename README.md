@@ -197,14 +197,28 @@ of labels.
 
 ### Templates
 
-Marathon-lb searches for configuration files in the `templates/`
-directory. The `templates/` directory is located in a relative
-path from where the script is run. Some templates can also be
-[overridden _per app service port_](#overridable-templates). You may add your
-own templates to the Docker image, or provide them at startup.
+Marathon-lb global templates (as listed in the [Longhelp](Longhelp.md#templates)) can be overwritten in two ways:
+-By creating an environment variable in the marathon-lb container
+-By placing configuration files in the `templates/` directory (relative to where the script is run from)
 
-See [the configuration doc for the full list](Longhelp.md#templates)
-of templates.
+For example, to replace `HAPROXY_HTTPS_FRONTEND_HEAD` with this content:
+
+```
+frontend new_frontend_label
+  bind *:443 ssl crt /etc/ssl/cert.pem
+  mode http
+```
+
+Then this environment variable could be added to the Marathon-LB configuration:
+```
+"HAPROXY_HTTPS_FRONTEND_HEAD": "\\nfrontend new_frontend_label\\n  bind *:443 ssl {sslCerts}\\n  mode http"
+```
+
+Alternately, a file called`HAPROXY_HTTPS_FRONTEND_HEAD` could be placed in `templates/` directory through the use of an artifact URI.
+
+Additionally, some templates can also be [overridden _per app service port_](#overridable-templates). You may add your own templates to the Docker image, or provide them at startup.
+
+See [the configuration doc for the full list](Longhelp.md#templates) of templates.
 
 #### Overridable Templates
 
