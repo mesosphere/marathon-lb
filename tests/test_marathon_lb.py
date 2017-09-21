@@ -115,7 +115,7 @@ frontend marathon_https_in
 frontend changed_frontend
   bind *:80
   mode http
-        '''
+'''
         templater = marathon_lb.ConfigTemplater()
         del os.environ["HAPROXY_HTTP_FRONTEND_HEAD"]
 
