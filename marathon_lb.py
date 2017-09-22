@@ -615,7 +615,8 @@ def get_haproxy_pids():
             "pidof haproxy",
             stderr=subprocess.STDOUT,
             shell=True).split()))
-    except subprocess.CalledProcessError:
+    except subprocess.CalledProcessError as ex:
+        logger.debug("Unable to get haproxy pids: %s", ex)
         return set()
 
 
@@ -645,12 +646,26 @@ def reloadConfig():
     if reloadCommand:
         logger.info("reloading using %s", " ".join(reloadCommand))
         try:
+            # forceRestartCommand = ["sv", "force-restart",
+            #                        "/marathon-lb/service/haproxy"]
             start_time = time.time()
+            # checkpoint_time = start_time
             old_pids = get_haproxy_pids()
             subprocess.check_call(reloadCommand, close_fds=True)
             # Wait until the reload actually occurs and there's a new PID
-            while len(get_haproxy_pids() - old_pids) < 1:
-                logger.debug("Waiting for new haproxy pid...")
+            while True:
+                new_pids = get_haproxy_pids()
+                logger.debug("Waiting for new haproxy pid (old pids: [%s], " +
+                             "new_pids: [%s])...", old_pids, new_pids)
+                if len(new_pids - old_pids) >= 1:
+                    break
+                # timeSinceCheckpoint = time.time() - checkpoint_time
+                # if (timeSinceCheckpoint >= 30):
+                #     logger.debug("Forcing restart after %s seconds",
+                #                  timeSinceCheckpoint)
+                #     subprocess.check_call(forceRestartCommand,
+                #                           close_fds=True)
+                #     checkpoint_time = time.time()
                 time.sleep(0.1)
             logger.debug("reload finished, took %s seconds",
                          time.time() - start_time)
