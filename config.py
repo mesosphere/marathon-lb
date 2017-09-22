@@ -604,7 +604,7 @@ Backend glue for `HAPROXY_{n}_HTTP_BACKEND_PROXYPASS_PATH`.
                            value='''\
   acl hdr_location res.hdr(Location) -m found
   rspirep "^Location: (https?://{hostname}(:[0-9]+)?)?(/.*)" "Location: \
-  {rootpath} if hdr_location"
+  {rootpath}" if hdr_location
 ''',
                            overridable=True,
                            description='''\

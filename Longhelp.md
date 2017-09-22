@@ -800,7 +800,7 @@ Backend glue for `HAPROXY_{n}_HTTP_BACKEND_REVPROXY_PATH`.
 **Default template for `HAPROXY_HTTP_BACKEND_REVPROXY_GLUE`:**
 ```
   acl hdr_location res.hdr(Location) -m found
-  rspirep "^Location: (https?://{hostname}(:[0-9]+)?)?(/.*)" "Location:   {rootpath} if hdr_location"
+  rspirep "^Location: (https?://{hostname}(:[0-9]+)?)?(/.*)" "Location:   {rootpath}" if hdr_location
 ```
 **Example Marathon label to override `HAPROXY_HTTP_BACKEND_REVPROXY_GLUE` for the first port of a given app:**
 ```

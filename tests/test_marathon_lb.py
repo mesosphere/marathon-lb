@@ -1972,7 +1972,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   acl hdr_location res.hdr(Location) -m found
   rspirep "^Location: (https?://test.example.com(:[0-9]+)?)?(/.*)" "Location: \
-  /test if hdr_location"
+  /test" if hdr_location
   server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363
 '''
         self.assertMultiLineEqual(config, expected)
