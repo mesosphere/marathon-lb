@@ -2,6 +2,15 @@
 exec 2>&1
 export PIDFILE="/tmp/haproxy.pid"
 
+log() {
+    msg="$1"
+
+    logline="[$(pwd) $0] $msg\n"
+
+    printf "$logline" >&1
+    printf "$logline" >&2
+}
+
 addFirewallRules() {
   IFS=',' read -ra ADDR <<< "$PORTS"
   for i in "${ADDR[@]}"; do
@@ -17,30 +26,39 @@ removeFirewallRules() {
 }
 
 reload() {
-  echo "Reloading haproxy"
+  log "Reloading haproxy"
 
   (
     flock 200
 
-    # Begin to drop SYN packets with firewall rules
+    log "Dropping SYN packets with addFirewallRules"
     addFirewallRules
 
     # Wait to settle
     sleep 0.1
+    log "addFirewallRules done"
 
-    # Save the current HAProxy state
+    log "Saving the current HAProxy state"
     socat /var/run/haproxy/socket - <<< "show servers state" > /var/state/haproxy/global
+    log "Done saving the current HAProxy state"
 
     # Trigger reload
     LATEST_HAPROXY_PID=$(cat $PIDFILE)
-    /marathon-lb/haproxy_wrapper.py `which haproxy` -D -p $PIDFILE -f /marathon-lb/haproxy.cfg -sf $LATEST_HAPROXY_PID 200>&-
+    log "LATEST_HAPROXY_PID: [$LATEST_HAPROXY_PID]"
+
+    WHICH_HAPROXY=$(which haproxy)
+
+    log "/marathon-lb/haproxy_wrapper.py $WHICH_HAPROXY -D -p $PIDFILE -f /marathon-lb/haproxy.cfg -sf $LATEST_HAPROXY_PID 200>&-"
+    /marathon-lb/haproxy_wrapper.py $WHICH_HAPROXY -D -p $PIDFILE -f /marathon-lb/haproxy.cfg -sf $LATEST_HAPROXY_PID 200>&-
     local exit_code=$?
+    log "exit code: $exit_code"
     if [ $exit_code -ne 0 ]; then
-      echo "HAProxy reload failed" 1>&2
+      log "HAProxy reload failed"
     fi
 
-    # Remove the firewall rules
+    log "Removing firewall rules with removeFirewallRules"
     removeFirewallRules
+    log "removeFirewallRules done"
 
     # Need to wait 1s to prevent TCP SYN exponential backoff
     sleep 1
