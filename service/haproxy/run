@@ -62,6 +62,8 @@ reload() {
 
     # Need to wait 1s to prevent TCP SYN exponential backoff
     sleep 1
+
+    log "Reload finished"
   ) 200>/var/run/haproxy/lock
 }
 

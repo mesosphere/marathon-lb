@@ -648,7 +648,7 @@ def reloadConfig():
         try:
             start_time = time.time()
             checkpoint_time = start_time
-            log_frequency = 60 # Log every 60 seconds
+            reload_frequency = 10 # Retry the reload every 10 seconds
             old_pids = get_haproxy_pids()
             subprocess.check_call(reloadCommand, close_fds=True)
             new_pids = get_haproxy_pids()
@@ -660,10 +660,11 @@ def reloadConfig():
                 if len(new_pids - old_pids) >= 1:
                     break
                 timeSinceCheckpoint = time.time() - checkpoint_time
-                if (timeSinceCheckpoint >= log_frequency):
+                if (timeSinceCheckpoint >= reload_frequency):
                     logger.debug("Still waiting for new haproxy pid after %s seconds (old pids: [%s], " +
-                                 "new_pids: [%s])...", time.time() - start_time, old_pids, new_pids)
+                                 "new_pids: [%s]). Attempting reload again...", time.time() - start_time, old_pids, new_pids)
                     checkpoint_time = time.time()
+                    subprocess.check_call(reloadCommand, close_fds=True)
                 time.sleep(0.1)
             new_pids = get_haproxy_pids()
             logger.debug("new pids: [%s]", new_pids)
