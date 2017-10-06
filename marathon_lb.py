@@ -648,7 +648,8 @@ def reloadConfig():
         try:
             start_time = time.time()
             checkpoint_time = start_time
-            reload_frequency = 10 # Retry the reload every 10 seconds
+            # Retry or log the reload every 10 seconds
+            reload_frequency = args.reload_interval
             old_pids = get_haproxy_pids()
             subprocess.check_call(reloadCommand, close_fds=True)
             new_pids = get_haproxy_pids()
@@ -661,10 +662,13 @@ def reloadConfig():
                     break
                 timeSinceCheckpoint = time.time() - checkpoint_time
                 if (timeSinceCheckpoint >= reload_frequency):
-                    logger.debug("Still waiting for new haproxy pid after %s seconds (old pids: [%s], " +
-                                 "new_pids: [%s]). Attempting reload again...", time.time() - start_time, old_pids, new_pids)
+                    logger.debug("Still waiting for new haproxy pid after %s " +
+                                 "seconds (old pids: [%s], new_pids: [%s]).",
+                                 time.time() - start_time, old_pids, new_pids)
                     checkpoint_time = time.time()
-                    subprocess.check_call(reloadCommand, close_fds=True)
+                    if args.retry_reload:
+                        logger.debug("Attempting reload again...")
+                        subprocess.check_call(reloadCommand, close_fds=True)
                 time.sleep(0.1)
             new_pids = get_haproxy_pids()
             logger.debug("new pids: [%s]", new_pids)
@@ -1618,6 +1622,13 @@ def get_arg_parser():
     parser.add_argument("--command", "-c",
                         help="If set, run this command to reload haproxy.",
                         default=None)
+    parser.add_argument("--retry-reload",
+                        help="Retry reload if unsuccessful after "
+                        "--reload-interval seconds.", action="store_true")
+    parser.add_argument("--reload-interval",
+                        help="When --retry-reload enabled, wait this"
+                        "long before attempting another reload.",
+                        type=int, default=10)
     parser.add_argument("--strict-mode",
                         help="If set, backends are only advertised if"
                         " HAPROXY_{n}_ENABLED=true. Strict mode will be"
