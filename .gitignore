@@ -10,3 +10,6 @@ __pycache__
 *,cover
 coverage.xml
 htmlcov/
+
+*.iml
+testsAT/target
