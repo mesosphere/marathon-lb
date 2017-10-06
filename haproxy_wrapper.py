@@ -12,6 +12,7 @@ consoleHandler = logging.StreamHandler()
 consoleHandler.setFormatter(formatter)
 logger.addHandler(consoleHandler)
 
+
 def create_haproxy_pipe():
     logger.debug("create_haproxy_pipe called")
     pipefd = os.pipe()

@@ -18,8 +18,9 @@ Marathon-lb just needs to know where to find Marathon.
 ```
 usage: marathon_lb.py [-h] [--longhelp] [--marathon MARATHON [MARATHON ...]]
                       [--haproxy-config HAPROXY_CONFIG] [--group GROUP]
-                      [--command COMMAND] [--strict-mode] [--sse]
-                      [--health-check]
+                      [--command COMMAND] [--retry-reload]
+                      [--reload-interval RELOAD_INTERVAL] [--strict-mode]
+                      [--sse] [--health-check]
                       [--lru-cache-capacity LRU_CACHE_CAPACITY]
                       [--haproxy-map] [--dont-bind-http-https]
                       [--ssl-certs SSL_CERTS] [--skip-validation] [--dry]
@@ -51,6 +52,11 @@ optional arguments:
   --command COMMAND, -c COMMAND
                         If set, run this command to reload haproxy. (default:
                         None)
+  --retry-reload        Retry reload if unsuccessful after --reload-interval
+                        seconds. (default: False)
+  --reload-interval RELOAD_INTERVAL
+                        When --retry-reload enabled, wait this long before
+                        attempting another reload. (default: 10)
   --strict-mode         If set, backends are only advertised if
                         HAPROXY_{n}_ENABLED=true. Strict mode will be enabled
                         by default in a future release. (default: False)

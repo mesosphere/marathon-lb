@@ -662,8 +662,9 @@ def reloadConfig():
                     break
                 timeSinceCheckpoint = time.time() - checkpoint_time
                 if (timeSinceCheckpoint >= reload_frequency):
-                    logger.debug("Still waiting for new haproxy pid after %s " +
-                                 "seconds (old pids: [%s], new_pids: [%s]).",
+                    logger.debug("Still waiting for new haproxy pid after " +
+                                 "%s seconds (old pids: [%s], " +
+                                 "new_pids: [%s]).",
                                  time.time() - start_time, old_pids, new_pids)
                     checkpoint_time = time.time()
                     if args.retry_reload:
@@ -1626,7 +1627,7 @@ def get_arg_parser():
                         help="Retry reload if unsuccessful after "
                         "--reload-interval seconds.", action="store_true")
     parser.add_argument("--reload-interval",
-                        help="When --retry-reload enabled, wait this"
+                        help="When --retry-reload enabled, wait this "
                         "long before attempting another reload.",
                         type=int, default=10)
     parser.add_argument("--strict-mode",
