@@ -650,6 +650,13 @@ def reloadConfig():
             checkpoint_time = start_time
             # Retry or log the reload every 10 seconds
             reload_frequency = args.reload_interval
+            reload_retries = args.max_reload_retries
+            enable_retries = True
+            infinite_retries = False
+            if reload_retries == 0:
+                enable_retries = False
+            elif reload_retries < 0:
+                infinite_retries = True
             old_pids = get_haproxy_pids()
             subprocess.check_call(reloadCommand, close_fds=True)
             new_pids = get_haproxy_pids()
@@ -657,8 +664,10 @@ def reloadConfig():
                          "new_pids: [%s])...", old_pids, new_pids)
             # Wait until the reload actually occurs and there's a new PID
             while True:
-                new_pids = get_haproxy_pids()
                 if len(new_pids - old_pids) >= 1:
+                    logger.debug("new pids: [%s]", new_pids)
+                    logger.debug("reload finished, took %s seconds",
+                                 time.time() - start_time)
                     break
                 timeSinceCheckpoint = time.time() - checkpoint_time
                 if (timeSinceCheckpoint >= reload_frequency):
@@ -667,14 +676,17 @@ def reloadConfig():
                                  "new_pids: [%s]).",
                                  time.time() - start_time, old_pids, new_pids)
                     checkpoint_time = time.time()
-                    if args.retry_reload:
+                    if enable_retries:
+                        if not infinite_retries:
+                            reload_retries -= 1
+                            if reload_retries == 0:
+                                logger.debug("reload failed after %s seconds",
+                                             time.time() - start_time)
+                                break
                         logger.debug("Attempting reload again...")
                         subprocess.check_call(reloadCommand, close_fds=True)
                 time.sleep(0.1)
-            new_pids = get_haproxy_pids()
-            logger.debug("new pids: [%s]", new_pids)
-            logger.debug("reload finished, took %s seconds",
-                         time.time() - start_time)
+                new_pids = get_haproxy_pids()
         except OSError as ex:
             logger.error("unable to reload config using command %s",
                          " ".join(reloadCommand))
@@ -1623,12 +1635,14 @@ def get_arg_parser():
     parser.add_argument("--command", "-c",
                         help="If set, run this command to reload haproxy.",
                         default=None)
-    parser.add_argument("--retry-reload",
-                        help="Retry reload if unsuccessful after "
-                        "--reload-interval seconds.", action="store_true")
+    parser.add_argument("--max-reload-retries",
+                        help="Max reload retries before failure. Reloads"
+                        " happen every --reload-interval seconds. Set to"
+                        " 0 to disable or -1 for infinite retries.",
+                        type=int, default=10)
     parser.add_argument("--reload-interval",
-                        help="When --retry-reload enabled, wait this "
-                        "long before attempting another reload.",
+                        help="Wait this number of seconds between"
+                        " reload retries.",
                         type=int, default=10)
     parser.add_argument("--strict-mode",
                         help="If set, backends are only advertised if"

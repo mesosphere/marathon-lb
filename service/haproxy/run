@@ -2,11 +2,13 @@
 exec 2>&1
 export PIDFILE="/tmp/haproxy.pid"
 
+LOG_PREFIX="$(pwd) $0"
 log() {
-    msg="$1"
-
-    logline="[$(pwd) $0] $msg\n"
-
+    logline="[$LOG_PREFIX] $1\n"
+    printf "$logline" >&1
+}
+log_error() {
+    logline="[$LOG_PREFIX] $1\n"
     printf "$logline" >&1
     printf "$logline" >&2
 }
@@ -53,7 +55,7 @@ reload() {
     local exit_code=$?
     log "exit code: $exit_code"
     if [ $exit_code -ne 0 ]; then
-      log "HAProxy reload failed"
+      log_error "HAProxy reload failed"
     fi
 
     log "Removing firewall rules with removeFirewallRules"

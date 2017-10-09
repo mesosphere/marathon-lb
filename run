@@ -1,24 +1,21 @@
 #!/bin/bash
 set -euo pipefail
 
+LOG_PREFIX="$(pwd) $0"
 log() {
-    msg="$1"
-
-    logline="[$(pwd) $0] $msg\n"
-
+    logline="[$LOG_PREFIX] $1\n"
+    printf "$logline" >&1
+}
+log_error() {
+    logline="[$LOG_PREFIX] $1\n"
     printf "$logline" >&1
     printf "$logline" >&2
 }
 
 if [ -n "${HAPROXY_SYSLOGD-}" ]; then
-    log "starting syslogd with container stdout"
-
-    # A hack to redirect syslog to stdout.
-    # This is necessary because haproxy only logs to syslog.
-    ln -sf /proc/$$/fd/1 /var/log/container_stdout
-
-    # Start syslog
-    /usr/sbin/syslogd -f "/marathon-lb/syslogd/syslog.conf"
+    SYSLOGD_SERVICE="/marathon-lb/service/syslogd"
+    mkdir -p $SYSLOGD_SERVICE
+    cp /marathon-lb/syslogd/run "$SYSLOGD_SERVICE/"
 fi
 
 # Custom syslog socket for marathon-lb.py logging
@@ -33,7 +30,7 @@ mkdir -p $HAPROXY_SERVICE/env
 if [ -n "${PORTS-}" ]; then
   log "$PORTS > $HAPROXY_SERVICE/env/PORTS"
 else
-  log "Define $PORTS with a comma-separated list of ports to which HAProxy binds"
+  log_error "Define $PORTS with a comma-separated list of ports to which HAProxy binds"
   exit 1
 fi
 
@@ -104,7 +101,7 @@ case "$MODE" in
     ARGS="--sse"
     ;;
   *)
-    log "Unknown mode $MODE. Synopsis: $0 poll|sse [marathon_lb.py args]"
+    log_error "Unknown mode $MODE. Synopsis: $0 poll|sse [marathon_lb.py args]"
     exit 1
     ;;
 esac
@@ -136,9 +133,7 @@ chmod 755 $LB_SERVICE/run
 
 log "Created $LB_SERVICE/run with contents:"
 LB_RUN=$(cat $LB_SERVICE/run)
-log ""
 log "$LB_RUN"
-log ""
 
 if [ "${MODE}" == "poll" ]; then
 
