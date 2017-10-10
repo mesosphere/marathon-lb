@@ -43,7 +43,7 @@ import dateutil.parser
 import requests
 
 from common import (get_marathon_auth_params, set_logging_args,
-                    set_marathon_auth_args, setup_logging)
+                    set_marathon_auth_args, setup_logging, cleanup_json)
 from config import ConfigTemplater, label_keys
 from lrucache import LRUCache
 from utils import (CurlHttpEventStream, get_task_ip_and_ports, ip_cache,
@@ -111,7 +111,7 @@ class MarathonService(object):
         self.bindOptions = None
         self.bindAddr = '*'
         self.groups = frozenset()
-        self.mode = 'tcp'
+        self.mode = None
         self.balance = 'roundrobin'
         self.healthCheck = healthCheck
         self.labels = {}
@@ -189,16 +189,18 @@ class Marathon(object):
 
         response.raise_for_status()
 
-        if 'message' in response.json():
+        resp_json = cleanup_json(response.json())
+        if 'message' in resp_json:
             response.reason = "%s (%s)" % (
                 response.reason,
-                response.json()['message'])
+                resp_json['message'])
 
         return response
 
     def api_req(self, method, path, **kwargs):
-        return self.api_req_raw(method, path, self.__auth,
+        data = self.api_req_raw(method, path, self.__auth,
                                 verify=self.__verify, **kwargs).json()
+        return cleanup_json(data)
 
     def create(self, app_json):
         return self.api_req('POST', ['apps'], app_json)
@@ -379,10 +381,13 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
         logger.debug("frontend at %s:%d with backend %s",
                      app.bindAddr, app.servicePort, backend)
 
-        # if the app has a hostname set force mode to http
-        # otherwise recent versions of haproxy refuse to start
-        if app.hostname:
-            app.mode = 'http'
+        # If app has HAPROXY_{n}_MODE set, use that setting.
+        # Otherwise use 'http' if HAPROXY_{N}_VHOST is set, and 'tcp' if not.
+        if app.mode is None:
+            if app.hostname:
+                app.mode = 'http'
+            else:
+                app.mode = 'tcp'
 
         if app.authUser:
             userlist_head = templater.haproxy_userlist_head(app)
@@ -610,7 +615,8 @@ def get_haproxy_pids():
             "pidof haproxy",
             stderr=subprocess.STDOUT,
             shell=True).split()))
-    except subprocess.CalledProcessError:
+    except subprocess.CalledProcessError as ex:
+        logger.debug("Unable to get haproxy pids: %s", ex)
         return set()
 
 
@@ -641,14 +647,46 @@ def reloadConfig():
         logger.info("reloading using %s", " ".join(reloadCommand))
         try:
             start_time = time.time()
+            checkpoint_time = start_time
+            # Retry or log the reload every 10 seconds
+            reload_frequency = args.reload_interval
+            reload_retries = args.max_reload_retries
+            enable_retries = True
+            infinite_retries = False
+            if reload_retries == 0:
+                enable_retries = False
+            elif reload_retries < 0:
+                infinite_retries = True
             old_pids = get_haproxy_pids()
             subprocess.check_call(reloadCommand, close_fds=True)
+            new_pids = get_haproxy_pids()
+            logger.debug("Waiting for new haproxy pid (old pids: [%s], " +
+                         "new_pids: [%s])...", old_pids, new_pids)
             # Wait until the reload actually occurs and there's a new PID
-            while len(get_haproxy_pids() - old_pids) < 1:
-                logger.debug("Waiting for new haproxy pid...")
+            while True:
+                if len(new_pids - old_pids) >= 1:
+                    logger.debug("new pids: [%s]", new_pids)
+                    logger.debug("reload finished, took %s seconds",
+                                 time.time() - start_time)
+                    break
+                timeSinceCheckpoint = time.time() - checkpoint_time
+                if (timeSinceCheckpoint >= reload_frequency):
+                    logger.debug("Still waiting for new haproxy pid after " +
+                                 "%s seconds (old pids: [%s], " +
+                                 "new_pids: [%s]).",
+                                 time.time() - start_time, old_pids, new_pids)
+                    checkpoint_time = time.time()
+                    if enable_retries:
+                        if not infinite_retries:
+                            reload_retries -= 1
+                            if reload_retries == 0:
+                                logger.debug("reload failed after %s seconds",
+                                             time.time() - start_time)
+                                break
+                        logger.debug("Attempting reload again...")
+                        subprocess.check_call(reloadCommand, close_fds=True)
                 time.sleep(0.1)
-            logger.debug("reload finished, took %s seconds",
-                         time.time() - start_time)
+                new_pids = get_haproxy_pids()
         except OSError as ex:
             logger.error("unable to reload config using command %s",
                          " ".join(reloadCommand))
@@ -1205,6 +1243,8 @@ def compareMapFile(map_file, map_string):
 
 
 def get_health_check(app, portIndex):
+    if 'healthChecks' not in app:
+        return None
     for check in app['healthChecks']:
         if check.get('port'):
             return check
@@ -1405,7 +1445,7 @@ def get_apps(marathon):
                         continue
 
             task_ip, task_ports = get_task_ip_and_ports(app, task)
-            if not task_ip:
+            if task_ip is None:
                 logger.warning("Task has no resolvable IP address - skip")
                 continue
 
@@ -1595,6 +1635,15 @@ def get_arg_parser():
     parser.add_argument("--command", "-c",
                         help="If set, run this command to reload haproxy.",
                         default=None)
+    parser.add_argument("--max-reload-retries",
+                        help="Max reload retries before failure. Reloads"
+                        " happen every --reload-interval seconds. Set to"
+                        " 0 to disable or -1 for infinite retries.",
+                        type=int, default=10)
+    parser.add_argument("--reload-interval",
+                        help="Wait this number of seconds between"
+                        " reload retries.",
+                        type=int, default=10)
     parser.add_argument("--strict-mode",
                         help="If set, backends are only advertised if"
                         " HAPROXY_{n}_ENABLED=true. Strict mode will be"
@@ -1656,7 +1705,7 @@ def process_sse_events(marathon, processor):
                     # marathon sometimes sends more than one json per event
                     # e.g. {}\r\n{}\r\n\r\n
                     for real_event_data in re.split(r'\r\n', event.data):
-                        data = json.loads(real_event_data)
+                        data = load_json(real_event_data)
                         logger.info(
                             "received event of type {0}"
                             .format(data['eventType']))
@@ -1670,6 +1719,10 @@ def process_sse_events(marathon, processor):
                 raise
     finally:
         processor.stop()
+
+
+def load_json(data_str):
+    return cleanup_json(json.loads(data_str))
 
 
 if __name__ == '__main__':

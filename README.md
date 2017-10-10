@@ -108,6 +108,10 @@ It is possible to pass `--auth-credentials=` option if your Marathon requires au
 $ ./marathon_lb.py --marathon http://localhost:8080 --auth-credentials=admin:password
 ```
 
+It is possible to get the auth credentials (user & password) from VAULT if you define the following 
+environment variables before running marathon-lb: VAULT_TOKEN, VAULT_HOST, VAULT_PORT, VAULT_PATH 
+where VAULT_PATH is the root path where your user and password are located.
+
 This will refresh `haproxy.cfg`, and if there were any changes, then it will
 automatically reload HAProxy. Only apps with the label `HAPROXY_GROUP=external`
 will be exposed on this LB.
@@ -193,14 +197,28 @@ of labels.
 
 ### Templates
 
-Marathon-lb searches for configuration files in the `templates/`
-directory. The `templates/` directory is located in a relative
-path from where the script is run. Some templates can also be
-[overridden _per app service port_](#overridable-templates). You may add your
-own templates to the Docker image, or provide them at startup.
+Marathon-lb global templates (as listed in the [Longhelp](Longhelp.md#templates)) can be overwritten in two ways:
+-By creating an environment variable in the marathon-lb container
+-By placing configuration files in the `templates/` directory (relative to where the script is run from)
 
-See [the configuration doc for the full list](Longhelp.md#templates)
-of templates.
+For example, to replace `HAPROXY_HTTPS_FRONTEND_HEAD` with this content:
+
+```
+frontend new_frontend_label
+  bind *:443 ssl crt /etc/ssl/cert.pem
+  mode http
+```
+
+Then this environment variable could be added to the Marathon-LB configuration:
+```
+"HAPROXY_HTTPS_FRONTEND_HEAD": "\\nfrontend new_frontend_label\\n  bind *:443 ssl {sslCerts}\\n  mode http"
+```
+
+Alternately, a file called`HAPROXY_HTTPS_FRONTEND_HEAD` could be placed in `templates/` directory through the use of an artifact URI.
+
+Additionally, some templates can also be [overridden _per app service port_](#overridable-templates). You may add your own templates to the Docker image, or provide them at startup.
+
+See [the configuration doc for the full list](Longhelp.md#templates) of templates.
 
 #### Overridable Templates
 
@@ -270,8 +288,20 @@ The default value when not specified is `redispatch,http-server-close,dontlognul
   < HTTP/1.1 200 OK
   ```
  * Some of the features of marathon-lb assume that it is the only instance of itself running in a PID namespace. i.e. marathon-lb assumes that it is running in a container. Certain features like the `/_mlb_signal` endpoints and the `/_haproxy_getpids` endpoint (and by extension, zero-downtime deployments) may behave unexpectedly if more than one instance of marathon-lb is running in the same PID namespace or if there are other HAProxy processes in the same PID namespace.
+ * Sometimes it is desirable to get detailed container and HAProxy logging for easier debugging as well as viewing connection logging to frontends and backends. This can be achieved by setting the `HAPROXY_SYSLOGD` environment variable or `container-syslogd` value in `options.json` like so:
+ 
+ ```json
+   {
+     "marathon-lb": {
+       "container-syslogd": true
+     }
+   }
+ ```
+
 
 ## Zero-downtime Deployments
+
+* Please note that `zdd.py` is not to be used in a production environment and is purely developed for demonstration purposes.
 
 Marathon-lb is able to perform canary style blue/green deployment with zero downtime. To execute such deployments, you must follow certain patterns when using Marathon.
 
@@ -367,3 +397,40 @@ PRs are welcome, but here are a few general guidelines:
    ```
    bash /path/to/marathon-lb/scripts/install-git-hooks.sh
    ```
+
+### Troubleshooting your development environment setup
+
+#### FileNotFoundError: [Errno 2] No such file or directory: 'curl-config'
+
+You need to install the curl development package.
+
+```sh
+# Fedora
+dnf install libcurl-devel
+
+# Ubuntu
+apt-get install libcurl-dev
+```
+
+#### ImportError: pycurl: libcurl link-time ssl backend (nss) is different from compile-time ssl backend (openssl)
+
+The `pycurl` package linked against the wrong SSL backend when you installed it.
+
+```sh
+pip uninstall pycurl
+export PYCURL_SSL_LIBRARY=nss
+pip install -r requirements-dev.txt
+```
+
+Swap `nss` for whatever backend it mentions.
+
+## Release Process
+
+1. Create a Github release. Follow the convention of past releases. You can find
+something to copy/paste if you hit the "edit" button of a previous release.
+
+1. The Github release creates a tag, and Dockerhub will build off of that tag.
+
+1. Make a PR to Universe. The suggested way is to create one commit that **only** copies
+the previous dir to a new one, and then a second commit that makes the actual changes.
+If unsure, check out the previous commits to the marathon-lb directory in Universe.

@@ -1,0 +1,178 @@
+{
+  "apps": [
+    {
+      "id": "/nginx-green",
+      "acceptedResourceRoles": [
+        "*",
+        "slave_public"
+      ],
+      "backoffFactor": 1.15,
+      "backoffSeconds": 1,
+      "container": {
+        "type": "DOCKER",
+        "docker": {
+          "forcePullImage": true,
+          "image": "brndnmtthws/nginx-echo-sleep",
+          "parameters": [],
+          "privileged": false
+        },
+        "volumes": [],
+        "portMappings": [
+          {
+            "containerPort": 8080,
+            "hostPort": 0,
+            "labels": {},
+            "protocol": "tcp",
+            "servicePort": 10000
+          }
+        ]
+      },
+      "cpus": 0.1,
+      "disk": 0,
+      "executor": "",
+      "healthChecks": [
+        {
+          "gracePeriodSeconds": 15,
+          "intervalSeconds": 3,
+          "maxConsecutiveFailures": 10,
+          "path": "/",
+          "portIndex": 0,
+          "protocol": "MESOS_HTTP",
+          "timeoutSeconds": 15,
+          "delaySeconds": 15
+        }
+      ],
+      "instances": 3,
+      "labels": {
+        "HAPROXY_DEPLOYMENT_GROUP": "nginx",
+        "HAPROXY_GROUP": "external",
+        "HAPROXY_DEPLOYMENT_COLOUR": "green",
+        "HAPROXY_DEPLOYMENT_TARGET_INSTANCES": "20",
+        "HAPROXY_DEPLOYMENT_STARTED_AT": "2016-02-01T14:13:42.499089",
+        "HAPROXY_DEPLOYMENT_ALT_PORT": "10001",
+        "HAPROXY_0_PORT": "10000",
+        "HAPROXY_APP_ID": "nginx"
+      },
+      "maxLaunchDelaySeconds": 3600,
+      "mem": 65,
+      "gpus": 0,
+      "networks": [
+        {
+          "mode": "container/bridge"
+        }
+      ],
+      "requirePorts": false,
+      "upgradeStrategy": {
+        "maximumOverCapacity": 1,
+        "minimumHealthCapacity": 1
+      },
+      "version": "2017-07-14T15:13:34.402Z",
+      "versionInfo": {
+        "lastScalingAt": "2017-07-14T15:13:34.402Z",
+        "lastConfigChangeAt": "2017-07-14T15:13:34.402Z"
+      },
+      "killSelection": "YOUNGEST_FIRST",
+      "unreachableStrategy": {
+        "inactiveAfterSeconds": 300,
+        "expungeAfterSeconds": 600
+      },
+      "tasksStaged": 0,
+      "tasksRunning": 3,
+      "tasksHealthy": 3,
+      "tasksUnhealthy": 0,
+      "deployments": [],
+      "tasks": [
+        {
+          "ipAddresses": [
+            {
+              "ipAddress": "172.17.0.2",
+              "protocol": "IPv4"
+            }
+          ],
+          "stagedAt": "2017-07-14T15:13:35.804Z",
+          "state": "TASK_RUNNING",
+          "ports": [
+            16916
+          ],
+          "startedAt": "2017-07-14T15:13:58.326Z",
+          "version": "2017-07-14T15:13:34.402Z",
+          "id": "nginx-green.01da9a15-68a7-11e7-a229-e6a514ca0c21",
+          "appId": "/nginx-green",
+          "slaveId": "c28a2184-c702-482c-91c8-5af9318434d4-S0",
+          "host": "10.0.6.25",
+          "healthCheckResults": [
+            {
+              "alive": true,
+              "consecutiveFailures": 0,
+              "firstSuccess": "2017-07-14T15:14:18.395Z",
+              "lastFailure": null,
+              "lastSuccess": "2017-07-14T15:14:18.395Z",
+              "lastFailureCause": null,
+              "instanceId": "nginx-green.marathon-01da9a15-68a7-11e7-a229-e6a514ca0c21"
+            }
+          ]
+        },
+        {
+          "ipAddresses": [
+            {
+              "ipAddress": "172.17.0.2",
+              "protocol": "IPv4"
+            }
+          ],
+          "stagedAt": "2017-07-14T15:13:35.816Z",
+          "state": "TASK_RUNNING",
+          "ports": [
+            31184
+          ],
+          "startedAt": "2017-07-14T15:13:57.633Z",
+          "version": "2017-07-14T15:13:34.402Z",
+          "id": "nginx-green.01dc95e6-68a7-11e7-a229-e6a514ca0c21",
+          "appId": "/nginx-green",
+          "slaveId": "c28a2184-c702-482c-91c8-5af9318434d4-S1",
+          "host": "10.0.6.25",
+          "healthCheckResults": [
+            {
+              "alive": true,
+              "consecutiveFailures": 0,
+              "firstSuccess": "2017-07-14T15:14:17.698Z",
+              "lastFailure": null,
+              "lastSuccess": "2017-07-14T15:14:17.698Z",
+              "lastFailureCause": null,
+              "instanceId": "nginx-green.marathon-01dc95e6-68a7-11e7-a229-e6a514ca0c21"
+            }
+          ]
+        },
+        {
+          "ipAddresses": [
+            {
+              "ipAddress": "172.17.0.3",
+              "protocol": "IPv4"
+            }
+          ],
+          "stagedAt": "2017-07-14T15:13:35.760Z",
+          "state": "TASK_RUNNING",
+          "ports": [
+            23336
+          ],
+          "startedAt": "2017-07-14T15:13:57.639Z",
+          "version": "2017-07-14T15:13:34.402Z",
+          "id": "nginx-green.01bf22d4-68a7-11e7-a229-e6a514ca0c21",
+          "appId": "/nginx-green",
+          "slaveId": "c28a2184-c702-482c-91c8-5af9318434d4-S1",
+          "host": "10.0.6.25",
+          "healthCheckResults": [
+            {
+              "alive": true,
+              "consecutiveFailures": 0,
+              "firstSuccess": "2017-07-14T15:14:17.702Z",
+              "lastFailure": null,
+              "lastSuccess": "2017-07-14T15:14:17.702Z",
+              "lastFailureCause": null,
+              "instanceId": "nginx-green.marathon-01bf22d4-68a7-11e7-a229-e6a514ca0c21"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

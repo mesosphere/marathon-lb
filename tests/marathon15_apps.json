@@ -1,0 +1,87 @@
+{
+  "apps": [
+    {
+      "id": "/pywebserver",
+      "backoffFactor": 1.15,
+      "backoffSeconds": 1,
+      "cmd": "echo \"host $HOST and port $PORT\" > index.html && python -m http.server 80",
+      "container": {
+        "type": "DOCKER",
+        "docker": {
+          "forcePullImage": false,
+          "image": "python:3",
+          "parameters": [],
+          "privileged": false
+        },
+        "volumes": [],
+        "portMappings": [
+          {
+            "containerPort": 80,
+            "hostPort": 0,
+            "labels": {},
+            "name": "test",
+            "protocol": "tcp",
+            "servicePort": 10101
+          }
+        ]
+      },
+      "cpus": 0.1,
+      "disk": 0,
+      "executor": "",
+      "instances": 1,
+      "labels": {
+        "HAPROXY_GROUP": "external",
+        "HAPROXY_0_VHOST": "myvhost.com"
+      },
+      "maxLaunchDelaySeconds": 3600,
+      "mem": 128,
+      "gpus": 0,
+      "networks": [
+        {
+          "mode": "container/bridge"
+        }
+      ],
+      "requirePorts": false,
+      "upgradeStrategy": {
+        "maximumOverCapacity": 1,
+        "minimumHealthCapacity": 1
+      },
+      "version": "2017-07-19T17:34:41.967Z",
+      "versionInfo": {
+        "lastScalingAt": "2017-07-19T17:34:41.967Z",
+        "lastConfigChangeAt": "2017-07-19T17:34:41.967Z"
+      },
+      "killSelection": "YOUNGEST_FIRST",
+      "unreachableStrategy": {
+        "inactiveAfterSeconds": 300,
+        "expungeAfterSeconds": 600
+      },
+      "tasksStaged": 0,
+      "tasksRunning": 1,
+      "tasksHealthy": 0,
+      "tasksUnhealthy": 0,
+      "deployments": [],
+      "tasks": [
+        {
+          "ipAddresses": [
+            {
+              "ipAddress": "172.17.0.2",
+              "protocol": "IPv4"
+            }
+          ],
+          "stagedAt": "2017-07-19T17:34:43.039Z",
+          "state": "TASK_RUNNING",
+          "ports": [
+            1565
+          ],
+          "startedAt": "2017-07-19T17:35:15.654Z",
+          "version": "2017-07-19T17:34:41.967Z",
+          "id": "pywebserver.8cad6a69-6ca8-11e7-beb2-0e2beceebfcc",
+          "appId": "/pywebserver",
+          "slaveId": "db7b40e2-791c-445f-b373-183e2a648a86-S1",
+          "host": "10.0.2.148"
+        }
+      ]
+    }
+  ]
+}

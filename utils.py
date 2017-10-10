@@ -114,13 +114,11 @@ class ServicePortAssigner(object):
         :return: The list of ports.    Note that if auto-assigning and ports
         become exhausted, a port may be returned as None.
         """
-        # Are we using 'USER' network?
-        if is_user_network(app):
+        mode = get_app_networking_mode(app)
+        if mode == "container" or mode == "container/bridge":
             # Here we must use portMappings
-            portMappings = app.get('container', {})\
-                .get('docker', {})\
-                .get('portMappings', [])
-            if portMappings:
+            portMappings = get_app_port_mappings(app)
+            if len(portMappings) > 0:
                 ports = filter(lambda p: p is not None,
                                map(lambda p: p.get('servicePort', None),
                                    portMappings))
@@ -135,11 +133,12 @@ class ServicePortAssigner(object):
                                app.get('portDefinitions', []))
                            )
         ports = list(ports)  # wtf python?
-        if not ports and is_ip_per_task(app) and self.can_assign \
+        # This supports legacy ip-per-container for Marathon 1.4.x and prior
+        if not ports and mode == "container" and self.can_assign \
                 and len(app['tasks']) > 0:
             task = app['tasks'][0]
-            _, task_ports = get_task_ip_and_ports(app, task)
-            if task_ports is not None:
+            task_ports = get_app_task_ports(app, task, mode)
+            if len(task_ports) > 0:
                 ports = [self._get_service_port(app, task_port)
                          for task_port in task_ports]
         logger.debug("Service ports: %r", ports)
@@ -158,6 +157,18 @@ class CurlHttpEventStream(object):
         self.curl.setopt(pycurl.ENCODING, 'gzip')
         self.curl.setopt(pycurl.CONNECTTIMEOUT, 10)
         self.curl.setopt(pycurl.WRITEDATA, self.received_buffer)
+
+        # The below settings are to prevent the connection from hanging if the
+        # connection breaks silently. Since marathon-lb only listens, silent
+        # connection failure results in marathon-lb waiting infinitely.
+        #
+        # Minimum bytes/second below which it is considered "low speed". So
+        # "low speed" here refers to 0 bytes/second.
+        self.curl.setopt(pycurl.LOW_SPEED_LIMIT, 1)
+        # How long (in seconds) it's allowed to go below the speed limit
+        # before it times out
+        self.curl.setopt(pycurl.LOW_SPEED_TIME, 300)
+
         if auth and type(auth) is DCOSAuth:
             auth.refresh_auth_header()
             headers.append('Authorization: %s' % auth.auth_header)
@@ -246,8 +257,11 @@ class CurlHttpEventStream(object):
 
 
 def resolve_ip(host):
-    cached_ip = ip_cache.get().get(host, None)
-    if cached_ip:
+    """
+    :return: string, an empty string indicates that no ip was found.
+    """
+    cached_ip = ip_cache.get().get(host, "")
+    if cached_ip != "":
         return cached_ip
     else:
         try:
@@ -256,7 +270,7 @@ def resolve_ip(host):
             ip_cache.get().set(host, ip)
             return ip
         except socket.gaierror:
-            return None
+            return ""
 
 
 class LRUCacheSingleton(object):
@@ -275,25 +289,130 @@ class LRUCacheSingleton(object):
 ip_cache = LRUCacheSingleton()
 
 
-def is_ip_per_task(app):
-    """
-    Return whether the application is using IP-per-task.
-    :param app:  The application to check.
-    :return:  True if using IP per task, False otherwise.
-    """
-    return app.get('ipAddress') is not None
+def get_app_networking_mode(app):
+    mode = 'host'
+
+    if app.get('ipAddress'):
+        mode = 'container'
+
+    _mode = app.get('container', {})\
+               .get('docker', {})\
+               .get('network', '')
+    if _mode == 'USER':
+        mode = 'container'
+    elif _mode == 'BRIDGE':
+        mode = 'container/bridge'
+
+    networks = app.get('networks', [])
+    for n in networks:
+        # Modes cannot be mixed, so assigning the last mode is fine
+        mode = n.get('mode', 'container')
+
+    return mode
 
 
-def is_user_network(app):
+def get_task_ip(task, mode):
     """
-    Returns True if container network mode is set to USER
-    :param app:  The application to check.
-    :return:  True if using USER network, False otherwise.
+    :return: string, an empty string indicates that no ip was found.
     """
-    c = app.get('container', {})
-    return c is not None and c.get('type', '') == 'DOCKER' and \
-        c.get('docker', {})\
-        .get('network', '') == 'USER'
+    if mode == 'container':
+        task_ip_addresses = task.get('ipAddresses', [])
+        if len(task_ip_addresses) == 0:
+            logger.warning("Task %s does not yet have an ip address allocated",
+                           task['id'])
+            return ""
+        task_ip = task_ip_addresses[0].get('ipAddress', "")
+        if task_ip == "":
+            logger.warning("Task %s does not yet have an ip address allocated",
+                           task['id'])
+            return ""
+        return task_ip
+    else:
+        host = task.get('host', "")
+        if host == "":
+            logger.warning("Could not find task host, ignoring")
+            return ""
+        task_ip = resolve_ip(host)
+        if task_ip == "":
+            logger.warning("Could not resolve ip for host %s, ignoring",
+                           host)
+            return ""
+        return task_ip
+
+
+def get_app_port_mappings(app):
+    """
+    :return: list
+    """
+    portMappings = app.get('container', {})\
+                      .get('docker', {})\
+                      .get('portMappings', [])
+    if len(portMappings) > 0:
+        return portMappings
+
+    return app.get('container', {})\
+              .get('portMappings', [])
+
+
+def get_task_ports(task):
+    """
+    :return: list
+    """
+    return task.get('ports', [])
+
+
+def get_port_definition_ports(app):
+    """
+    :return: list
+    """
+    port_definitions = app.get('portDefinitions', [])
+    return [p['port'] for p in port_definitions if 'port' in p]
+
+
+def get_ip_address_discovery_ports(app):
+    """
+    :return: list
+    """
+    ip_address = app.get('ipAddress', {})
+    if len(ip_address) == 0:
+        return []
+    discovery = app.get('ipAddress', {}).get('discovery', {})
+    return [int(p['number'])
+            for p in discovery.get('ports', [])
+            if 'number' in p]
+
+
+def get_port_mapping_ports(app):
+    """
+    :return: list
+    """
+    port_mappings = get_app_port_mappings(app)
+    return [p['containerPort'] for p in port_mappings if 'containerPort' in p]
+
+
+def get_app_task_ports(app, task, mode):
+    """
+    :return: list
+    """
+    if mode == 'host':
+        task_ports = get_task_ports(task)
+        if len(task_ports) > 0:
+            return task_ports
+        return get_port_definition_ports(app)
+    elif mode == 'container/bridge':
+        task_ports = get_task_ports(task)
+        if len(task_ports) > 0:
+            return task_ports
+        # Will only work for Marathon < 1.5
+        task_ports = get_port_definition_ports(app)
+        if len(task_ports) > 0:
+            return task_ports
+        return get_port_mapping_ports(app)
+    else:
+        task_ports = get_ip_address_discovery_ports(app)
+        if len(task_ports) > 0:
+            return task_ports
+        return get_port_mapping_ports(app)
 
 
 def get_task_ip_and_ports(app, task):
@@ -307,44 +426,12 @@ def get_task_ip_and_ports(app, task):
     :return: Tuple of (ip address, [ports]).  Returns (None, None) if no IP
     address could be resolved or found for the task.
     """
-    # If the app ipAddress field is present and not None then this app is using
-    # IP per task.  The ipAddress may be an empty dictionary though, in which
-    # case there are no discovery ports.  At the moment, Mesos only supports a
-    # single IP address, so just take the first IP in the list.
-    if is_ip_per_task(app):
-        logger.debug("Using IP per container")
 
-        task_ip_addresses = task.get('ipAddresses')
-        if not task_ip_addresses:
-            logger.warning("Task %s does not yet have an ip address allocated",
-                           task['id'])
-            return None, None
-
-        task_ip = task_ip_addresses[0]['ipAddress']
-
-        # Are we using 'USER' network?
-        if is_user_network(app):
-            # in this case, we pull the port from portMappings
-            portMappings = app.get('container', {})\
-                .get('docker', {})\
-                .get('portMappings', [])
-            _port_mappings = portMappings or app.get('portDefinitions', [])
-            _attr = 'containerPort' if portMappings else 'port'
-            task_ports = [p.get(_attr)
-                          for p in _port_mappings
-                          if _attr in p]
-        else:
-            discovery = app['ipAddress'].get('discovery', {})
-            task_ports = [int(port['number'])
-                          for port in discovery.get('ports', [])]
-    else:
-        logger.debug("Using host port mapping")
-        task_ports = task.get('ports', [])
-        task_ip = resolve_ip(task['host'])
-        if not task_ip:
-            logger.warning("Could not resolve ip for host %s, ignoring",
-                           task['host'])
-            return None, None
-
+    mode = get_app_networking_mode(app)
+    task_ip = get_task_ip(task, mode)
+    task_ports = get_app_task_ports(app, task, mode)
+    # The overloading of empty string, and empty list as False is intentional.
+    if not (task_ip and task_ports):
+        return None, None
     logger.debug("Returning: %r, %r", task_ip, task_ports)
     return task_ip, task_ports
