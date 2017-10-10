@@ -118,7 +118,7 @@ class ServicePortAssigner(object):
         if mode == "container" or mode == "container/bridge":
             # Here we must use portMappings
             portMappings = get_app_port_mappings(app)
-            if portMappings:
+            if len(portMappings) > 0:
                 ports = filter(lambda p: p is not None,
                                map(lambda p: p.get('servicePort', None),
                                    portMappings))
@@ -137,8 +137,8 @@ class ServicePortAssigner(object):
         if not ports and mode == "container" and self.can_assign \
                 and len(app['tasks']) > 0:
             task = app['tasks'][0]
-            _, task_ports = get_task_ip_and_ports(app, task)
-            if task_ports is not None:
+            task_ports = get_app_task_ports(app, task, mode)
+            if len(task_ports) > 0:
                 ports = [self._get_service_port(app, task_port)
                          for task_port in task_ports]
         logger.debug("Service ports: %r", ports)
@@ -157,6 +157,18 @@ class CurlHttpEventStream(object):
         self.curl.setopt(pycurl.ENCODING, 'gzip')
         self.curl.setopt(pycurl.CONNECTTIMEOUT, 10)
         self.curl.setopt(pycurl.WRITEDATA, self.received_buffer)
+
+        # The below settings are to prevent the connection from hanging if the
+        # connection breaks silently. Since marathon-lb only listens, silent
+        # connection failure results in marathon-lb waiting infinitely.
+        #
+        # Minimum bytes/second below which it is considered "low speed". So
+        # "low speed" here refers to 0 bytes/second.
+        self.curl.setopt(pycurl.LOW_SPEED_LIMIT, 1)
+        # How long (in seconds) it's allowed to go below the speed limit
+        # before it times out
+        self.curl.setopt(pycurl.LOW_SPEED_TIME, 300)
+
         if auth and type(auth) is DCOSAuth:
             auth.refresh_auth_header()
             headers.append('Authorization: %s' % auth.auth_header)
@@ -245,8 +257,11 @@ class CurlHttpEventStream(object):
 
 
 def resolve_ip(host):
-    cached_ip = ip_cache.get().get(host, None)
-    if cached_ip:
+    """
+    :return: string, an empty string indicates that no ip was found.
+    """
+    cached_ip = ip_cache.get().get(host, "")
+    if cached_ip != "":
         return cached_ip
     else:
         try:
@@ -255,7 +270,7 @@ def resolve_ip(host):
             ip_cache.get().set(host, ip)
             return ip
         except socket.gaierror:
-            return None
+            return ""
 
 
 class LRUCacheSingleton(object):
@@ -297,68 +312,80 @@ def get_app_networking_mode(app):
 
 
 def get_task_ip(task, mode):
+    """
+    :return: string, an empty string indicates that no ip was found.
+    """
     if mode == 'container':
         task_ip_addresses = task.get('ipAddresses', [])
-        if not task_ip_addresses:
+        if len(task_ip_addresses) == 0:
             logger.warning("Task %s does not yet have an ip address allocated",
                            task['id'])
-            return None
-        task_ip = task_ip_addresses[0].get('ipAddress')
-        if not task_ip:
+            return ""
+        task_ip = task_ip_addresses[0].get('ipAddress', "")
+        if task_ip == "":
             logger.warning("Task %s does not yet have an ip address allocated",
                            task['id'])
-            return None
+            return ""
         return task_ip
     else:
-        host = task.get('host')
-        if not host:
+        host = task.get('host', "")
+        if host == "":
             logger.warning("Could not find task host, ignoring")
+            return ""
         task_ip = resolve_ip(host)
-        if not task_ip:
+        if task_ip == "":
             logger.warning("Could not resolve ip for host %s, ignoring",
                            host)
+            return ""
         return task_ip
 
 
 def get_app_port_mappings(app):
+    """
+    :return: list
+    """
     portMappings = app.get('container', {})\
                       .get('docker', {})\
-                      .get('portMappings')
-    if portMappings:
+                      .get('portMappings', [])
+    if len(portMappings) > 0:
         return portMappings
 
-    portMappings = app.get('container', {})\
-                      .get('portMappings')
-    return portMappings
+    return app.get('container', {})\
+              .get('portMappings', [])
 
 
 def get_task_ports(task):
-    return task.get('ports')
+    """
+    :return: list
+    """
+    return task.get('ports', [])
 
 
 def get_port_definition_ports(app):
+    """
+    :return: list
+    """
     port_definitions = app.get('portDefinitions', [])
-    task_ports = [p['port']
-                  for p in port_definitions
-                  if 'port' in p]
-    if len(task_ports) == 0:
-        return None
-    return task_ports
+    return [p['port'] for p in port_definitions if 'port' in p]
 
 
 def get_ip_address_discovery_ports(app):
+    """
+    :return: list
+    """
     ip_address = app.get('ipAddress', {})
-    if ip_address:
-        discovery = app.get('ipAddress', {}).get('discovery', {})
-        task_ports = [int(p['number'])
-                      for p in discovery.get('ports', [])
-                      if 'number' in p]
-        if len(task_ports) > 0:
-            return task_ports
-    return None
+    if len(ip_address) == 0:
+        return []
+    discovery = app.get('ipAddress', {}).get('discovery', {})
+    return [int(p['number'])
+            for p in discovery.get('ports', [])
+            if 'number' in p]
 
 
 def get_port_mapping_ports(app):
+    """
+    :return: list
+    """
     port_mappings = get_app_port_mappings(app)
     if port_mappings is None:
         return None
@@ -371,23 +398,26 @@ def get_port_mapping_ports(app):
 
 
 def get_app_task_ports(app, task, mode):
+    """
+    :return: list
+    """
     if mode == 'host':
         task_ports = get_task_ports(task)
-        if task_ports:
+        if len(task_ports) > 0:
             return task_ports
         return get_port_definition_ports(app)
     elif mode == 'container/bridge':
         task_ports = get_task_ports(task)
-        if task_ports:
+        if len(task_ports) > 0:
             return task_ports
         # Will only work for Marathon < 1.5
         task_ports = get_port_definition_ports(app)
-        if task_ports:
+        if len(task_ports) > 0:
             return task_ports
         return get_port_mapping_ports(app)
     else:
         task_ports = get_ip_address_discovery_ports(app)
-        if task_ports:
+        if len(task_ports) > 0:
             return task_ports
         return get_port_mapping_ports(app)
 
@@ -407,6 +437,7 @@ def get_task_ip_and_ports(app, task):
     mode = get_app_networking_mode(app)
     task_ip = get_task_ip(task, mode)
     task_ports = get_app_task_ports(app, task, mode)
+    # The overloading of empty string, and empty list as False is intentional.
     if not (task_ip and task_ports):
         return None, None
     logger.debug("Returning: %r, %r", task_ip, task_ports)

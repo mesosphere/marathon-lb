@@ -1,0 +1,9 @@
+#!/bin/bash
+exec 2>&1
+
+# A hack to redirect syslog to stdout.
+# This is necessary because haproxy only logs to syslog.
+ln -sf /proc/$$/fd/1 /var/log/container_stdout
+
+# Start syslog in foreground
+/usr/sbin/syslogd -f "/marathon-lb/syslogd/syslog.conf" -n

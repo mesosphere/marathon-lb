@@ -3,6 +3,7 @@ FROM debian:stretch
 # runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
+        inetutils-syslogd \
         iptables \
         libcurl3 \
         liblua5.3-0 \

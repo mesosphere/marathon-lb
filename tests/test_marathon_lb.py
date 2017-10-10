@@ -106,6 +106,38 @@ frontend marathon_https_in
         print(config)
         self.assertMultiLineEqual(config, expected)
 
+    def test_config_env_template(self):
+        apps = dict()
+        groups = ['external']
+        bind_http_https = True
+        ssl_certs = ""
+        os.environ["HAPROXY_HTTP_FRONTEND_HEAD"] = '''
+frontend changed_frontend
+  bind *:80
+  mode http
+'''
+        templater = marathon_lb.ConfigTemplater()
+        del os.environ["HAPROXY_HTTP_FRONTEND_HEAD"]
+
+        config = marathon_lb.config(apps, groups, bind_http_https,
+                                    ssl_certs, templater)
+        expected = self.base_config + '''
+frontend changed_frontend
+  bind *:80
+  mode http
+
+frontend marathon_http_appid_in
+  bind *:9091
+  mode http
+
+frontend marathon_https_in
+  bind *:443 ssl crt /etc/ssl/cert.pem
+  mode http
+'''
+        print("actual config:\n")
+        print(config)
+        self.assertMultiLineEqual(config, expected)
+
     def test_config_with_ssl_no_apps(self):
         apps = dict()
         groups = ['external']
