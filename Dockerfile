@@ -1,4 +1,4 @@
-FROM debian:stretch
+FROM debian:buster
 
 # runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -12,7 +12,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         procps \
         python3 \
         runit \
-        socat \
+        gnupg-agent \
+	socat \
     && rm -rf /var/lib/apt/lists/*
 
 ENV TINI_VERSION=v0.13.2 \
@@ -23,7 +24,7 @@ RUN set -x \
     && wget -O tini "https://github.com/krallin/tini/releases/download/$TINI_VERSION/tini-amd64" \
     && wget -O tini.asc "https://github.com/krallin/tini/releases/download/$TINI_VERSION/tini-amd64.asc" \
     && export GNUPGHOME="$(mktemp -d)" \
-    && gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$TINI_GPG_KEY" \
+    && gpg --keyserver hkps://hkps.pool.sks-keyservers.net --recv-keys "$TINI_GPG_KEY" \
     && gpg --batch --verify tini.asc tini \
     && rm -rf "$GNUPGHOME" tini.asc \
     && mv tini /usr/bin/tini \
