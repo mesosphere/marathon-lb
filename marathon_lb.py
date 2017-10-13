@@ -184,7 +184,8 @@ class Marathon(object):
             )
 
             logger.debug("%s %s", method, response.url)
-            if response.status_code == 200:
+            if response.status_code == 200 \
+                    and response.headers.get('X-Marathon-Leader', None):
                 break
 
         response.raise_for_status()
