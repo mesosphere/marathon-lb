@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python3 \
         runit \
         gnupg-agent \
+        libdpkg-perl \
         socat \
     && rm -rf /var/lib/apt/lists/*
 
