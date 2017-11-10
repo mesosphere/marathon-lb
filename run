@@ -35,7 +35,21 @@ else
   SSL_CERTS="/etc/ssl/cert.pem"
 fi
 
-if [ -n "${HAPROXY_SSL_CERT-}" ]; then
+if [ -n "${VAULT_TOKEN-}" ] && [ -n "${VAULT_URL-}" ] && [ -n "${VAULT_HAPROXY_PATH-}" ]; then
+  VAULT_HAPROXY_URL="$VAULT_URL$VAULT_HAPROXY_PATH"
+  # if vault parameters provided, obtain certificate and key from Vault
+  response=$(curl -fLs --tlsv1.2 -k -w "%{response_code}" -H "X-Vault-Token:$VAULT_TOKEN" "$VAULT_HAPROXY_URL")
+  data=$(echo "$response" |head -1 )
+  certificate=$(echo "$data" | jq -cMSr ".data .marathonlb_crt" )
+  private_key=$(echo "$data" | jq -cMSr ".data .marathonlb_key")
+  echo "$certificate" | sed \
+            -e 's/-----BEGIN CERTIFICATE-----/-----BEGIN CERTIFICATE-----\n/g' \
+            -e 's/-----END CERTIFICATE-----/\n-----END CERTIFICATE-----/g' \
+            -e 's/-----END CERTIFICATE----------BEGIN CERTIFICATE-----/-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----/g' > /etc/ssl/cert.pem
+  echo "$private_key" | sed \
+            -e 's/-----BEGIN RSA PRIVATE KEY-----/-----BEGIN RSA PRIVATE KEY-----\n/g' \
+            -e 's/-----END RSA PRIVATE KEY-----/\n-----END RSA PRIVATE KEY-----/g' >> /etc/ssl/cert.pem
+elif [ -n "${HAPROXY_SSL_CERT-}" ]; then
   # if provided via environment variable, use it.
   echo -e "$HAPROXY_SSL_CERT" > /etc/ssl/cert.pem
 
