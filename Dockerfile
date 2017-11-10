@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         procps \
         python3 \
         runit \
+        gnupg-agent \
         socat \
     && rm -rf /var/lib/apt/lists/*
 
