@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         inetutils-syslogd \
         iptables \
         libcurl3 \
+        libdpkg-perl \
         liblua5.3-0 \
         libssl1.0.2 \
         openssl \
