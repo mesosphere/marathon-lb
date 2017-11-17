@@ -1,6 +1,45 @@
 #!/bin/bash
 set -euo pipefail
 
+# # # # # # # # # #
+# Vault config: 
+# STRING_VAULT_HOST
+# VAULT_PORT
+# 
+# Token Auth:
+# VAULT_TOKEN
+#
+# Dynamic Auth:
+# VAULT_ROLE_ID
+# VAULT_SECRET_ID
+# # # # # # # # #
+VAULT_ENABLED=0
+
+# KMS_UTILS & Dynamic authentication
+if [ -n "${STRING_VAULT_HOST-}" ] && [ -n "${VAULT_PORT-}" ]; then
+  OLD_IFS=${IFS}
+  IFS=',' read -r -a VAULT_HOSTS <<< "$STRING_VAULT_HOST"
+  IFS=${OLD_IFS}
+
+  if [ -n "${VAULT_ROLE_ID-}" ] && [ -n "${VAULT_SECRET_ID-}" ];  then
+    source /usr/sbin/kms_utils.sh
+    VAULT_ENABLED=1
+    echo "VAULT - Dynamic authentication provided"
+    echo "Dynamic login with vault..."
+    login
+    echo "Login success"
+
+  elif [ -n "${VAULT_TOKEN-}" ];  then
+    source /usr/sbin/kms_utils.sh
+    VAULT_ENABLED=1
+    echo "VAULT - Token authentication provided"
+  else
+    echo "VAULT - ERROR: Vault host configuration provided, but no token nor dynamic authentication configuration provided"
+    exit 1 
+  fi
+fi
+
+# 
 SYSLOG_SOCKET=${SYSLOG_SOCKET:-/dev/null}
 
 LB_SERVICE="/marathon-lb/service/lb"
@@ -35,20 +74,13 @@ else
   SSL_CERTS="/etc/ssl/cert.pem"
 fi
 
-if [ -n "${VAULT_TOKEN-}" ] && [ -n "${VAULT_URL-}" ] && [ -n "${VAULT_HAPROXY_PATH-}" ]; then
-  VAULT_HAPROXY_URL="$VAULT_URL$VAULT_HAPROXY_PATH"
-  # if vault parameters provided, obtain certificate and key from Vault
-  response=$(curl -fLs --tlsv1.2 -k -w "%{response_code}" -H "X-Vault-Token:$VAULT_TOKEN" "$VAULT_HAPROXY_URL")
-  data=$(echo "$response" |head -1 )
-  certificate=$(echo "$data" | jq -cMSr ".data .marathonlb_crt" )
-  private_key=$(echo "$data" | jq -cMSr ".data .marathonlb_key")
-  echo "$certificate" | sed \
-            -e 's/-----BEGIN CERTIFICATE-----/-----BEGIN CERTIFICATE-----\n/g' \
-            -e 's/-----END CERTIFICATE-----/\n-----END CERTIFICATE-----/g' \
-            -e 's/-----END CERTIFICATE----------BEGIN CERTIFICATE-----/-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----/g' > /etc/ssl/cert.pem
-  echo "$private_key" | sed \
-            -e 's/-----BEGIN RSA PRIVATE KEY-----/-----BEGIN RSA PRIVATE KEY-----\n/g' \
-            -e 's/-----END RSA PRIVATE KEY-----/\n-----END RSA PRIVATE KEY-----/g' >> /etc/ssl/cert.pem
+if [ ${VAULT_ENABLED} -eq 1 ]; then
+  # if provided Vault credentials, use it.
+  getCert userland marathon-lb marathon-lb PEM /etc/ssl  
+  chmod 644 /etc/ssl/marathon-lb.*
+  cat /etc/ssl/marathon-lb.key >> /etc/ssl/cert.pem
+  cat /etc/ssl/marathon-lb.pem >> /etc/ssl/cert.pem
+
 elif [ -n "${HAPROXY_SSL_CERT-}" ]; then
   # if provided via environment variable, use it.
   echo -e "$HAPROXY_SSL_CERT" > /etc/ssl/cert.pem
@@ -102,11 +134,9 @@ case "$MODE" in
     ;;
 esac
 
-if [ -n "${VAULT_TOKEN-}" ] && [ -n "${VAULT_URL-}" ] && [ -n "${VAULT_MARATHON_PATH-}" ]; then 
-  VAULT_MARATHON_URL="$VAULT_URL$VAULT_MARATHON_PATH"
-  MARATHON_LB_PASSWORD=$(curl -k -L -H "X-Vault-Token:$VAULT_TOKEN" "$VAULT_MARATHON_URL" -s | python3 -c 'import json,sys;print(json.load(sys.stdin)["data"]["pass"]);')
-  MARATHON_LB_USER=$(curl -k -L -H "X-Vault-Token:$VAULT_TOKEN" "$VAULT_MARATHON_URL" -s | python3 -c 'import json,sys;print(json.load(sys.stdin)["data"]["user"]);')
-  CREDENTIALS="$MARATHON_LB_USER:$MARATHON_LB_PASSWORD"
+if [ ${VAULT_ENABLED} -eq 1 ]; then 
+  getPass dcs marathon rest
+  CREDENTIALS="$MARATHON_REST_USER:$MARATHON_REST_PASS"
   ARGS="$ARGS --auth-credentials $CREDENTIALS"
 fi
 

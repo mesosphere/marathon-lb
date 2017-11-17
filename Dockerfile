@@ -2,6 +2,12 @@ FROM debian:stretch
 
 ARG VERSION
 
+# artifacts versions
+ARG KMS_UTILS_VERSION=0.2.1
+
+# nexus repository artifacts
+ADD http://sodio.stratio.com/repository/paas/kms_utils/${KMS_UTILS_VERSION}/kms_utils-${KMS_UTILS_VERSION}.sh /usr/sbin/kms_utils.sh
+
 # runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
@@ -15,6 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         runit \
         socat \
 	curl \
+        jq \
     && rm -rf /var/lib/apt/lists/*
 
 ENV TINI_VERSION=v0.13.2 \
@@ -30,6 +37,7 @@ RUN set -x \
     && rm -rf "$GNUPGHOME" tini.asc \
     && mv tini /usr/bin/tini \
     && chmod +x /usr/bin/tini \
+    && chmod +x /usr/sbin/kms_utils.sh \
     && tini -- true \
     && apt-get purge -y --auto-remove dirmngr gpg wget
 
