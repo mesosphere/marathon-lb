@@ -1593,7 +1593,6 @@ class MarathonEventProcessor(object):
 
     def handle_event(self, event):
         if event['eventType'] == 'status_update_event' or \
-                event['eventType'] == 'health_status_changed_event' or \
                 event['eventType'] == 'api_post_event':
             self.reset_from_tasks()
 
