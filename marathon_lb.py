@@ -1718,8 +1718,6 @@ def process_sse_events(marathon, processor):
                 print(event.data)
                 print("Unexpected error:", sys.exc_info()[0])
                 traceback.print_stack()
-                logger.exception(
-                    "Marathon host is {0}".format(marathon.current_host))
                 sys.exit(-1)
     finally:
         processor.stop()
