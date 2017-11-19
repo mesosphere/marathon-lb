@@ -1561,8 +1561,10 @@ class MarathonEventProcessor(object):
         except requests.exceptions.ConnectionError as e:
             logger.error("Connection error({0}): {1}".format(
                 e.errno, e.strerror))
+            client.captureException()
         except:
             logger.exception("Unexpected error!")
+            client.captureException()
 
     def do_reload(self):
         try:
@@ -1612,6 +1614,9 @@ def get_arg_parser():
     parser = argparse.ArgumentParser(
         description="Marathon HAProxy Load Balancer",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--sentry",
+                        help="Ship exceptions to sentry",
+                        action="store_true")
     parser.add_argument("--longhelp",
                         help="Print out configuration details",
                         action="store_true"
@@ -1716,6 +1721,7 @@ def process_sse_events(marathon, processor):
                 print(event.data)
                 print("Unexpected error:", sys.exc_info()[0])
                 traceback.print_stack()
+                client.captureException()
                 raise
     finally:
         processor.stop()
@@ -1729,6 +1735,19 @@ if __name__ == '__main__':
     # Process arguments
     arg_parser = get_arg_parser()
     args = arg_parser.parse_args()
+    if args.sentry:
+        import sentry
+        from raven import Client
+        global sentry_user
+        global sentry_pwd
+        global sentry_endpoint
+        global client
+        sentry_user = sentry.CONFIG['sentry_user']
+        sentry_pwd = sentry.CONFIG['sentry_pwd']
+        sentry_endpoint = sentry.CONFIG['sentry_endpoint']
+        client = Client("http://" + sentry.CONFIG['sentry_user'] +
+                        ":" + sentry.CONFIG['sentry_pwd'] + "@" +
+                        sentry.CONFIG['sentry_endpoint'])
 
     # Print the long help text if flag is set
     if args.longhelp:
@@ -1799,6 +1818,7 @@ if __name__ == '__main__':
                 process_sse_events(marathon, processor)
             except:
                 logger.exception("Caught exception")
+                client.captureException()
                 backoff = backoff * 1.5
                 if backoff > 300:
                     backoff = 300
