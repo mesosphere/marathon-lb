@@ -1561,10 +1561,11 @@ class MarathonEventProcessor(object):
             logger.debug("updating tasks finished, took %s seconds",
                          time.time() - start_time)
         except requests.exceptions.ConnectionError as e:
-            logger.error("Connection error({0}): {1}. Marathon is {2}".format(
-                e.errno, e.strerror, self.__marathon.current_host))
+            logger.error("Connection error({0}): {1}.Marathon host is {2}".
+                         format(e.errno, e.strerror,
+                                self.__marathon.current_host))
         except:
-            logger.exception("Unexpected error!. Marathon is {0}".format(
+            logger.exception("Unexpected error!. Marathon host is {0}".format(
                 self.__marathon.current_host))
 
     def do_reload(self):
@@ -1719,8 +1720,8 @@ def process_sse_events(marathon, processor):
                 print(event.data)
                 print("Unexpected error:", sys.exc_info()[0])
                 traceback.print_stack()
-                logger.exception(
-                    "Marathon is {0}".format(marathon.current_host))
+                logger.exception("Unexpected error!. Marathon host is {0}".
+                                 format(marathon.current_host))
                 raise
     finally:
         processor.stop()
