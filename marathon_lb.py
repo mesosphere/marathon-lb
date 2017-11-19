@@ -161,6 +161,7 @@ class Marathon(object):
         self.__auth = auth
         self.__cycle_hosts = cycle(self.__hosts)
         self.__verify = False
+        self.current_host = None
         if ca_cert:
             self.__verify = ca_cert
 
@@ -226,7 +227,8 @@ class Marathon(object):
         return self.api_req('GET', ['tasks'])["tasks"]
 
     def get_event_stream(self):
-        url = self.host + "/v2/events"
+        self.current_host = self.host
+        url = self.current_host + "/v2/events"
         logger.info(
             "SSE Active, trying fetch events from {0}".format(url))
 
@@ -1559,10 +1561,11 @@ class MarathonEventProcessor(object):
             logger.debug("updating tasks finished, took %s seconds",
                          time.time() - start_time)
         except requests.exceptions.ConnectionError as e:
-            logger.error("Connection error({0}): {1}".format(
-                e.errno, e.strerror))
+            logger.error("Connection error({0}): {1}. Marathon is {2}".format(
+                e.errno, e.strerror, self.__marathon.current_host))
         except:
-            logger.exception("Unexpected error!")
+            logger.exception("Unexpected error!. Marathon is {0}".format(
+                self.__marathon.current_host))
 
     def do_reload(self):
         try:
@@ -1716,6 +1719,8 @@ def process_sse_events(marathon, processor):
                 print(event.data)
                 print("Unexpected error:", sys.exc_info()[0])
                 traceback.print_stack()
+                logger.exception(
+                    "Marathon is {0}".format(marathon.current_host))
                 raise
     finally:
         processor.stop()
