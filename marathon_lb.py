@@ -1561,8 +1561,10 @@ class MarathonEventProcessor(object):
         except requests.exceptions.ConnectionError as e:
             logger.error("Connection error({0}): {1}".format(
                 e.errno, e.strerror))
+            sys.exit(-1)
         except:
             logger.exception("Unexpected error!")
+            sys.exit(-1)
 
     def do_reload(self):
         try:
@@ -1716,7 +1718,9 @@ def process_sse_events(marathon, processor):
                 print(event.data)
                 print("Unexpected error:", sys.exc_info()[0])
                 traceback.print_stack()
-                raise
+                logger.exception(
+                    "Marathon host is {0}".format(marathon.current_host))
+                sys.exit(-1)
     finally:
         processor.stop()
 
