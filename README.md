@@ -109,9 +109,17 @@ $ ./marathon_lb.py --marathon http://localhost:8080 --auth-credentials=admin:pas
 ```
 
 It is possible to get the auth credentials (user & password) from VAULT if you define the following 
-environment variables before running marathon-lb: VAULT_TOKEN, VAULT_URL, VAULT_MARATHON_PATH 
-where VAULT_URL is the vault service url (i.e: `https://vault.service.mydomain:8200/v1`)
-and   VAULT_MARATHON_PATH is the root path where your user and password are located for marathon (i.e: `/path/to/my/marathon/secret`)
+environment variables before running marathon-lb: STRING_VAULT_HOST, VAULT_PORT 
+where STRING_VAULT_HOST is the comma-separated vault service urls (i.e: `vault.service.mydomain,vault2.service.mydomain`)
+and   VAULT_PORT is the vault service port
+
+There are two ways to authenticate with vault:
+
+Token authentication:
+Use the environment variable VAULT_TOKEN to specify the access token
+
+Dynamic authentication:
+Use the environment variables VAULT_ROLE_ID and VAULT_SECRET_ID, usually provided by the Marathon plugin.
 
 This will refresh `haproxy.cfg`, and if there were any changes, then it will
 automatically reload HAProxy. Only apps with the label `HAPROXY_GROUP=external`
