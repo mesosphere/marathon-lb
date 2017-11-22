@@ -1,5 +1,6 @@
 # Changelog
 
-## 1.10.0 (upcoming)
+## 0.1.0 (upcoming)
 
 * [EOS-568] Implement dynamic authentication in Marathon-lb entrypoint
+* Marathon-LB main version v1.10.3

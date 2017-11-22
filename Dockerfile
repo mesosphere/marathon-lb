@@ -48,6 +48,8 @@ ENV HAPROXY_MAJOR=1.7 \
 
 COPY requirements.txt /marathon-lb/
 
+COPY MARATHON-LB-VERSION /marathon-lb/
+
 RUN set -x \
     && buildDeps=' \
         gcc \
