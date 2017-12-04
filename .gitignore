@@ -10,3 +10,4 @@ __pycache__
 *,cover
 coverage.xml
 htmlcov/
+*.iml

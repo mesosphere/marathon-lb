@@ -155,11 +155,62 @@ frontend marathon_https_in
   mode http
 ''',
                            overridable=False,
-                           description='''\
+                           description='''
 An HTTPS frontend for encrypted connections that binds to port *:443 by
 default and gathers all virtual hosts as defined by the
 `HAPROXY_{n}_VHOST` label. You must modify this file to
 include your certificate.
+'''))
+        self.add_template(
+            ConfigTemplate(name='HTTPS_GROUPED_FRONTEND_HEAD',
+                           value='''
+frontend marathon_https_in
+  bind *:443
+  mode tcp
+  tcp-request inspect-delay 5s
+  tcp-request content accept if { req_ssl_hello_type 1 }
+''',
+                           overridable=False,
+                           description='''\
+An HTTPS frontend for encrypted connections that binds to port *:443 by
+default and gathers all virtual hosts as defined by the
+`HAPROXY_{n}_VHOST` label. Useful for adding client certificated per domain.
+Works only with an enabled group-https-by-vhost flag.
+'''))
+        self.add_template(
+            ConfigTemplate(name='HTTPS_GROUPED_VHOST_FRONTEND_HEAD',
+                           value='''
+frontend {name}
+  mode http
+  bind abns@{name} accept-proxy ssl {sslCerts}{bindOpts}
+''',
+                           overridable=False,
+                           description='''\
+An HTTPS frontend for vhost.
+Works only with an enabled group-https-by-vhost flag. 
+'''))
+
+        self.add_template(
+            ConfigTemplate(name='HTTPS_GROUPED_VHOST_BACKEND_HEAD',
+                           value='''
+backend {name}
+  server loopback-for-tls abns@{name} send-proxy-v2
+''',
+                           overridable=False,
+                           description='''\
+An HTTPS backend for vhost.
+Works only with an enabled group-https-by-vhost flag. 
+'''))
+
+        self.add_template(
+            ConfigTemplate(name='HTTPS_GROUPED_VHOST_FRONTEND_ACL',
+                           value='''\
+  use_backend {backend} if {{ req_ssl_sni -i {host} }}
+''',
+                           overridable=False,
+                           description='''\
+A route rule https entrypoint.
+Works only with an enabled group-https-by-vhost flag. 
 '''))
 
         self.add_template(
@@ -845,7 +896,7 @@ Specified as {specifiedAs}.
                 if label.name == 'GROUP':
                     # this one is a special snowflake
                     spec = "`HAPROXY_{n}_" + label.name + "`" + " or " + \
-                        "`HAPROXY_" + label.name + "`"
+                           "`HAPROXY_" + label.name + "`"
                 elif label.perServicePort:
                     spec = "`HAPROXY_{n}_" + label.name + "`"
                 else:
@@ -882,6 +933,22 @@ Specified as {specifiedAs}.
     @property
     def haproxy_https_frontend_head(self):
         return self.t['HTTPS_FRONTEND_HEAD'].value
+
+    @property
+    def haproxy_https_grouped_frontend_head(self):
+        return self.t['HTTPS_GROUPED_FRONTEND_HEAD'].value
+
+    @property
+    def haproxy_https_grouped_vhost_frontend_head(self):
+        return self.t['HTTPS_GROUPED_VHOST_FRONTEND_HEAD'].value
+
+    @property
+    def haproxy_https_grouped_vhost_backend_head(self):
+        return self.t['HTTPS_GROUPED_VHOST_BACKEND_HEAD'].value
+
+    @property
+    def haproxy_https_grouped_vhost_frontend_acl(self):
+        return self.t['HTTPS_GROUPED_VHOST_FRONTEND_ACL'].value
 
     def haproxy_userlist_head(self, app):
         if 'HAPROXY_{0}_USERLIST_HEAD' in app.labels:
@@ -921,9 +988,9 @@ Specified as {specifiedAs}.
         return self.t['BACKEND_REDIRECT_HTTP_TO_HTTPS'].value
 
     def haproxy_backend_redirect_http_to_https_with_path(self, app):
-        if 'HAPROXY_{0}_BACKEND_REDIRECT_HTTP_TO_HTTPS_WITH_PATH' in\
-          app.labels:
-            return app.\
+        if 'HAPROXY_{0}_BACKEND_REDIRECT_HTTP_TO_HTTPS_WITH_PATH' in \
+                app.labels:
+            return app. \
                 labels['HAPROXY_{0}_BACKEND_REDIRECT_HTTP_TO_HTTPS_WITH_PATH']
         return self.t['BACKEND_REDIRECT_HTTP_TO_HTTPS_WITH_PATH'].value
 
@@ -964,7 +1031,7 @@ Specified as {specifiedAs}.
 
     def haproxy_http_frontend_routing_only_with_auth(self, app):
         if 'HAPROXY_{0}_HTTP_FRONTEND_ROUTING_ONLY_WITH_AUTH' in app.labels:
-            return app.\
+            return app. \
                 labels['HAPROXY_{0}_HTTP_FRONTEND_ROUTING_ONLY_WITH_AUTH']
         return self.t['HTTP_FRONTEND_ROUTING_ONLY_WITH_AUTH'].value
 
@@ -979,11 +1046,11 @@ Specified as {specifiedAs}.
         return self.t['HTTP_FRONTEND_ACL_ONLY_WITH_PATH'].value
 
     def haproxy_http_frontend_acl_only_with_path_and_auth(self, app):
-        if 'HAPROXY_{0}_HTTP_FRONTEND_ACL_ONLY_WITH_PATH_AND_AUTH'\
-         in app.labels:
-            return\
-             app.\
-             labels['HAPROXY_{0}_HTTP_FRONTEND_ACL_ONLY_WITH_PATH_AND_AUTH']
+        if 'HAPROXY_{0}_HTTP_FRONTEND_ACL_ONLY_WITH_PATH_AND_AUTH' \
+                in app.labels:
+            return \
+                app. \
+                    labels['HAPROXY_{0}_HTTP_FRONTEND_ACL_ONLY_WITH_PATH_AND_AUTH']
         return self.t['HTTP_FRONTEND_ACL_ONLY_WITH_PATH_AND_AUTH'].value
 
     def haproxy_https_frontend_acl_only_with_path(self, app):
@@ -998,12 +1065,12 @@ Specified as {specifiedAs}.
         return self.t['HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH'].value
 
     def haproxy_http_frontend_routing_only_with_path_and_auth(self, app):
-        if 'HAPROXY_{0}_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH'\
-         in app.labels:
-            return\
-             app.\
-             labels[
-                'HAPROXY_{0}_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH']
+        if 'HAPROXY_{0}_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH' \
+                in app.labels:
+            return \
+                app. \
+                    labels[
+                    'HAPROXY_{0}_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH']
         return self.t['HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH'].value
 
     def haproxy_http_frontend_appid_acl(self, app):
@@ -1077,7 +1144,7 @@ Specified as {specifiedAs}.
             return self.__blank_prefix_or_empty(
                 app.labels['HAPROXY_{0}_BACKEND' +
                            '_SERVER_HTTP_HEALTHCHECK_OPTIONS']
-                .strip())
+                    .strip())
         return self.__blank_prefix_or_empty(
             self.t['BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS'].value.strip())
 
@@ -1086,7 +1153,7 @@ Specified as {specifiedAs}.
             return self.__blank_prefix_or_empty(
                 app.labels['HAPROXY_{0}_BACKEND_'
                            'SERVER_TCP_HEALTHCHECK_OPTIONS']
-                .strip())
+                    .strip())
         return self.__blank_prefix_or_empty(
             self.t['BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS'].value.strip())
 

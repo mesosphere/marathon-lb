@@ -833,7 +833,7 @@ frontend marathon_https_in
   http-request auth realm "realm" if { ssl_fc_sni test.example.com } \
 path_nginx_10000 !auth_test_example_com_nginx
   use_backend nginx_10000 if { ssl_fc_sni test.example.com } ''' + \
-                                      '''path_nginx_10000
+                   '''path_nginx_10000
   acl auth_test_example_com_nginx http_auth(user_nginx_10000)
   http-request auth realm "realm" if { ssl_fc_sni test } \
 path_nginx_10000 !auth_test_example_com_nginx
@@ -967,7 +967,7 @@ frontend marathon_https_in
   mode http
   acl path_nginx_10000 path_beg /some/path
   use_backend nginx_10000 if { ssl_fc_sni test.example.com } ''' + \
-                                      '''path_nginx_10000
+                   '''path_nginx_10000
   use_backend nginx_10000 if { ssl_fc_sni test } path_nginx_10000
 
 frontend nginx_10000
@@ -1102,7 +1102,7 @@ frontend marathon_https_in
   mode http
   acl path_nginx_10000 path_beg /some/path
   use_backend nginx_10000 if { ssl_fc_sni test.example.com } ''' + \
-                                      '''path_nginx_10000
+                   '''path_nginx_10000
   use_backend nginx_10000 if { ssl_fc_sni test } path_nginx_10000
 
 frontend nginx_10000
@@ -1172,7 +1172,7 @@ frontend marathon_https_in
   mode http
   acl path_nginx_10000 path_beg /some/path
   use_backend nginx_10000 if { ssl_fc_sni test.example.com } ''' + \
-                                      '''path_nginx_10000
+                   '''path_nginx_10000
   use_backend nginx_10000 if { ssl_fc_sni test } path_nginx_10000
 
 frontend nginx_10000
@@ -3133,6 +3133,200 @@ backend nginx2_10001
   option  httpchk GET /
   timeout check 15s
   server agent2_2_2_2_2_1025 2.2.2.2:1025 check inter 3s fall 11
+'''
+        self.assertMultiLineEqual(config, expected)
+
+    def test_group_https_by_vhost(self):
+        groups = ['external']
+        bind_http_https = True
+        group_https_by_vhost = True
+        ssl_certs = ""
+        templater = marathon_lb.ConfigTemplater()
+        strictMode = False
+
+        healthCheck = {
+            "path": "/",
+            "protocol": "HTTP",
+            "portIndex": 0,
+            "gracePeriodSeconds": 15,
+            "intervalSeconds": 3,
+            "timeoutSeconds": 15,
+            "maxConsecutiveFailures": 10
+        }
+
+        app1 = marathon_lb.MarathonService('/nginx1', 10000, healthCheck,
+                                           strictMode)
+        app1.hostname = "server.nginx.net,server3.nginx.net"
+        app1.haproxy_groups = ['external']
+        app1.enabled = True
+        app1.add_backend("agent1", "1.1.1.1", 1024, False)
+
+        app2 = marathon_lb.MarathonService('/nginx2', 10001, healthCheck,
+                                           strictMode)
+        app2.hostname = "server2.nginx.net"
+        app2.haproxy_groups = ['external']
+        app2.sslCert = "/etc/cert"
+        app2.bindOptions = "verify required"
+        app2.path = "/test"
+        app2.enabled = True
+        app2.add_backend("agent2", "2.2.2.2", 1025, False)
+
+        app3 = marathon_lb.MarathonService('/nginx3', 10002, healthCheck,
+                                           strictMode)
+        app3.hostname = "server2.nginx.net"
+        app3.path = "/test2"
+        app3.haproxy_groups = ['external']
+        app3.enabled = True
+        app3.backend_weight = 99
+        app3.add_backend("agent3", "3.3.3.3", 1026, False)
+
+        app4 = marathon_lb.MarathonService('/letsencrypt', 10002, healthCheck,
+                                           strictMode)
+        app4.hostname = "nginx.net,server2.nginx.net,server.nginx.net"
+        app4.path = "/.well-known/acme-challenge"
+        app4.haproxy_groups = ['external']
+        app4.enabled = True
+        app4.backend_weight = 99
+        app4.add_backend("agent4", "4.4.4.4", 1026, False)
+
+        apps = [app1, app2, app3, app4]
+        haproxy_map = True
+        domain_map_array = []
+        app_map_array = []
+        config_file = "/etc/haproxy/haproxy.cfg"
+        config = marathon_lb.config(apps, groups, bind_http_https, ssl_certs,
+                                    templater, haproxy_map, domain_map_array,
+                                    app_map_array, config_file, group_https_by_vhost)
+        expected = self.base_config + '''
+frontend marathon_http_in
+  bind *:80
+  mode http
+  acl path_letsencrypt_10002 path_beg /.well-known/acme-challenge
+  acl host_nginx_net_letsencrypt hdr(host) -i nginx.net
+  acl host_nginx_net_letsencrypt hdr(host) -i server2.nginx.net
+  acl host_nginx_net_letsencrypt hdr(host) -i server.nginx.net
+  use_backend letsencrypt_10002 if host_nginx_net_letsencrypt path_letsencrypt_10002
+  acl host_server2_nginx_net_nginx3 hdr(host) -i server2.nginx.net
+  acl path_nginx3_10002 path_beg /test2
+  use_backend nginx3_10002 if host_server2_nginx_net_nginx3 path_nginx3_10002
+  acl host_server2_nginx_net_nginx2 hdr(host) -i server2.nginx.net
+  acl path_nginx2_10001 path_beg /test
+  use_backend nginx2_10001 if host_server2_nginx_net_nginx2 path_nginx2_10001
+  use_backend %[req.hdr(host),lower,regsub(:.*$,,),map(/etc/haproxy/domain2backend.map)]
+
+frontend marathon_http_appid_in
+  bind *:9091
+  mode http
+  use_backend %[req.hdr(x-marathon-app-id),lower,map(/etc/haproxy/app2backend.map)]
+
+frontend marathon_https_in
+  bind *:443
+  mode tcp
+  tcp-request inspect-delay 5s
+  tcp-request content accept if { req_ssl_hello_type 1 }
+  use_backend nginx_net if { req_ssl_sni -i nginx.net }
+  use_backend server_nginx_net if { req_ssl_sni -i server.nginx.net }
+  use_backend server2_nginx_net if { req_ssl_sni -i server2.nginx.net }
+  use_backend server3_nginx_net if { req_ssl_sni -i server3.nginx.net }
+
+backend nginx_net
+  server loopback-for-tls abns@nginx_net send-proxy-v2
+
+frontend nginx_net
+  mode http
+  bind abns@nginx_net accept-proxy ssl crt /etc/ssl/cert.pem
+  acl path_letsencrypt_10002 path_beg /.well-known/acme-challenge
+  use_backend letsencrypt_10002 if { ssl_fc_sni nginx.net } path_letsencrypt_10002
+
+backend server_nginx_net
+  server loopback-for-tls abns@server_nginx_net send-proxy-v2
+
+frontend server_nginx_net
+  mode http
+  bind abns@server_nginx_net accept-proxy ssl crt /etc/ssl/cert.pem
+  acl path_letsencrypt_10002 path_beg /.well-known/acme-challenge
+  use_backend letsencrypt_10002 if { ssl_fc_sni server.nginx.net } path_letsencrypt_10002
+  use_backend %[ssl_fc_sni,lower,map(/etc/haproxy/domain2backend.map)]
+
+backend server2_nginx_net
+  server loopback-for-tls abns@server2_nginx_net send-proxy-v2
+
+frontend server2_nginx_net
+  mode http
+  bind abns@server2_nginx_net accept-proxy ssl crt /etc/cert verify required
+  acl path_letsencrypt_10002 path_beg /.well-known/acme-challenge
+  use_backend letsencrypt_10002 if { ssl_fc_sni server2.nginx.net } path_letsencrypt_10002
+  acl path_nginx3_10002 path_beg /test2
+  use_backend nginx3_10002 if { ssl_fc_sni server2.nginx.net } path_nginx3_10002
+  acl path_nginx2_10001 path_beg /test
+  use_backend nginx2_10001 if { ssl_fc_sni server2.nginx.net } path_nginx2_10001
+
+backend server3_nginx_net
+  server loopback-for-tls abns@server3_nginx_net send-proxy-v2
+
+frontend server3_nginx_net
+  mode http
+  bind abns@server3_nginx_net accept-proxy ssl crt /etc/ssl/cert.pem
+
+frontend letsencrypt_10002
+  bind *:10002
+  mode http
+  use_backend letsencrypt_10002
+
+frontend nginx1_10000
+  bind *:10000
+  mode http
+  use_backend nginx1_10000
+
+frontend nginx2_10001
+  bind *:10001 ssl crt /etc/cert verify required
+  mode http
+  use_backend nginx2_10001
+
+frontend nginx3_10002
+  bind *:10002
+  mode http
+  use_backend nginx3_10002
+
+backend letsencrypt_10002
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  option  httpchk GET /
+  timeout check 15s
+  server agent4_4_4_4_4_1026 4.4.4.4:1026 check inter 3s fall 11
+
+backend nginx1_10000
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  option  httpchk GET /
+  timeout check 15s
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 3s fall 11
+
+backend nginx2_10001
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  option  httpchk GET /
+  timeout check 15s
+  server agent2_2_2_2_2_1025 2.2.2.2:1025 check inter 3s fall 11
+
+backend nginx3_10002
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  option  httpchk GET /
+  timeout check 15s
+  server agent3_3_3_3_3_1026 3.3.3.3:1026 check inter 3s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 

@@ -24,7 +24,8 @@ usage: marathon_lb.py [-h] [--longhelp] [--marathon MARATHON [MARATHON ...]]
                       [--sse] [--health-check]
                       [--lru-cache-capacity LRU_CACHE_CAPACITY]
                       [--haproxy-map] [--dont-bind-http-https]
-                      [--ssl-certs SSL_CERTS] [--skip-validation] [--dry]
+                      [--group-https-by-vhost] [--ssl-certs SSL_CERTS]
+                      [--skip-validation] [--dry]
                       [--min-serv-port-ip-per-task MIN_SERV_PORT_IP_PER_TASK]
                       [--max-serv-port-ip-per-task MAX_SERV_PORT_IP_PER_TASK]
                       [--syslog-socket SYSLOG_SOCKET]
@@ -58,7 +59,7 @@ optional arguments:
                         every --reload-interval seconds. Set to 0 to disable
                         or -1 for infinite retries. (default: 10)
   --reload-interval RELOAD_INTERVAL
-                        Wait this number of seconds betwee nreload retries.
+                        Wait this number of seconds between reload retries.
                         (default: 10)
   --strict-mode         If set, backends are only advertised if
                         HAPROXY_{n}_ENABLED=true. Strict mode will be enabled
@@ -76,6 +77,8 @@ optional arguments:
   --dont-bind-http-https
                         Don't bind to HTTP and HTTPS frontends. (default:
                         False)
+  --group-https-by-vhost
+                        Group https frontends by vhost. (default: False)
   --ssl-certs SSL_CERTS
                         List of SSL certificates separated by commafor
                         frontend marathon_https_inEx:
@@ -519,6 +522,7 @@ The http auth request to the corresponding virtual host.
 
 Specified as `HAPROXY_HTTPS_FRONTEND_HEAD` template.
 
+
 An HTTPS frontend for encrypted connections that binds to port *:443 by
 default and gathers all virtual hosts as defined by the
 `HAPROXY_{n}_VHOST` label. You must modify this file to
@@ -545,6 +549,70 @@ glues the acl names to the appropriate backend
 ```
   http-request auth realm "{realm}" if host_{cleanedUpHostname} path_{backend} !auth_{cleanedUpHostname}
   use_backend {backend} if host_{cleanedUpHostname} path_{backend}
+```
+## `HAPROXY_HTTPS_GROUPED_FRONTEND_HEAD`
+  *Global*
+
+Specified as `HAPROXY_HTTPS_GROUPED_FRONTEND_HEAD` template.
+
+An HTTPS frontend for encrypted connections that binds to port *:443 by
+default and gathers all virtual hosts as defined by the
+`HAPROXY_{n}_VHOST` label. Useful for adding client certificated per domain.
+Works only with an enabled group-https-by-vhost flag.
+
+
+**Default template for `HAPROXY_HTTPS_GROUPED_FRONTEND_HEAD`:**
+```
+
+frontend marathon_https_in
+  bind *:443
+  mode tcp
+  tcp-request inspect-delay 5s
+  tcp-request content accept if { req_ssl_hello_type 1 }
+```
+## `HAPROXY_HTTPS_GROUPED_VHOST_BACKEND_HEAD`
+  *Global*
+
+Specified as `HAPROXY_HTTPS_GROUPED_VHOST_BACKEND_HEAD` template.
+
+An HTTPS backend for vhost.
+Works only with an enabled group-https-by-vhost flag. 
+
+
+**Default template for `HAPROXY_HTTPS_GROUPED_VHOST_BACKEND_HEAD`:**
+```
+
+backend {name}
+  server loopback-for-tls abns@{name} send-proxy-v2
+```
+## `HAPROXY_HTTPS_GROUPED_VHOST_FRONTEND_ACL`
+  *Global*
+
+Specified as `HAPROXY_HTTPS_GROUPED_VHOST_FRONTEND_ACL` template.
+
+A route rule https entrypoint.
+Works only with an enabled group-https-by-vhost flag. 
+
+
+**Default template for `HAPROXY_HTTPS_GROUPED_VHOST_FRONTEND_ACL`:**
+```
+  use_backend {backend} if {{ req_ssl_sni -i {host} }}
+```
+## `HAPROXY_HTTPS_GROUPED_VHOST_FRONTEND_HEAD`
+  *Global*
+
+Specified as `HAPROXY_HTTPS_GROUPED_VHOST_FRONTEND_HEAD` template.
+
+An HTTPS frontend for vhost.
+Works only with an enabled group-https-by-vhost flag. 
+
+
+**Default template for `HAPROXY_HTTPS_GROUPED_VHOST_FRONTEND_HEAD`:**
+```
+
+frontend {name}
+  mode http
+  bind abns@{name} accept-proxy ssl {sslCerts}{bindOpts}
 ```
 ## `HAPROXY_HTTP_BACKEND_ACL_ALLOW_DENY`
   *Global*
