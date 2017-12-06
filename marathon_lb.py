@@ -1891,21 +1891,44 @@ if __name__ == '__main__':
                                            args.haproxy_map)
         signal.signal(signal.SIGHUP, processor.handle_signal)
         signal.signal(signal.SIGUSR1, processor.handle_signal)
-        backoff = 3
+        backoffFactor = 1.5
+        waitSeconds = 3
+        maxWaitSeconds = 300
+        waitResetSeconds = 600
         while True:
             stream_started = time.time()
+            currentWaitSeconds = random.random() * waitSeconds
             try:
                 process_sse_events(marathon, processor)
+            except pycurl.error, e:
+                errno, e_msg = e.args
+                # Error number 28:
+                # 'Operation too slow. Less than 1 bytes/sec transferred
+                #  the last 300 seconds'
+                # In this case we should immediately reconnect
+                # without a backoff.
+                if errno == 28:
+                    m = 'Possible timeout detected: {}, reconnecting now...'
+                    logger.info(m.format(e_msg))
+                    currentWaitSeconds = 0
+                else:
+                    raise
             except:
                 logger.exception("Caught exception")
-                backoff = backoff * 1.5
-                if backoff > 300:
-                    backoff = 300
-                logger.error("Reconnecting in {}s...".format(backoff))
+                logger.error("Reconnecting in {}s...".format(currentWaitSeconds))
+
+            # Immediately reconnect
+            if currentWaitSeconds == 0:
+                continue
+            # Increase the next waitSeconds by the backoff factor
+            waitSeconds = backoffFactor * waitSeconds
+            # Don't sleep any more than 5 minutes
+            if waitSeconds > maxWaitSeconds:
+                waitSeconds = maxWaitSeconds
             # Reset the backoff if it's been more than 10 minutes
-            if time.time() - stream_started > 600:
-                backoff = 3
-            time.sleep(random.random() * backoff)
+            if (time.time() - stream_started) > waitResetSeconds:
+                waitSeconds = 3
+            time.sleep(currentWaitSeconds)
     else:
         # Generate base config
         regenerate_config(marathon,
