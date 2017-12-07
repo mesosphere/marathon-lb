@@ -1589,7 +1589,7 @@ def make_config_valid_and_regenerate(marathon, groups, bind_http_https,
     except requests.exceptions.ConnectionError as e:
         logger.error("Connection error({0}): {1}".format(
             e.errno, e.strerror))
-    except:
+    except Exception:
         logger.exception("Unexpected error!")
 
 
@@ -1668,7 +1668,7 @@ class MarathonEventProcessor(object):
         except requests.exceptions.ConnectionError as e:
             logger.error("Connection error({0}): {1}".format(
                 e.errno, e.strerror))
-        except:
+        except Exception:
             logger.exception("Unexpected error!")
 
     def do_reload(self):
@@ -1677,7 +1677,7 @@ class MarathonEventProcessor(object):
             logger.debug("attempting to reload existing config...")
             if validateConfig(self.__config_file):
                 reloadConfig()
-        except:
+        except Exception:
             logger.exception("Unexpected error!")
 
     def stop(self):
@@ -1819,7 +1819,7 @@ def process_sse_events(marathon, processor):
                         processor.handle_event(data)
                 else:
                     logger.info("skipping empty message")
-            except:
+            except Exception:
                 print(event.data)
                 print("Unexpected error:", sys.exc_info()[0])
                 traceback.print_stack()
@@ -1921,7 +1921,7 @@ if __name__ == '__main__':
                     currentWaitSeconds = 0
                 else:
                     raise
-            except:
+            except Exception:
                 logger.exception("Caught exception")
                 logger.error("Reconnecting in {}s...".format(
                     currentWaitSeconds))
