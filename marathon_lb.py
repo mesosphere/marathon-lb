@@ -1920,7 +1920,9 @@ if __name__ == '__main__':
                     logger.info(m.format(e_msg))
                     currentWaitSeconds = 0
                 else:
-                    raise
+                    logger.exception("Caught exception")
+                    logger.error("Reconnecting in {}s...".format(
+                        currentWaitSeconds))
             except Exception:
                 logger.exception("Caught exception")
                 logger.error("Reconnecting in {}s...".format(
