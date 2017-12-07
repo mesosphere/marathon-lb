@@ -38,6 +38,7 @@ from itertools import cycle
 from operator import attrgetter
 from shutil import move
 from tempfile import mkstemp
+import urllib.parse
 
 import dateutil.parser
 import requests
@@ -225,8 +226,10 @@ class Marathon(object):
         logger.info('fetching tasks')
         return self.api_req('GET', ['tasks'])["tasks"]
 
-    def get_event_stream(self):
+    def get_event_stream(self, events):
         url = self.host + "/v2/events"
+        if events:
+            url += "?" + urllib.parse.urlencode({'event_type': events}, doseq=True)
         logger.info(
             "SSE Active, trying fetch events from {0}".format(url))
 
@@ -1603,6 +1606,10 @@ class MarathonEventProcessor(object):
         self.__pending_reload = False
         self.__haproxy_map = haproxy_map
 
+        self.relevant_events = ('api_post_event',
+                                'health_status_changed_event',
+                                'status_update_event')
+
         # Fetch the base data
         self.reset_from_tasks()
 
@@ -1691,9 +1698,7 @@ class MarathonEventProcessor(object):
         self.__condition.release()
 
     def handle_event(self, event):
-        if event['eventType'] == 'status_update_event' or \
-                event['eventType'] == 'health_status_changed_event' or \
-                event['eventType'] == 'api_post_event':
+        if event['eventType'] in self.relevant_events:
             self.reset_from_tasks()
 
     def handle_signal(self, sig, stack):
@@ -1795,7 +1800,7 @@ def get_arg_parser():
 def process_sse_events(marathon, processor):
     try:
         processor.start()
-        events = marathon.get_event_stream()
+        events = marathon.get_event_stream(processor.relevant_events)
         for event in events:
             try:
                 # logger.info("received event: {0}".format(event))
