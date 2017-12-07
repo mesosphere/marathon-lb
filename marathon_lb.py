@@ -32,7 +32,6 @@ import subprocess
 import sys
 import threading
 import time
-import traceback
 import datetime
 from itertools import cycle
 from operator import attrgetter
@@ -228,16 +227,17 @@ class Marathon(object):
 
     def get_event_stream(self):
         url = self.host + "/v2/events"
-        logger.info(
-            "SSE Active, trying fetch events from {0}".format(url))
+        return CurlHttpEventStream(url, self.__auth, self.__verify)
 
-        resp = CurlHttpEventStream(url, self.__auth, self.__verify)
+    def iter_events(self, stream):
+        logger.info(
+            "SSE Active, trying fetch events from {0}".format(stream.url))
 
         class Event(object):
             def __init__(self, data):
                 self.data = data
 
-        for line in resp.iter_lines():
+        for line in stream.iter_lines():
             if line.strip() != '':
                 for real_event_data in re.split(r'\r\n',
                                                 line.decode('utf-8')):
@@ -1611,28 +1611,36 @@ class MarathonEventProcessor(object):
         self.__pending_reload = False
         self.__haproxy_map = haproxy_map
 
+        self.__thread = None
+
         # Fetch the base data
         self.reset_from_tasks()
 
     def start(self):
         self.__stop = False
+        if self.__thread is not None and self.__thread.is_alive():
+            self.reset_from_tasks()
+            return
         self.__thread = threading.Thread(target=self.try_reset)
         self.__thread.start()
 
     def try_reset(self):
         with self.__condition:
-            logger.info('starting event processor thread')
+            logger.info('({}): starting event processor thread'.format(
+                threading.get_ident()))
             while True:
                 self.__condition.acquire()
 
                 if self.__stop:
-                    logger.info('stopping event processor thread')
+                    logger.info('({}): stopping event processor thread'.format(
+                        threading.get_ident()))
                     self.__condition.release()
                     return
 
                 if not self.__pending_reset and not self.__pending_reload:
                     if not self.__condition.wait(300):
-                        logger.info('condition wait expired')
+                        logger.info('({}): condition wait expired'.format(
+                            threading.get_ident()))
 
                 pending_reset = self.__pending_reset
                 pending_reload = self.__pending_reload
@@ -1663,18 +1671,22 @@ class MarathonEventProcessor(object):
                                             self.__templater,
                                             self.__haproxy_map)
 
-            logger.debug("updating tasks finished, took %s seconds",
-                         time.time() - start_time)
+            logger.debug("({0}): updating tasks finished, "
+                         "took {1} seconds".format(
+                             threading.get_ident(),
+                             time.time() - start_time))
         except requests.exceptions.ConnectionError as e:
-            logger.error("Connection error({0}): {1}".format(
-                e.errno, e.strerror))
+            logger.error("({0}): Connection error({1}): {2}".format(
+                threading.get_ident(), e.errno, e.strerror))
         except Exception:
             logger.exception("Unexpected error!")
 
     def do_reload(self):
         try:
             # Validate the existing config before reloading
-            logger.debug("attempting to reload existing config...")
+            logger.debug("({}): attempting to reload existing "
+                         "config...".format(
+                             threading.get_ident()))
             if validateConfig(self.__config_file):
                 reloadConfig()
         except Exception:
@@ -1800,34 +1812,6 @@ def get_arg_parser():
     return parser
 
 
-def process_sse_events(marathon, processor):
-    try:
-        processor.start()
-        events = marathon.get_event_stream()
-        for event in events:
-            try:
-                # logger.info("received event: {0}".format(event))
-                # marathon might also send empty messages as keepalive...
-                if (event.data.strip() != ''):
-                    # marathon sometimes sends more than one json per event
-                    # e.g. {}\r\n{}\r\n\r\n
-                    for real_event_data in re.split(r'\r\n', event.data):
-                        data = load_json(real_event_data)
-                        logger.info(
-                            "received event of type {0}"
-                            .format(data['eventType']))
-                        processor.handle_event(data)
-                else:
-                    logger.info("skipping empty message")
-            except Exception:
-                print(event.data)
-                print("Unexpected error:", sys.exc_info()[0])
-                traceback.print_stack()
-                raise
-    finally:
-        processor.stop()
-
-
 def load_json(data_str):
     return cleanup_json(json.loads(data_str))
 
@@ -1906,8 +1890,24 @@ if __name__ == '__main__':
         while True:
             stream_started = time.time()
             currentWaitSeconds = random.random() * waitSeconds
+            stream = marathon.get_event_stream()
             try:
-                process_sse_events(marathon, processor)
+                # processor start is now idempotent and will start at
+                # most one thread
+                processor.start()
+                events = marathon.iter_events(stream)
+                for event in events:
+                    if (event.data.strip() != ''):
+                        # marathon sometimes sends more than one json per event
+                        # e.g. {}\r\n{}\r\n\r\n
+                        for real_event_data in re.split(r'\r\n', event.data):
+                                data = load_json(real_event_data)
+                                logger.info(
+                                    "received event of type {0}"
+                                    .format(data['eventType']))
+                                processor.handle_event(data)
+                    else:
+                        logger.info("skipping empty message")
             except pycurl.error as e:
                 errno, e_msg = e.args
                 # Error number 28:
@@ -1928,18 +1928,20 @@ if __name__ == '__main__':
                 logger.error("Reconnecting in {}s...".format(
                     currentWaitSeconds))
 
-            # Immediately reconnect
-            if currentWaitSeconds == 0:
-                continue
-            # Increase the next waitSeconds by the backoff factor
-            waitSeconds = backoffFactor * waitSeconds
-            # Don't sleep any more than 5 minutes
-            if waitSeconds > maxWaitSeconds:
-                waitSeconds = maxWaitSeconds
-            # Reset the backoff if it's been more than 10 minutes
-            if (time.time() - stream_started) > waitResetSeconds:
-                waitSeconds = 3
-            time.sleep(currentWaitSeconds)
+            if currentWaitSeconds > 0:
+                # Increase the next waitSeconds by the backoff factor
+                waitSeconds = backoffFactor * waitSeconds
+                # Don't sleep any more than 5 minutes
+                if waitSeconds > maxWaitSeconds:
+                    waitSeconds = maxWaitSeconds
+                # Reset the backoff if it's been more than 10 minutes
+                if (time.time() - stream_started) > waitResetSeconds:
+                    waitSeconds = 3
+                time.sleep(currentWaitSeconds)
+            # We must close the connection because we are calling
+            # get_event_stream on the next loop
+            stream.curl.close()
+        processor.stop()
     else:
         # Generate base config
         regenerate_config(marathon,
