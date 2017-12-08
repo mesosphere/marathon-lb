@@ -41,6 +41,7 @@ COPY requirements.txt /marathon-lb/
 
 RUN set -x \
     && buildDeps=' \
+        build-essential \
         gcc \
         libcurl4-openssl-dev \
         libffi-dev \
