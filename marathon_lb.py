@@ -1915,8 +1915,9 @@ if __name__ == '__main__':
                 #  the last 300 seconds'
                 # This happens when there is no activity on the marathon
                 # event stream for the last 5 minutes. In this case we
-                # should immediately in case the connection to marathon
-                # died silently so that we miss as few events as possible.
+                # should immediately reconnect in case the connection to
+                # marathon died silently so that we miss as few events as
+                # possible.
                 if errno == 28:
                     m = 'Possible timeout detected: {}, reconnecting now...'
                     logger.info(m.format(e_msg))
