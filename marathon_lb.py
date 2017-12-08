@@ -1929,7 +1929,9 @@ if __name__ == '__main__':
                 logger.exception("Caught exception")
                 logger.error("Reconnecting in {}s...".format(
                     currentWaitSeconds))
-
+            # We must close the connection because we are calling
+            # get_event_stream on the next loop
+            stream.curl.close()
             if currentWaitSeconds > 0:
                 # Increase the next waitSeconds by the backoff factor
                 waitSeconds = backoffFactor * waitSeconds
@@ -1940,9 +1942,6 @@ if __name__ == '__main__':
                 if (time.time() - stream_started) > waitResetSeconds:
                     waitSeconds = 3
                 time.sleep(currentWaitSeconds)
-            # We must close the connection because we are calling
-            # get_event_stream on the next loop
-            stream.curl.close()
         processor.stop()
     else:
         # Generate base config
