@@ -1561,10 +1561,12 @@ class MarathonEventProcessor(object):
         except requests.exceptions.ConnectionError as e:
             logger.error("Connection error({0}): {1}".format(
                 e.errno, e.strerror))
-            client.captureException()
+            if client:
+                client.captureException()
         except:
             logger.exception("Unexpected error!")
-            client.captureException()
+            if client:
+                client.captureException()
 
     def do_reload(self):
         try:
@@ -1721,7 +1723,8 @@ def process_sse_events(marathon, processor):
                 print(event.data)
                 print("Unexpected error:", sys.exc_info()[0])
                 traceback.print_stack()
-                client.captureException()
+                if client:
+                    client.captureException()
                 raise
     finally:
         processor.stop()
@@ -1818,7 +1821,8 @@ if __name__ == '__main__':
                 process_sse_events(marathon, processor)
             except:
                 logger.exception("Caught exception")
-                client.captureException()
+                if client:
+                    client.captureException()
                 backoff = backoff * 1.5
                 if backoff > 300:
                     backoff = 300
