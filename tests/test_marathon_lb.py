@@ -106,6 +106,38 @@ frontend marathon_https_in
         print(config)
         self.assertMultiLineEqual(config, expected)
 
+    def test_config_env_template(self):
+        apps = dict()
+        groups = ['external']
+        bind_http_https = True
+        ssl_certs = ""
+        os.environ["HAPROXY_HTTP_FRONTEND_HEAD"] = '''
+frontend changed_frontend
+  bind *:80
+  mode http
+'''
+        templater = marathon_lb.ConfigTemplater()
+        del os.environ["HAPROXY_HTTP_FRONTEND_HEAD"]
+
+        config = marathon_lb.config(apps, groups, bind_http_https,
+                                    ssl_certs, templater)
+        expected = self.base_config + '''
+frontend changed_frontend
+  bind *:80
+  mode http
+
+frontend marathon_http_appid_in
+  bind *:9091
+  mode http
+
+frontend marathon_https_in
+  bind *:443 ssl crt /etc/ssl/cert.pem
+  mode http
+'''
+        print("actual config:\n")
+        print(config)
+        self.assertMultiLineEqual(config, expected)
+
     def test_config_with_ssl_no_apps(self):
         apps = dict()
         groups = ['external']
@@ -1216,6 +1248,63 @@ backend nginx_10000
   option  httpchk GET /
   timeout check 10s
   server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
+'''
+        self.assertMultiLineEqual(config, expected)
+
+    def test_bridge_app_marathon15(self):
+        with open('tests/marathon15_apps.json') as data_file:
+            apps = json.load(data_file)
+
+        class Marathon:
+            def __init__(self, data):
+                self.data = data
+
+            def list(self):
+                return self.data
+
+            def health_check(self):
+                return True
+
+            def strict_mode(self):
+                return False
+
+        groups = ['external']
+        bind_http_https = True
+        ssl_certs = ""
+        templater = marathon_lb.ConfigTemplater()
+        apps = marathon_lb.get_apps(Marathon(apps['apps']))
+        config = marathon_lb.config(apps, groups, bind_http_https,
+                                    ssl_certs, templater)
+        expected = self.base_config + '''
+frontend marathon_http_in
+  bind *:80
+  mode http
+  acl host_myvhost_com_pywebserver hdr(host) -i myvhost.com
+  use_backend pywebserver_10101 if host_myvhost_com_pywebserver
+
+frontend marathon_http_appid_in
+  bind *:9091
+  mode http
+  acl app__pywebserver hdr(x-marathon-app-id) -i /pywebserver
+  use_backend pywebserver_10101 if app__pywebserver
+
+frontend marathon_https_in
+  bind *:443 ssl crt /etc/ssl/cert.pem
+  mode http
+  use_backend pywebserver_10101 if { ssl_fc_sni myvhost.com }
+
+frontend pywebserver_10101
+  bind *:10101
+  mode http
+  use_backend pywebserver_10101
+
+backend pywebserver_10101
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  server 10_0_2_148_1565 10.0.2.148:1565
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -2979,3 +3068,42 @@ backend nginx2_10001
   server agent2_2_2_2_2_1025 2.2.2.2:1025 check inter 3s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
+
+
+class TestFunctions(unittest.TestCase):
+
+    def test_json_number(self):
+        json_value = '1'
+        data = marathon_lb.load_json(json_value)
+        expected = 1
+        self.assertEquals(data, expected)
+
+    def test_json_string(self):
+        json_value = '"1"'
+        data = marathon_lb.load_json(json_value)
+        expected = "1"
+        self.assertEquals(data, expected)
+
+    def test_json_nested_null_dict_remain(self):
+        json_value = '{"key":null,"key2":"y","key3":{"key4":null,"key5":"x"}}'
+        data = marathon_lb.load_json(json_value)
+        expected = {'key3': {'key5': 'x'}, 'key2': 'y'}
+        self.assertEquals(data, expected)
+
+    def test_json_nested_null_dict(self):
+        json_value = '{"key":null,"key2":"y","key3":{"key4":null}}'
+        data = marathon_lb.load_json(json_value)
+        expected = {'key3': {}, 'key2': 'y'}
+        self.assertEquals(data, expected)
+
+    def test_json_simple_list_dict(self):
+        json_value = '["k1",{"k2":null,"k3":"v3"},"k4"]'
+        data = marathon_lb.load_json(json_value)
+        expected = ['k1', {'k3': 'v3'}, 'k4']
+        self.assertEquals(data, expected)
+
+    def test_json_nested_null_dict_list(self):
+        json_value = '["k1",{"k2":null,"k3":["k4",{"k5":null}]},"k6"]'
+        data = marathon_lb.load_json(json_value)
+        expected = ['k1', {'k3': ['k4', {}]}, 'k6']
+        self.assertEquals(data, expected)

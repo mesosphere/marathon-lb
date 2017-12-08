@@ -2,6 +2,8 @@ import unittest
 
 from mock import Mock, patch
 
+from common import cleanup_json
+
 import utils
 from utils import ServicePortAssigner
 
@@ -100,6 +102,48 @@ class TestUtils(unittest.TestCase):
         result = utils.get_task_ip_and_ports(app, task)
         expected = (None, None)
 
+        self.assertEquals(result, expected)
+
+    def test_get_task_ip_and_ports_ip_per_task_marathon15(self):
+        app = {
+            'container': {
+                'type': 'DOCKER',
+                'docker': {
+                    'image': 'nginx'
+                },
+                'portMappings': [
+                    {
+                        'containerPort': 80,
+                        'servicePort': 10000,
+                    },
+                    {
+                        'containerPort': 81,
+                        'servicePort': 10001,
+                    },
+                ]
+            },
+            'networks': [
+                {
+                    'mode': 'container',
+                    'name': 'dcos'
+                }
+            ]
+        }
+        task = {
+            "id": "testtaskid",
+            "ipAddresses": [{"ipAddress": "1.2.3.4"}]
+        }
+
+        result = utils.get_task_ip_and_ports(app, task)
+        expected = ("1.2.3.4", [80, 81])
+        self.assertEquals(result, expected)
+
+        task_no_ip = {
+            "id": "testtaskid",
+        }
+
+        result = utils.get_task_ip_and_ports(app, task_no_ip)
+        expected = (None, None)
         self.assertEquals(result, expected)
 
     def test_get_task_ip_and_ports_portmapping_null(self):
@@ -289,6 +333,64 @@ class TestServicePortAssigner(unittest.TestCase):
         self.assertEquals(self.assigner.get_service_ports(app),
                           [10000, 10001])
 
+    def test_ip_per_task_marathon15(self):
+        app = {
+            'container': {
+                'type': 'DOCKER',
+                'docker': {
+                    'image': 'nginx'
+                },
+                'portMappings': [
+                    {
+                        'containerPort': 80,
+                        'servicePort': 10000,
+                    },
+                    {
+                        'containerPort': 81,
+                        'servicePort': 10001,
+                    },
+                ],
+            },
+            'networks': [
+                {
+                    'mode': 'container',
+                    'name': 'dcos'
+                }
+            ],
+            'tasks': [{
+                "id": "testtaskid",
+                "ipAddresses": [{"ipAddress": "1.2.3.4"}]
+            }],
+        }
+        self.assertEquals(self.assigner.get_service_ports(app),
+                          [10000, 10001])
+
+    def test_ip_per_task_portMappings_empty(self):
+        app = {
+            'ipAddress': {
+                'networkName': 'testnet',
+                'discovery': {
+                    'ports': []
+                }
+            },
+            'container': {
+                'type': 'DOCKER',
+                'docker': {
+                    'network': 'USER',
+                    'portMappings': [],
+                }
+            },
+            'tasks': [
+                {
+                    'id': 'testtaskid',
+                    'ipAddresses': [{'ipAddress': '1.2.3.4'}],
+                    'ports': [],
+                    'host': '4.3.2.1'
+                }
+            ]
+        }
+        self.assertEquals(self.assigner.get_service_ports(app), [])
+
     def test_ip_per_task_portMappings_null(self):
         app = {
             'ipAddress': {},
@@ -312,8 +414,35 @@ class TestServicePortAssigner(unittest.TestCase):
                 },
             ],
         }
-        self.assertEquals(self.assigner.get_service_ports(app),
+        # Calling cleanup_json because all entrypoints to get_service_ports
+        # also call cleanup_json, so None isn't expected at runtime
+        self.assertEquals(self.assigner.get_service_ports(cleanup_json(app)),
                           [10000, 10001])
+
+    def test_ip_per_task_portMappings_null_marathon15(self):
+        app = {
+            'container': {
+                'type': 'DOCKER',
+                'docker': {
+                    'image': 'nginx'
+                },
+                'portMappings': None
+            },
+            'networks': [
+                {
+                    'mode': 'container',
+                    'name': 'dcos'
+                }
+            ],
+            'tasks': [{
+                "id": "testtaskid",
+                "ipAddresses": [{"ipAddress": "1.2.3.4"}]
+            }],
+        }
+        # Calling cleanup_json because all entrypoints to get_service_ports
+        # also call cleanup_json, so None isn't expected at runtime
+        self.assertEquals(self.assigner.get_service_ports(cleanup_json(app)),
+                          [])
 
 
 def _get_app(idx=1, num_ports=3, num_tasks=1, ip_per_task=True,

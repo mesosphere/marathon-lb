@@ -1,8 +1,9 @@
-FROM debian:stretch
+FROM debian:buster
 
 # runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
+        inetutils-syslogd \
         iptables \
         libcurl3 \
         liblua5.3-0 \
@@ -11,7 +12,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         procps \
         python3 \
         runit \
-        socat \
+        gnupg-agent \
+	socat \
     && rm -rf /var/lib/apt/lists/*
 
 ENV TINI_VERSION=v0.15.0 \
@@ -22,7 +24,7 @@ RUN set -x \
     && wget -O tini "https://github.com/krallin/tini/releases/download/$TINI_VERSION/tini-amd64" \
     && wget -O tini.asc "https://github.com/krallin/tini/releases/download/$TINI_VERSION/tini-amd64.asc" \
     && export GNUPGHOME="$(mktemp -d)" \
-    && gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$TINI_GPG_KEY" \
+    && gpg --keyserver hkps://hkps.pool.sks-keyservers.net --recv-keys "$TINI_GPG_KEY" \
     && gpg --batch --verify tini.asc tini \
     && rm -rf "$GNUPGHOME" tini.asc \
     && mv tini /usr/bin/tini \
@@ -32,13 +34,14 @@ RUN set -x \
 
 
 ENV HAPROXY_MAJOR=1.7 \
-    HAPROXY_VERSION=1.7.8 \
-    HAPROXY_MD5=7e94653cc5a1dba006bbe43736f53595
+    HAPROXY_VERSION=1.7.9 \
+    HAPROXY_MD5=a2bbbdd45ffe18d99cdcf26aa992f92d
 
 COPY requirements.txt /marathon-lb/
 
 RUN set -x \
     && buildDeps=' \
+        build-essential \
         gcc \
         libcurl4-openssl-dev \
         libffi-dev \

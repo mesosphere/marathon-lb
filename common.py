@@ -51,7 +51,7 @@ def set_marathon_auth_args(parser):
 
 class DCOSAuth(AuthBase):
     def __init__(self, credentials, ca_cert):
-        creds = json.loads(credentials)
+        creds = cleanup_json(json.loads(credentials))
         self.uid = creds['uid']
         self.private_key = creds['private_key']
         self.login_endpoint = creds['login_endpoint']
@@ -128,3 +128,11 @@ def set_logging_args(parser):
                         help="Set log level",
                         default="DEBUG")
     return parser
+
+
+def cleanup_json(data):
+    if isinstance(data, dict):
+        return {k: cleanup_json(v) for k, v in data.items() if v is not None}
+    if isinstance(data, list):
+        return [cleanup_json(e) for e in data]
+    return data
