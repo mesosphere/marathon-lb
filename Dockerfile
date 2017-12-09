@@ -4,7 +4,6 @@ FROM debian:buster
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
         inetutils-syslogd \
-        iptables \
         libcurl3 \
         liblua5.3-0 \
         libssl1.0.2 \
@@ -13,10 +12,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python3 \
         runit \
         gnupg-agent \
-	socat \
+        socat \
     && rm -rf /var/lib/apt/lists/*
 
-ENV TINI_VERSION=v0.13.2 \
+ENV TINI_VERSION=v0.16.1 \
     TINI_GPG_KEY=595E85A6B1B4779EA4DAAEC70B588DFF0527A9B7
 RUN set -x \
     && apt-get update && apt-get install -y --no-install-recommends dirmngr gpg wget \
@@ -33,9 +32,9 @@ RUN set -x \
     && apt-get purge -y --auto-remove dirmngr gpg wget
 
 
-ENV HAPROXY_MAJOR=1.7 \
-    HAPROXY_VERSION=1.7.6 \
-    HAPROXY_MD5=8f4328cf66137f0dbf6901e065f603cc
+ENV HAPROXY_MAJOR=1.8 \
+    HAPROXY_VERSION=1.8.1 \
+    HAPROXY_MD5=e42892d4b6ee33200fccaa1d81837e49
 
 COPY requirements.txt /marathon-lb/
 
