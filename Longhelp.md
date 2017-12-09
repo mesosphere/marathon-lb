@@ -58,7 +58,7 @@ optional arguments:
                         every --reload-interval seconds. Set to 0 to disable
                         or -1 for infinite retries. (default: 10)
   --reload-interval RELOAD_INTERVAL
-                        Wait this number of seconds betwee nreload retries.
+                        Wait this number of seconds between reload retries.
                         (default: 10)
   --strict-mode         If set, backends are only advertised if
                         HAPROXY_{n}_ENABLED=true. Strict mode will be enabled
