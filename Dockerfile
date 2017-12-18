@@ -3,7 +3,7 @@ FROM debian:stretch
 ARG VERSION
 
 # artifacts versions
-ARG KMS_UTILS_VERSION=0.2.1
+ARG KMS_UTILS_VERSION=0.3.0
 
 # nexus repository artifacts
 ADD http://sodio.stratio.com/repository/paas/kms_utils/${KMS_UTILS_VERSION}/kms_utils-${KMS_UTILS_VERSION}.sh /usr/sbin/kms_utils.sh

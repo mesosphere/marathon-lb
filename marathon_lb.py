@@ -20,12 +20,14 @@ Marathon-lb just needs to know where to find Marathon.
 import argparse
 import hashlib
 import json
+import kms_utils
 import logging
 import os
 import os.path
 import random
 import re
 import shlex
+import shutil
 import signal
 import stat
 import subprocess
@@ -331,7 +333,6 @@ def _get_health_check_options(template, health_check, health_check_port):
 def config(apps, groups, bind_http_https, ssl_certs, templater,
            haproxy_map=False, domain_map_array=[], app_map_array=[],
            config_file="/etc/haproxy/haproxy.cfg"):
-    logger.info("generating config")
     config = templater.haproxy_head
     groups = frozenset(groups)
     duplicate_map = {}
@@ -1441,12 +1442,52 @@ def get_apps(marathon):
 
 def regenerate_config(apps, config_file, groups, bind_http_https,
                       ssl_certs, templater, haproxy_map):
+    CLUSTER  = 'userland'
+    CERT_EXT = '.pem'
+    KEY_EXT  = '.key'
+    BKP_EXT  = '.bkp'
+    O_FORMAT = 'PEM'
     domain_map_array = []
     app_map_array = []
 
     generated_config = config(apps, groups, bind_http_https, ssl_certs,
                               templater, haproxy_map, domain_map_array,
                               app_map_array, config_file)
+
+    logger.debug("Checking Vault token expiration")
+    kms_utils.check_token_needs_renewal(False)    
+    
+    #{'/appid1': 'front/backend1'}, {'/folder/appid2': 'front/backend2'}
+    logger.debug("Download certificates for appid (if not exists) from Vault")
+    currentListAppidCert = list()
+    for app in app_map_array:
+        
+
+        # TODO: When Vault will adapt the structure to allow store the tenant concept
+        # we will need to read the full path, plain it, or whatever.
+        #appid = list(app.keys())[0].replace('/','')
+        appid = list(app.keys())[0].split('/')[-1]
+
+        currentListAppidCert.append(appid + CERT_EXT)
+        if not os.path.isfile(os.path.join(ssl_certs, appid + CERT_EXT)):
+            download_result = kms_utils.get_cert(CLUSTER, appid, appid, O_FORMAT, ssl_certs)
+            if download_result:
+                os.rename(os.path.join(ssl_certs, appid + CERT_EXT), os.path.join(ssl_certs, appid + CERT_EXT + BKP_EXT))
+                with open(os.path.join(ssl_certs, appid + CERT_EXT), 'wb') as wfd:
+                    for f in [os.path.join(ssl_certs, appid + CERT_EXT + BKP_EXT), os.path.join(ssl_certs, appid + KEY_EXT)]:
+                        with open(f,'rb') as fd:
+                            shutil.copyfileobj(fd, wfd, 1024*1024*10)
+                os.remove(os.path.join(ssl_certs, appid + CERT_EXT + BKP_EXT))
+                os.remove(os.path.join(ssl_certs, appid + KEY_EXT))
+                logger.info("Downloaded certificate " + appid + CERT_EXT)
+            else:
+                logger.info("Does not exists certificate for " + appid)
+
+    logger.debug("Clean certificates not present in the current appid list")
+    for certfile in os.listdir(ssl_certs):
+        if not any(certfile in elem for elem in currentListAppidCert) and certfile != 'marathon-lb.pem':
+            os.remove(os.path.join(ssl_certs, certfile))
+            logger.info("Deleted certificate " + certfile)
 
     compareWriteAndReloadConfig(generated_config, config_file,
                                 domain_map_array, app_map_array, haproxy_map)

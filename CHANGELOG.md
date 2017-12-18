@@ -2,7 +2,9 @@
 
 ## 0.2.0 (upcoming)
 
-* Pending changelog
+* [EOS-852] Expose certificates per app
+* Python kms_utils wrapper
+* Updated kms_utils version to 0.3.0
 
 ## 0.1.0 (November 22, 2017)
 
