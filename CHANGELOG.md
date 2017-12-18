@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0 (upcoming)
+
+* Pending changelog
+
 ## 0.2.0 (upcoming)
 
 * [EOS-852] Expose certificates per app
