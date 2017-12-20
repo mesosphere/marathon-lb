@@ -399,14 +399,26 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
             )
 
         frontend_head = templater.haproxy_frontend_head(app)
-        frontends += frontend_head.format(
-            bindAddr=app.bindAddr,
-            backend=backend,
-            servicePort=app.servicePort,
-            mode=app.mode,
-            sslCert=' ssl crt ' + app.sslCert if app.sslCert else '',
-            bindOptions=' ' + app.bindOptions if app.bindOptions else ''
-        )
+        if args.remove_nontcp_binding:
+            if app.mode == 'tcp':
+                frontends += frontend_head.format(
+                    bindAddr=app.bindAddr,
+                    backend=backend,
+                    servicePort=app.servicePort,
+                    mode=app.mode,
+                    sslCert=' ssl crt ' + app.sslCert if app.sslCert else '',
+                    bindOptions=' ' + app.bindOptions
+                    if app.bindOptions else ''
+                )
+        else:
+            frontends += frontend_head.format(
+                bindAddr=app.bindAddr,
+                backend=backend,
+                servicePort=app.servicePort,
+                mode=app.mode,
+                sslCert=' ssl crt ' + app.sslCert if app.sslCert else '',
+                bindOptions=' ' + app.bindOptions if app.bindOptions else ''
+            )
 
         backend_head = templater.haproxy_backend_head(app)
         backends += backend_head.format(
@@ -507,7 +519,11 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
             backends += templater.haproxy_backend_sticky_options(app)
 
         frontend_backend_glue = templater.haproxy_frontend_backend_glue(app)
-        frontends += frontend_backend_glue.format(backend=backend)
+        if args.remove_nontcp_binding:
+            if app.mode == 'tcp':
+                frontends += frontend_backend_glue.format(backend=backend)
+        else:
+            frontends += frontend_backend_glue.format(backend=backend)
 
         do_backend_healthcheck_options_once = True
         key_func = attrgetter('host', 'port')
@@ -1795,6 +1811,9 @@ def get_arg_parser():
                         default="/etc/ssl/cert.pem")
     parser.add_argument("--skip-validation",
                         help="Skip haproxy config file validation",
+                        action="store_true")
+    parser.add_argument("--remove-nontcp-binding",
+                        help="Remove port binding for non-tcp",
                         action="store_true")
     parser.add_argument("--dry", "-d",
                         help="Only print configuration to console",
