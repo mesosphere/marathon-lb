@@ -1149,7 +1149,7 @@ def validateConfig(haproxy_config_file):
 
 def moveTempFile(temp_file, dest_file, tmp_filename):
     # Replace the old file with the new from its temporary location
-    for suffix in range(args.archive_versions - 1, 1, -1):
+    for suffix in range(args.archive_versions - 1, 0, -1):
         tmp_src_file = "/tmp/" + tmp_filename + "." + str(suffix)
         tmp_dest_file = "/tmp/" + tmp_filename + "." + str(suffix + 1)
         if os.path.isfile(tmp_src_file):
