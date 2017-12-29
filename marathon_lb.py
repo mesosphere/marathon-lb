@@ -366,6 +366,28 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
             https_frontends = templater.haproxy_https_frontend_head.format(
                 sslCerts=" ".join(map(lambda cert: "crt " + cert, _ssl_certs))
             )
+    # This should handle situations where customers have a custom HAPROXY_HEAD
+    # that includes the 'daemon' flag:
+    if 'daemon' in config:
+        logger.debug("Commenting out daemon setting")
+        config = config.replace("daemon", "# daemon", 1)
+
+    # This should handle situations where customers have a custom HAPROXY_HEAD
+    # that does not yet expose the listeners file descriptor
+    if "expose-fd listeners" not in config:
+        if "stats socket /var/run/haproxy/socket" in config:
+            logger.debug("Appending 'expose-fd listeners' to stats socket")
+            config = config.replace("stats socket /var/run/haproxy/socket",
+                "stats socket /var/run/haproxy/socket expose-fd listeners")
+        else:
+            logger.debug(
+                ("Adding '"
+                "stats socket /var/run/haproxy/socket expose-fd listeners"
+                "' after 'global' line"))
+            config = config.replace("global",
+                ("global\n"
+                "  stats socket /var/run/haproxy/socket expose-fd listeners"),
+                1)
 
     userlists = str()
     frontends = str()
