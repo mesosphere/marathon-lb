@@ -12,7 +12,6 @@ class TestMarathonUpdateHaproxy(unittest.TestCase):
         if 'HAPROXY_GLOBAL_DEFAULT_OPTIONS' in os.environ:
             del os.environ['HAPROXY_GLOBAL_DEFAULT_OPTIONS']
         self.base_config = '''global
-  daemon
   log /dev/log local0
   log /dev/log local1 notice
   spread-checks 5
@@ -35,7 +34,7 @@ ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:DHE-RSA-AES128-SHA256:\
 DHE-RSA-AES256-SHA256:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:\
 AES256-SHA256:!aNULL:!MD5:!DSS
   ssl-default-server-options no-sslv3 no-tlsv10 no-tls-tickets
-  stats socket /var/run/haproxy/socket
+  stats socket /var/run/haproxy/socket expose-fd listeners
   server-state-file global
   server-state-base /var/state/haproxy/
   lua-load /marathon-lb/getpids.lua

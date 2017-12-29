@@ -58,7 +58,7 @@ optional arguments:
                         every --reload-interval seconds. Set to 0 to disable
                         or -1 for infinite retries. (default: 10)
   --reload-interval RELOAD_INTERVAL
-                        Wait this number of seconds betwee nreload retries.
+                        Wait this number of seconds between reload retries.
                         (default: 10)
   --strict-mode         If set, backends are only advertised if
                         HAPROXY_{n}_ENABLED=true. Strict mode will be enabled
@@ -367,7 +367,6 @@ and defaults.
 **Default template for `HAPROXY_HEAD`:**
 ```
 global
-  daemon
   log /dev/log local0
   log /dev/log local1 notice
   spread-checks 5
@@ -378,7 +377,7 @@ global
   ssl-default-bind-options no-sslv3 no-tlsv10 no-tls-tickets
   ssl-default-server-ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:DHE-RSA-AES128-SHA256:DHE-RSA-AES256-SHA256:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:!aNULL:!MD5:!DSS
   ssl-default-server-options no-sslv3 no-tlsv10 no-tls-tickets
-  stats socket /var/run/haproxy/socket
+  stats socket /var/run/haproxy/socket expose-fd listeners
   server-state-file global
   server-state-base /var/state/haproxy/
   lua-load /marathon-lb/getpids.lua

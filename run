@@ -121,6 +121,7 @@ done
 cat > $LB_SERVICE/run << EOF
 #!/bin/sh
 exec 2>&1
+sv status /marathon-lb/service/haproxy || exit 1
 cd /marathon-lb
 exec /marathon-lb/marathon_lb.py \
     --syslog-socket $SYSLOG_SOCKET \
