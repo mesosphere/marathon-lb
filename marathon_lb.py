@@ -1352,8 +1352,11 @@ def get_apps(marathon, apps=[]):
                         old = new
                         new = temp
 
-            target_instances = \
-                int(new['labels']['HAPROXY_DEPLOYMENT_TARGET_INSTANCES'])
+                target_instances = \
+                    int(new['labels']['HAPROXY_DEPLOYMENT_TARGET_INSTANCES'])
+
+            else:
+                target_instances = 0
 
             # Mark N tasks from old app as draining, where N is the
             # number of instances in the new app.  Sort the old tasks so that
