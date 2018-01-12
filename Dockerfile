@@ -1,7 +1,7 @@
 FROM debian:buster
 
 # runtime dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade --with-new-pkgs -y  && apt-get install -y --no-install-recommends \
         ca-certificates \
         iptables \
         libcurl3 \
