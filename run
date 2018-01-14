@@ -118,7 +118,7 @@ for arg in "$@"; do
     ARGS="$ARGS $escaped"
 done
 
-cat "sv reload ${HAPROXY_SERVICE}" >> /marathon-lb/reload_haproxy.sh
+echo "sv reload ${HAPROXY_SERVICE}" >> /marathon-lb/reload_haproxy.sh
 
 cat > $LB_SERVICE/run << EOF
 #!/bin/sh
