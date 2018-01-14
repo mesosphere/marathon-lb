@@ -127,7 +127,7 @@ exec /marathon-lb/marathon_lb.py \
     --syslog-socket $SYSLOG_SOCKET \
     --haproxy-config /marathon-lb/haproxy.cfg \
     --ssl-certs "${SSL_CERTS}" \
-    --command "sv reload ${HAPROXY_SERVICE}" \
+    --command "bash /marathon-lb/write_state.sh && sv reload ${HAPROXY_SERVICE}" \
     $ARGS
 EOF
 chmod 755 $LB_SERVICE/run
