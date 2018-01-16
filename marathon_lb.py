@@ -356,17 +356,15 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
     if "expose-fd listeners" not in config:
         if "stats socket /var/run/haproxy/socket" in config:
             logger.debug("Appending 'expose-fd listeners' to stats socket")
-            config = config.replace("stats socket /var/run/haproxy/socket",
-                "stats socket /var/run/haproxy/socket expose-fd listeners")
+            o = "stats socket /var/run/haproxy/socket"
+            n = "stats socket /var/run/haproxy/socket expose-fd listeners"
+            config = config.replace(o, n)
         else:
-            logger.debug(
-                ("Adding '"
-                "stats socket /var/run/haproxy/socket expose-fd listeners"
-                "' after 'global' line"))
-            config = config.replace("global",
-                ("global\n"
-                "  stats socket /var/run/haproxy/socket expose-fd listeners"),
-                1)
+            o = "global"
+            n = ("global\n"
+                 "  stats socket /var/run/haproxy/socket expose-fd listeners")
+            logger.debug("Creating new expose-fd listeners socket config")
+            config = config.replace(o, n, 1)
 
     userlists = str()
     frontends = str()
