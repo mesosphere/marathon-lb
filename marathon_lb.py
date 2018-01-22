@@ -226,7 +226,7 @@ class Marathon(object):
         return self.api_req('GET', ['tasks'])["tasks"]
 
     def get_event_stream(self):
-        url = self.host + "/v2/events"
+        url = self.host + "/v2/events?plan-format=light"
         return CurlHttpEventStream(url, self.__auth, self.__verify)
 
     def iter_events(self, stream):
