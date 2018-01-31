@@ -13,29 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.stratio.marathonlbsec.testsAT.specs;
+package com.stratio.marathonlbsec.specs;
 
-import com.stratio.qa.specs.CommonG;
-import java.net.Socket;
-import java.nio.channels.ServerSocketChannel;
+public class HookSpec extends BaseSpec {
 
-public class Common extends CommonG {
-    private ServerSocketChannel serverSocket;
-    private Socket socket;
-
-    public ServerSocketChannel getServerSocket() {
-        return serverSocket;
+    public HookSpec(Common spec) {
+        this.commonspec = spec;
     }
 
-    public void setServerSocket(ServerSocketChannel serverSocket) {
-        this.serverSocket = serverSocket;
-    }
-
-    public Socket getSocket() {
-        return socket;
-    }
-
-    public void setSocket(Socket socket) {
-        this.socket = socket;
-    }
 }

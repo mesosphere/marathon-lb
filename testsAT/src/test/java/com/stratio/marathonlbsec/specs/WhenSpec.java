@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.stratio.marathonlbsec.testsAT.specs;
+package com.stratio.marathonlbsec.specs;
 
 import cucumber.api.java.en.When;
 

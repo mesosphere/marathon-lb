@@ -17,8 +17,8 @@ package com.stratio.tests.utils;
 
 import com.stratio.qa.cucumber.testng.ICucumberFormatter;
 import com.stratio.qa.cucumber.testng.ICucumberReporter;
-import com.stratio.marathonlbsec.testsAT.specs.BaseSpec;
-import com.stratio.marathonlbsec.testsAT.specs.Common;
+import com.stratio.marathonlbsec.specs.BaseSpec;
+import com.stratio.marathonlbsec.specs.Common;
 import gherkin.formatter.model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

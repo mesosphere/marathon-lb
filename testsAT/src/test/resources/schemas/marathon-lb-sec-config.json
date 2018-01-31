@@ -1,0 +1,26 @@
+{
+  "marathon-lb": {
+    "auto-assign-service-ports": false,
+    "bind-http-https": true,
+    "cpus": 2,
+    "haproxy_global_default_options": "redispatch,http-server-close,dontlognull",
+    "haproxy-group": "external",
+    "haproxy-map": true,
+    "instances": 1,
+    "mem": 1024.0,
+    "minimumHealthCapacity": 0.5,
+    "maximumOverCapacity": 0.2,
+    "name": "marathon-lb-sec",
+    "role": "slave_public",
+    "strict-mode": false,
+    "sysctl-params": "net.ipv4.tcp_tw_reuse=1 net.ipv4.tcp_fin_timeout=30 net.ipv4.tcp_max_syn_backlog=10240 net.ipv4.tcp_max_tw_buckets=400000 net.ipv4.tcp_max_orphans=60000 net.core.somaxconn=10000",
+    "template-url": "",
+    "marathon-uri": "http://marathon.mesos:8080",
+    "secret_name": "",
+    "vault_host": "vault.service.paas.labs.stratio.com",
+    "vault_port": 8200,
+    "use_dynamic_authentication": true,
+    "vault_token": "",
+    "instance_app_role": "open"
+  }
+}

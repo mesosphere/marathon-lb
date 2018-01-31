@@ -13,11 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.stratio.marathonlbsec.testsAT.specs;
+package com.stratio.marathonlbsec.specs;
 
-public class ThenSpec extends BaseSpec {
+public class BaseSpec {
 
-    public ThenSpec(Common spec) {
-        this.commonspec = spec;
-    }       
+    protected Common commonspec;
+
+    public Common getCommonSpec() {
+        return this.commonspec;
+    }
 }
