@@ -35,7 +35,7 @@ import time
 import datetime
 from itertools import cycle
 from operator import attrgetter
-from shutil import move
+from shutil import move, copy
 from tempfile import mkstemp
 
 import dateutil.parser
@@ -1121,8 +1121,8 @@ def writeConfigAndValidate(
     if validateConfig(haproxyTempConfigFile):
         # Move into place
         if haproxy_map:
-            moveTempFile(domain_temp_map_file, domain_map_file)
-            moveTempFile(app_temp_map_file, app_map_file)
+            moveTempFile(domain_temp_map_file, domain_map_file, "domain_map")
+            moveTempFile(app_temp_map_file, app_map_file, "app_map")
 
             # Edit the config file again to point to the actual map paths
             with open(haproxyTempConfigFile, 'w') as tempConfig:
@@ -1131,7 +1131,7 @@ def writeConfigAndValidate(
             truncateMapFileIfExists(domain_map_file)
             truncateMapFileIfExists(app_map_file)
 
-        moveTempFile(haproxyTempConfigFile, config_file)
+        moveTempFile(haproxyTempConfigFile, config_file, "hap_cfg")
         return True
     else:
         return False
@@ -1174,8 +1174,18 @@ def validateConfig(haproxy_config_file):
         return False
 
 
-def moveTempFile(temp_file, dest_file):
+def moveTempFile(temp_file, dest_file, tmp_filename):
     # Replace the old file with the new from its temporary location
+    for suffix in range(args.archive_versions - 1, 0, -1):
+        tmp_src_file = "/tmp/" + tmp_filename + "." + str(suffix)
+        tmp_dest_file = "/tmp/" + tmp_filename + "." + str(suffix + 1)
+        if os.path.isfile(tmp_src_file):
+            logger.debug("Copying temp file %s to %s",
+                         tmp_src_file, tmp_dest_file)
+            copy(tmp_src_file, tmp_dest_file)
+    logger.debug("Copying temp files %s to %s",
+                 temp_file, "/tmp/" + tmp_filename + ".1")
+    copy(temp_file, "/tmp/" + tmp_filename + ".1")
     logger.debug("moving temp file %s to %s", temp_file, dest_file)
     move(temp_file, dest_file)
 
@@ -1798,6 +1808,9 @@ def get_arg_parser():
     parser.add_argument("--sse", "-s",
                         help="Use Server Sent Events",
                         action="store_true")
+    parser.add_argument("--archive-versions",
+                        help="Number of config versions to archive",
+                        type=int, default=5)
     parser.add_argument("--health-check", "-H",
                         help="If set, respect Marathon's health check "
                         "statuses before adding the app instance into "
