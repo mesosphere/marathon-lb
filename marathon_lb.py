@@ -819,6 +819,7 @@ def generateHttpVhostAcl(
                 else:
                     if haproxy_map:
                         if 'map_https_frontend_acl' not in duplicate_map:
+                            app.backend_weight = -1
                             https_frontend_acl = templater.\
                                 haproxy_map_https_frontend_acl(app)
                             staging_https_frontends += https_frontend_acl.\
