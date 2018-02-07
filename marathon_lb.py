@@ -540,7 +540,8 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
                 if app.healthCheck:
                     template_backend_health_check = None
                     if app.mode == 'tcp' \
-                            or app.healthCheck['protocol'] == 'TCP':
+                            or app.healthCheck['protocol'] == 'TCP' \
+                            or app.healthCheck['protocol'] == 'MESOS_TCP':
                         template_backend_health_check = templater \
                             .haproxy_backend_tcp_healthcheck_options(app)
                     elif app.mode == 'http':
@@ -583,7 +584,9 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
             server_health_check_options = None
             if app.healthCheck:
                 template_server_healthcheck_options = None
-                if app.mode == 'tcp' or app.healthCheck['protocol'] == 'TCP':
+                if app.mode == 'tcp' \
+                        or app.healthCheck['protocol'] == 'TCP' \
+                        or app.healthCheck['protocol'] == 'MESOS_TCP':
                     template_server_healthcheck_options = templater \
                         .haproxy_backend_server_tcp_healthcheck_options(app)
                 elif app.mode == 'http':

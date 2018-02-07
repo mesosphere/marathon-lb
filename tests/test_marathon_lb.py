@@ -2802,6 +2802,73 @@ backend nginx_10000
         expected_app_map["/nginx"] = "nginx_10000"
         self.assertEqual(app_config_map, expected_app_map)
 
+    def test_config_simple_app_long_backend_proxypass(self):
+        apps = dict()
+        groups = ['external']
+        bind_http_https = True
+        ssl_certs = ""
+        templater = marathon_lb.ConfigTemplater()
+        strictMode = False
+
+        healthCheck = {
+            "path": "/",
+            "protocol": "HTTP",
+            "portIndex": 0,
+            "gracePeriodSeconds": 10,
+            "intervalSeconds": 2,
+            "timeoutSeconds": 10,
+            "maxConsecutiveFailures": 10
+        }
+        app = marathon_lb.MarathonService('/nginx', 10000, healthCheck,
+                                          strictMode)
+        app.proxypath = "/testing1234_1234-1234-test123_testing"
+        app.path = "/testing1234_1234-1234-test123_testing"
+        app.hostname = "testhost.com"
+        app.groups = ['external']
+        app.add_backend("agent1", "1.1.1.1", 1024, False)
+        apps = [app]
+
+        config = marathon_lb.config(apps, groups, bind_http_https,
+                                    ssl_certs, templater)
+        expected = self.base_config + '''
+frontend marathon_http_in
+  bind *:80
+  mode http
+  acl host_testhost_com_nginx hdr(host) -i testhost.com
+  acl path_nginx_10000 path_beg ''' + app.path + '''
+  use_backend nginx_10000 if host_testhost_com_nginx path_nginx_10000
+
+frontend marathon_http_appid_in
+  bind *:9091
+  mode http
+  acl app__nginx hdr(x-marathon-app-id) -i /nginx
+  use_backend nginx_10000 if app__nginx
+
+frontend marathon_https_in
+  bind *:443 ssl crt /etc/ssl/cert.pem
+  mode http
+  acl path_nginx_10000 path_beg ''' + app.path + '''
+  use_backend nginx_10000 if { ssl_fc_sni testhost.com } path_nginx_10000
+
+frontend nginx_10000
+  bind *:10000
+  mode http
+  use_backend nginx_10000
+
+backend nginx_10000
+  balance roundrobin
+  mode http
+  option forwardfor
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request add-header X-Forwarded-Proto https if { ssl_fc }
+  http-request set-header Host testhost.com
+  reqirep  "^([^ :]*)\ ''' + app.proxypath + '''/?(.*)" "\\1\ /\\2"
+  option  httpchk GET /
+  timeout check 10s
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
+'''
+        self.assertMultiLineEqual(config, expected)
+
     def test_config_simple_app_proxypass_health_check(self):
         apps = dict()
         groups = ['external']
