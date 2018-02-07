@@ -18,11 +18,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 ENV TINI_VERSION=v0.13.2 \
     TINI_GPG_KEY=595E85A6B1B4779EA4DAAEC70B588DFF0527A9B7
+
 RUN set -x \
     && apt-get update && apt-get install -y --no-install-recommends dirmngr gpg wget \
-        && rm -rf /var/lib/apt/lists/*
-
-RUN wget -O tini "https://github.com/krallin/tini/releases/download/$TINI_VERSION/tini-amd64" \
+        && rm -rf /var/lib/apt/lists/* \
+    && wget -O tini "https://github.com/krallin/tini/releases/download/$TINI_VERSION/tini-amd64" \
     && wget -O tini.asc "https://github.com/krallin/tini/releases/download/$TINI_VERSION/tini-amd64.asc" \
     && export GNUPGHOME="$(mktemp -d)" \
     && gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$TINI_GPG_KEY" \
@@ -33,9 +33,8 @@ RUN wget -O tini "https://github.com/krallin/tini/releases/download/$TINI_VERSIO
     && rm -rf "$GNUPGHOME" tini.asc \
     && mv tini /usr/bin/tini \
     && chmod +x /usr/bin/tini \
-    && tini -- true
-
-RUN apt-get purge -y --auto-remove dirmngr gpg wget
+    && tini -- true \
+    && apt-get purge -y --auto-remove dirmngr gpg wget
 
 
 ENV HAPROXY_MAJOR=1.7 \
