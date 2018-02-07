@@ -22,8 +22,9 @@ ENV TINI_VERSION=v0.16.1 \
 # Multiple gpg --recv-keys are intended to help with flakiness of key servers.
 RUN set -x \
     && apt-get update && apt-get install -y --no-install-recommends dirmngr gpg wget \
-        && rm -rf /var/lib/apt/lists/* \
-    && wget -O tini "https://github.com/krallin/tini/releases/download/$TINI_VERSION/tini-amd64" \
+        && rm -rf /var/lib/apt/lists/*
+
+RUN wget -O tini "https://github.com/krallin/tini/releases/download/$TINI_VERSION/tini-amd64" \
     && wget -O tini.asc "https://github.com/krallin/tini/releases/download/$TINI_VERSION/tini-amd64.asc" \
     && export GNUPGHOME="$(mktemp -d)" \
     && gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$TINI_GPG_KEY" \
@@ -34,8 +35,9 @@ RUN set -x \
     && rm -rf "$GNUPGHOME" tini.asc \
     && mv tini /usr/bin/tini \
     && chmod +x /usr/bin/tini \
-    && tini -- true \
-    && apt-get purge -y --auto-remove dirmngr gpg wget
+    && tini -- true
+
+RUN apt-get purge -y --auto-remove dirmngr gpg wget
 
 
 ENV HAPROXY_MAJOR=1.8 \
