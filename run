@@ -40,6 +40,24 @@ if [ -n "${STRING_VAULT_HOST-}" ] && [ -n "${VAULT_PORT-}" ]; then
 fi
 
 # 
+LOG_PREFIX="$(pwd) $0"
+log() {
+    logline=$(echo "[$LOG_PREFIX] $1\n" | sed "s/%/%%/g")
+    printf "$logline" >&1
+}
+log_error() {
+    logline="[$LOG_PREFIX] $1\n"
+    printf "$logline" >&1
+    printf "$logline" >&2
+}
+
+if [ -n "${HAPROXY_SYSLOGD-}" ]; then
+    SYSLOGD_SERVICE="/marathon-lb/service/syslogd"
+    mkdir -p $SYSLOGD_SERVICE
+    cp /marathon-lb/syslogd/run "$SYSLOGD_SERVICE/"
+fi
+
+# Custom syslog socket for marathon-lb.py logging
 SYSLOG_SOCKET=${SYSLOG_SOCKET:-/dev/null}
 
 LB_SERVICE="/marathon-lb/service/lb"
@@ -49,9 +67,9 @@ HAPROXY_SERVICE="/marathon-lb/service/haproxy"
 mkdir -p $HAPROXY_SERVICE/env
 
 if [ -n "${PORTS-}" ]; then
-  echo $PORTS > $HAPROXY_SERVICE/env/PORTS
+  log "$PORTS > $HAPROXY_SERVICE/env/PORTS"
 else
-  echo 'Define $PORTS with a comma-separated list of ports to which HAProxy binds' >&2
+  log_error "Define $PORTS with a comma-separated list of ports to which HAProxy binds"
   exit 1
 fi
 
@@ -116,7 +134,7 @@ if [ -n "${MESOS_SANDBOX-}" ] && [ -d "$MESOS_SANDBOX/templates" ]; then
 fi
 
 if [ -n "${HAPROXY_SYSCTL_PARAMS-}" ]; then
-  echo "setting sysctl params to: ${HAPROXY_SYSCTL_PARAMS}"
+  log "setting sysctl params to: ${HAPROXY_SYSCTL_PARAMS}"
   if [ -n "${HAPROXY_SYSCTL_NONSTRICT-}" ]; then
     # ignore errors
     sysctl -w $HAPROXY_SYSCTL_PARAMS || true
@@ -135,7 +153,7 @@ case "$MODE" in
     ARGS="--sse"
     ;;
   *)
-    echo "Unknown mode $MODE. Synopsis: $0 poll|sse [marathon_lb.py args]" >&2
+    log_error "Unknown mode $MODE. Synopsis: $0 poll|sse [marathon_lb.py args]"
     exit 1
     ;;
 esac
@@ -165,6 +183,10 @@ exec /marathon-lb/marathon_lb.py \
     $ARGS
 EOF
 chmod 755 $LB_SERVICE/run
+
+log "Created $LB_SERVICE/run with contents:"
+LB_RUN=$(cat $LB_SERVICE/run)
+log "$LB_RUN"
 
 if [ "${MODE}" == "poll" ]; then
 

@@ -34,7 +34,6 @@ import subprocess
 import sys
 import threading
 import time
-import traceback
 import datetime
 from itertools import cycle
 from operator import attrgetter
@@ -43,6 +42,7 @@ from tempfile import mkstemp
 
 import dateutil.parser
 import requests
+import pycurl
 
 from common import (get_marathon_auth_params, set_logging_args,
                     set_marathon_auth_args, setup_logging, cleanup_json)
@@ -228,17 +228,21 @@ class Marathon(object):
         return self.api_req('GET', ['tasks'])["tasks"]
 
     def get_event_stream(self):
-        url = self.host + "/v2/events"
-        logger.info(
-            "SSE Active, trying fetch events from {0}".format(url))
+        url = self.host + "/v2/events?plan-format=light&" + \
+              "event_type=status_update_event&" + \
+              "event_type=health_status_changed_event&" + \
+              "event_type=api_post_event"
+        return CurlHttpEventStream(url, self.__auth, self.__verify)
 
-        resp = CurlHttpEventStream(url, self.__auth, self.__verify)
+    def iter_events(self, stream):
+        logger.info(
+            "SSE Active, trying fetch events from {0}".format(stream.url))
 
         class Event(object):
             def __init__(self, data):
                 self.data = data
 
-        for line in resp.iter_lines():
+        for line in stream.iter_lines():
             if line.strip() != '':
                 for real_event_data in re.split(r'\r\n',
                                                 line.decode('utf-8')):
@@ -616,7 +620,8 @@ def get_haproxy_pids():
             "pidof haproxy",
             stderr=subprocess.STDOUT,
             shell=True).split()))
-    except subprocess.CalledProcessError:
+    except subprocess.CalledProcessError as ex:
+        logger.debug("Unable to get haproxy pids: %s", ex)
         return set()
 
 
@@ -647,14 +652,46 @@ def reloadConfig():
         logger.info("reloading using %s", " ".join(reloadCommand))
         try:
             start_time = time.time()
+            checkpoint_time = start_time
+            # Retry or log the reload every 10 seconds
+            reload_frequency = args.reload_interval
+            reload_retries = args.max_reload_retries
+            enable_retries = True
+            infinite_retries = False
+            if reload_retries == 0:
+                enable_retries = False
+            elif reload_retries < 0:
+                infinite_retries = True
             old_pids = get_haproxy_pids()
             subprocess.check_call(reloadCommand, close_fds=True)
+            new_pids = get_haproxy_pids()
+            logger.debug("Waiting for new haproxy pid (old pids: [%s], " +
+                         "new_pids: [%s])...", old_pids, new_pids)
             # Wait until the reload actually occurs and there's a new PID
-            while len(get_haproxy_pids() - old_pids) < 1:
-                logger.debug("Waiting for new haproxy pid...")
+            while True:
+                if len(new_pids - old_pids) >= 1:
+                    logger.debug("new pids: [%s]", new_pids)
+                    logger.debug("reload finished, took %s seconds",
+                                 time.time() - start_time)
+                    break
+                timeSinceCheckpoint = time.time() - checkpoint_time
+                if (timeSinceCheckpoint >= reload_frequency):
+                    logger.debug("Still waiting for new haproxy pid after " +
+                                 "%s seconds (old pids: [%s], " +
+                                 "new_pids: [%s]).",
+                                 time.time() - start_time, old_pids, new_pids)
+                    checkpoint_time = time.time()
+                    if enable_retries:
+                        if not infinite_retries:
+                            reload_retries -= 1
+                            if reload_retries == 0:
+                                logger.debug("reload failed after %s seconds",
+                                             time.time() - start_time)
+                                break
+                        logger.debug("Attempting reload again...")
+                        subprocess.check_call(reloadCommand, close_fds=True)
                 time.sleep(0.1)
-            logger.debug("reload finished, took %s seconds",
-                         time.time() - start_time)
+                new_pids = get_haproxy_pids()
         except OSError as ex:
             logger.error("unable to reload config using command %s",
                          " ".join(reloadCommand))
@@ -1129,8 +1166,30 @@ def truncateMapFileIfExists(map_file):
         os.close(fd)
 
 
+def generateAndValidateConfig(config, config_file, domain_map_array,
+                              app_map_array, haproxy_map):
+    domain_map_file = os.path.join(os.path.dirname(config_file),
+                                   "domain2backend.map")
+    app_map_file = os.path.join(os.path.dirname(config_file),
+                                "app2backend.map")
+
+    domain_map_string = str()
+    app_map_string = str()
+
+    if haproxy_map:
+        domain_map_string = generateMapString(domain_map_array)
+        app_map_string = generateMapString(app_map_array)
+
+    return writeConfigAndValidate(
+                config, config_file, domain_map_string, domain_map_file,
+                app_map_string, app_map_file, haproxy_map)
+
+
 def compareWriteAndReloadConfig(config, config_file, domain_map_array,
                                 app_map_array, haproxy_map):
+    changed = False
+    config_valid = False
+
     # See if the last config on disk matches this, and if so don't reload
     # haproxy
     domain_map_file = os.path.join(os.path.dirname(config_file),
@@ -1162,10 +1221,16 @@ def compareWriteAndReloadConfig(config, config_file, domain_map_array,
                     config, config_file, domain_map_string, domain_map_file,
                     app_map_string, app_map_file, haproxy_map):
                 reloadConfig()
+                changed = True
+                config_valid = True
             else:
                 logger.warning("skipping reload: config/map not valid")
+                changed = True
+                config_valid = False
         else:
             logger.debug("skipping reload: config/map unchanged")
+            changed = False
+            config_valid = True
     else:
         truncateMapFileIfExists(domain_map_file)
         truncateMapFileIfExists(app_map_file)
@@ -1177,10 +1242,18 @@ def compareWriteAndReloadConfig(config, config_file, domain_map_array,
                     config, config_file, domain_map_string, domain_map_file,
                     app_map_string, app_map_file, haproxy_map):
                 reloadConfig()
+                changed = True
+                config_valid = True
             else:
                 logger.warning("skipping reload: config not valid")
+                changed = True
+                config_valid = False
         else:
+            changed = False
+            config_valid = True
             logger.debug("skipping reload: config unchanged")
+
+    return changed, config_valid
 
 
 def generateMapString(map_array):
@@ -1224,8 +1297,10 @@ def get_health_check(app, portIndex):
 healthCheckResultCache = LRUCache()
 
 
-def get_apps(marathon):
-    apps = marathon.list()
+def get_apps(marathon, apps=[]):
+    if len(apps) == 0:
+        apps = marathon.list()
+
     logger.debug("got apps %s", [app["id"] for app in apps])
 
     marathon_apps = []
@@ -1440,7 +1515,7 @@ def get_apps(marathon):
     return apps_list
 
 
-def regenerate_config(apps, config_file, groups, bind_http_https,
+def regenerate_config(marathon, config_file, groups, bind_http_https,
                       ssl_certs, templater, haproxy_map):
     CLUSTER  = 'userland'
     CERT_EXT = '.pem'
@@ -1449,7 +1524,7 @@ def regenerate_config(apps, config_file, groups, bind_http_https,
     O_FORMAT = 'PEM'
     domain_map_array = []
     app_map_array = []
-
+    apps = get_apps(marathon)
     generated_config = config(apps, groups, bind_http_https, ssl_certs,
                               templater, haproxy_map, domain_map_array,
                               app_map_array, config_file)
@@ -1489,9 +1564,77 @@ def regenerate_config(apps, config_file, groups, bind_http_https,
             os.remove(os.path.join(ssl_certs, certfile))
             logger.info("Deleted certificate " + certfile)
 
-    compareWriteAndReloadConfig(generated_config, config_file,
-                                domain_map_array, app_map_array, haproxy_map)
+    (changed, config_valid) = compareWriteAndReloadConfig(
+        generated_config, config_file, domain_map_array, app_map_array,
+        haproxy_map)
 
+    if changed and not config_valid:
+        apps = make_config_valid_and_regenerate(
+            marathon, groups, bind_http_https, ssl_certs, templater,
+            haproxy_map, domain_map_array, app_map_array, config_file)
+
+    return apps
+
+
+# Build up a valid configuration by adding one app at a time and checking
+# for valid config file after each app
+def make_config_valid_and_regenerate(marathon, groups, bind_http_https,
+                                     ssl_certs, templater, haproxy_map,
+                                     domain_map_array, app_map_array,
+                                     config_file):
+    try:
+        start_time = time.time()
+        valid_marathon_apps = []
+        marathon_apps = marathon.list()
+        apps = []
+        excluded_ids = []
+
+        for app in marathon_apps:
+            valid_marathon_apps.append(app)
+            apps = get_apps(marathon, valid_marathon_apps)
+
+            domain_map_array = []
+            app_map_array = []
+
+            generated_config = config(apps, groups, bind_http_https, ssl_certs,
+                                      templater, haproxy_map, domain_map_array,
+                                      app_map_array, config_file)
+
+            if not generateAndValidateConfig(generated_config, config_file,
+                                             domain_map_array, app_map_array,
+                                             haproxy_map):
+                invalid_id = valid_marathon_apps[-1]["id"]
+                logger.warn(
+                    "invalid configuration caused by app %s; "
+                    "it will be excluded", invalid_id)
+                excluded_ids.append(invalid_id)
+                del valid_marathon_apps[-1]
+
+                if len(valid_marathon_apps) == 0:
+                    apps = []
+
+        if len(valid_marathon_apps) > 0:
+            logger.debug("regentrating valid config which excludes the"
+                         "following apps: %s", excluded_ids)
+            compareWriteAndReloadConfig(generated_config,
+                                        config_file,
+                                        domain_map_array,
+                                        app_map_array, haproxy_map)
+        else:
+            logger.error("A valid config file could not be generated after"
+                         "excluding all apps! skipping reload")
+
+        logger.debug("regenerating while excluding invalid tasks finished, "
+                     "took %s seconds",
+                     time.time() - start_time)
+
+        return apps
+
+    except requests.exceptions.ConnectionError as e:
+        logger.error("Connection error({0}): {1}".format(
+            e.errno, e.strerror))
+    except Exception:
+        logger.exception("Unexpected error!")
 
 class MarathonEventProcessor(object):
 
@@ -1511,28 +1654,36 @@ class MarathonEventProcessor(object):
         self.__pending_reload = False
         self.__haproxy_map = haproxy_map
 
+        self.__thread = None
+
         # Fetch the base data
         self.reset_from_tasks()
 
     def start(self):
         self.__stop = False
+        if self.__thread is not None and self.__thread.is_alive():
+            self.reset_from_tasks()
+            return
         self.__thread = threading.Thread(target=self.try_reset)
         self.__thread.start()
 
     def try_reset(self):
         with self.__condition:
-            logger.info('starting event processor thread')
+            logger.info('({}): starting event processor thread'.format(
+                threading.get_ident()))
             while True:
                 self.__condition.acquire()
 
                 if self.__stop:
-                    logger.info('stopping event processor thread')
+                    logger.info('({}): stopping event processor thread'.format(
+                        threading.get_ident()))
                     self.__condition.release()
                     return
 
                 if not self.__pending_reset and not self.__pending_reload:
                     if not self.__condition.wait(300):
-                        logger.info('condition wait expired')
+                        logger.info('({}): condition wait expired'.format(
+                            threading.get_ident()))
 
                 pending_reset = self.__pending_reset
                 pending_reload = self.__pending_reload
@@ -1555,30 +1706,33 @@ class MarathonEventProcessor(object):
         try:
             start_time = time.time()
 
-            self.__apps = get_apps(self.__marathon)
-            regenerate_config(self.__apps,
-                              self.__config_file,
-                              self.__groups,
-                              self.__bind_http_https,
-                              self.__ssl_certs,
-                              self.__templater,
-                              self.__haproxy_map)
+            self.__apps = regenerate_config(self.__marathon,
+                                            self.__config_file,
+                                            self.__groups,
+                                            self.__bind_http_https,
+                                            self.__ssl_certs,
+                                            self.__templater,
+                                            self.__haproxy_map)
 
-            logger.debug("updating tasks finished, took %s seconds",
-                         time.time() - start_time)
+            logger.debug("({0}): updating tasks finished, "
+                         "took {1} seconds".format(
+                             threading.get_ident(),
+                             time.time() - start_time))
         except requests.exceptions.ConnectionError as e:
-            logger.error("Connection error({0}): {1}".format(
-                e.errno, e.strerror))
-        except:
+            logger.error("({0}): Connection error({1}): {2}".format(
+                threading.get_ident(), e.errno, e.strerror))
+        except Exception:
             logger.exception("Unexpected error!")
 
     def do_reload(self):
         try:
             # Validate the existing config before reloading
-            logger.debug("attempting to reload existing config...")
+            logger.debug("({}): attempting to reload existing "
+                         "config...".format(
+                             threading.get_ident()))
             if validateConfig(self.__config_file):
                 reloadConfig()
-        except:
+        except Exception:
             logger.exception("Unexpected error!")
 
     def stop(self):
@@ -1643,6 +1797,15 @@ def get_arg_parser():
     parser.add_argument("--command", "-c",
                         help="If set, run this command to reload haproxy.",
                         default=None)
+    parser.add_argument("--max-reload-retries",
+                        help="Max reload retries before failure. Reloads"
+                        " happen every --reload-interval seconds. Set to"
+                        " 0 to disable or -1 for infinite retries.",
+                        type=int, default=10)
+    parser.add_argument("--reload-interval",
+                        help="Wait this number of seconds between"
+                        " reload retries.",
+                        type=int, default=10)
     parser.add_argument("--strict-mode",
                         help="If set, backends are only advertised if"
                         " HAPROXY_{n}_ENABLED=true. Strict mode will be"
@@ -1690,34 +1853,6 @@ def get_arg_parser():
     parser = set_logging_args(parser)
     parser = set_marathon_auth_args(parser)
     return parser
-
-
-def process_sse_events(marathon, processor):
-    try:
-        processor.start()
-        events = marathon.get_event_stream()
-        for event in events:
-            try:
-                # logger.info("received event: {0}".format(event))
-                # marathon might also send empty messages as keepalive...
-                if (event.data.strip() != ''):
-                    # marathon sometimes sends more than one json per event
-                    # e.g. {}\r\n{}\r\n\r\n
-                    for real_event_data in re.split(r'\r\n', event.data):
-                        data = load_json(real_event_data)
-                        logger.info(
-                            "received event of type {0}"
-                            .format(data['eventType']))
-                        processor.handle_event(data)
-                else:
-                    logger.info("skipping empty message")
-            except:
-                print(event.data)
-                print("Unexpected error:", sys.exc_info()[0])
-                traceback.print_stack()
-                raise
-    finally:
-        processor.stop()
 
 
 def load_json(data_str):
@@ -1791,24 +1926,70 @@ if __name__ == '__main__':
                                            args.haproxy_map)
         signal.signal(signal.SIGHUP, processor.handle_signal)
         signal.signal(signal.SIGUSR1, processor.handle_signal)
-        backoff = 3
+        backoffFactor = 1.5
+        waitSeconds = 3
+        maxWaitSeconds = 300
+        waitResetSeconds = 600
         while True:
             stream_started = time.time()
+            currentWaitSeconds = random.random() * waitSeconds
+            stream = marathon.get_event_stream()
             try:
-                process_sse_events(marathon, processor)
-            except:
+                # processor start is now idempotent and will start at
+                # most one thread
+                processor.start()
+                events = marathon.iter_events(stream)
+                for event in events:
+                    if (event.data.strip() != ''):
+                        # marathon sometimes sends more than one json per event
+                        # e.g. {}\r\n{}\r\n\r\n
+                        for real_event_data in re.split(r'\r\n', event.data):
+                                data = load_json(real_event_data)
+                                logger.info(
+                                    "received event of type {0}"
+                                    .format(data['eventType']))
+                                processor.handle_event(data)
+                    else:
+                        logger.info("skipping empty message")
+            except pycurl.error as e:
+                errno, e_msg = e.args
+                # Error number 28:
+                # 'Operation too slow. Less than 1 bytes/sec transferred
+                #  the last 300 seconds'
+                # This happens when there is no activity on the marathon
+                # event stream for the last 5 minutes. In this case we
+                # should immediately reconnect in case the connection to
+                # marathon died silently so that we miss as few events as
+                # possible.
+                if errno == 28:
+                    m = 'Possible timeout detected: {}, reconnecting now...'
+                    logger.info(m.format(e_msg))
+                    currentWaitSeconds = 0
+                else:
+                    logger.exception("Caught exception")
+                    logger.error("Reconnecting in {}s...".format(
+                        currentWaitSeconds))
+            except Exception:
                 logger.exception("Caught exception")
-                backoff = backoff * 1.5
-                if backoff > 300:
-                    backoff = 300
-                logger.error("Reconnecting in {}s...".format(backoff))
-            # Reset the backoff if it's been more than 10 minutes
-            if time.time() - stream_started > 600:
-                backoff = 3
-            time.sleep(random.random() * backoff)
+                logger.error("Reconnecting in {}s...".format(
+                    currentWaitSeconds))
+            # We must close the connection because we are calling
+            # get_event_stream on the next loop
+            stream.curl.close()
+            if currentWaitSeconds > 0:
+                # Increase the next waitSeconds by the backoff factor
+                waitSeconds = backoffFactor * waitSeconds
+                # Don't sleep any more than 5 minutes
+                if waitSeconds > maxWaitSeconds:
+                    waitSeconds = maxWaitSeconds
+                # Reset the backoff if it's been more than 10 minutes
+                if (time.time() - stream_started) > waitResetSeconds:
+                    waitSeconds = 3
+                time.sleep(currentWaitSeconds)
+        processor.stop()
     else:
         # Generate base config
-        regenerate_config(get_apps(marathon),
+        regenerate_config(marathon,
                           args.haproxy_config,
                           args.group,
                           not args.dont_bind_http_https,

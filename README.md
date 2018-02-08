@@ -297,8 +297,20 @@ The default value when not specified is `redispatch,http-server-close,dontlognul
   < HTTP/1.1 200 OK
   ```
  * Some of the features of marathon-lb assume that it is the only instance of itself running in a PID namespace. i.e. marathon-lb assumes that it is running in a container. Certain features like the `/_mlb_signal` endpoints and the `/_haproxy_getpids` endpoint (and by extension, zero-downtime deployments) may behave unexpectedly if more than one instance of marathon-lb is running in the same PID namespace or if there are other HAProxy processes in the same PID namespace.
+ * Sometimes it is desirable to get detailed container and HAProxy logging for easier debugging as well as viewing connection logging to frontends and backends. This can be achieved by setting the `HAPROXY_SYSLOGD` environment variable or `container-syslogd` value in `options.json` like so:
+ 
+ ```json
+   {
+     "marathon-lb": {
+       "container-syslogd": true
+     }
+   }
+ ```
+
 
 ## Zero-downtime Deployments
+
+* Please note that `zdd.py` is not to be used in a production environment and is purely developed for demonstration purposes.
 
 Marathon-lb is able to perform canary style blue/green deployment with zero downtime. To execute such deployments, you must follow certain patterns when using Marathon.
 
@@ -369,12 +381,9 @@ assignment is not guaranteed if you change the current set of deployed apps. In
 other words, when you deploy a new app, the port assignments may change.
 
 
-## Zombies reaping
+## Zombie reaping
 
-When running within isolated containers, you may have to care about reaping orphan child processes.
-Haproxy typicaly produce orphan processes because of it's two steps reload machanism.
-Marathon-lb is using [tini](https://github.com/krallin/tini) for this purpose.
-When running in a container whitout pid namespace isolation, setting the `TINI_SUBREAPER` environnement variable is recommended.
+When running with isolated containers, you may need to take care of reaping orphaned child processes. HAProxy typically produces orphan processes because of its two-step reload mechanism. Marathon-LB uses [tini](https://github.com/krallin/tini) for this purpose. When running in a container without PID namespace isolation, setting the `TINI_SUBREAPER` environment variable is recommended.
 
 
 ## Contributing
