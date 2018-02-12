@@ -14,9 +14,14 @@ log_error() {
 }
 
 addFirewallRules() {
+  FIRST_RULE=$(iptables -L INPUT | grep cali-INPUT | cut -f 1 -d ' ')
   IFS=',' read -ra ADDR <<< "$PORTS"
   for i in "${ADDR[@]}"; do
-    iptables -w -I INPUT -p tcp --dport $i --syn -j DROP
+    if [ $FIRST_RULE = "cali-INPUT" ]; then
+      iptables -w -I INPUT 2 -p tcp --dport $i --syn -j DROP
+    else
+      iptables -w -I INPUT -p tcp --dport $i --syn -j DROP
+    fi
   done
 }
 
