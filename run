@@ -1,6 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 
+source /usr/sbin/b-log.sh
+B_LOG --stdout true
+DOCKER_LOG_LEVEL=${DOCKER_LOG_LEVEL:-INFO}
+eval LOG_LEVEL_${DOCKER_LOG_LEVEL}
+
+
 # # # # # # # # # #
 # Vault config: 
 # STRING_VAULT_HOST
@@ -24,17 +30,17 @@ if [ -n "${STRING_VAULT_HOST-}" ] && [ -n "${VAULT_PORT-}" ]; then
   if [ -n "${VAULT_ROLE_ID-}" ] && [ -n "${VAULT_SECRET_ID-}" ];  then
     source /usr/sbin/kms_utils.sh
     VAULT_ENABLED=1
-    echo "VAULT - Dynamic authentication provided"
-    echo "Dynamic login with vault..."
+    INFO "VAULT - Dynamic authentication provided"
+    INFO "Dynamic login with vault..."
     login
-    echo "Login success"
+    INFO "Login success"
 
   elif [ -n "${VAULT_TOKEN-}" ];  then
     source /usr/sbin/kms_utils.sh
     VAULT_ENABLED=1
-    echo "VAULT - Token authentication provided"
+    INFO "VAULT - Token authentication provided"
   else
-    echo "VAULT - ERROR: Vault host configuration provided, but no token nor dynamic authentication configuration provided"
+    INFO "VAULT - ERROR: Vault host configuration provided, but no token nor dynamic authentication configuration provided"
     exit 1 
   fi
 fi
@@ -42,19 +48,24 @@ fi
 # 
 LOG_PREFIX="$(pwd) $0"
 log() {
-    logline=$(echo "[$LOG_PREFIX] $1\n" | sed "s/%/%%/g")
-    printf "$logline" >&1
+    logline=$(echo "[$LOG_PREFIX] $1" | sed "s/%/%%/g")
+    INFO "$logline" >&1
 }
 log_error() {
-    logline="[$LOG_PREFIX] $1\n"
-    printf "$logline" >&1
-    printf "$logline" >&2
+    logline="[$LOG_PREFIX] $1"
+    ERROR "$logline"
 }
 
 if [ -n "${HAPROXY_SYSLOGD-}" ]; then
     SYSLOGD_SERVICE="/marathon-lb/service/syslogd"
     mkdir -p $SYSLOGD_SERVICE
     cp /marathon-lb/syslogd/run "$SYSLOGD_SERVICE/"
+fi
+
+if [ -n "${HAPROXY_RSYSLOG-}" ]; then
+    RSYSLOG_SERVICE="/marathon-lb/service/rsyslog"
+    mkdir -p $RSYSLOG_SERVICE
+    cp /marathon-lb/rsyslog/run "$RSYSLOG_SERVICE/"
 fi
 
 # Custom syslog socket for marathon-lb.py logging
@@ -93,7 +104,7 @@ else
 fi
 
 if [ ${VAULT_ENABLED} -eq 1 ]; then
-  echo "Downloading certificates from vault..."
+  INFO "Downloading certificates from vault..."
   SSL_CERTS="/marathon-lb/vault_certs"
   mkdir -p "$SSL_CERTS"
   # if provided Vault credentials, use it.
@@ -103,7 +114,7 @@ if [ ${VAULT_ENABLED} -eq 1 ]; then
   rm -f "$SSL_CERTS/marathon-lb.key"
 	
   SSL_CERTS="$SSL_CERTS/"
-  echo "Downloaded"
+  INFO "Downloaded"
 
 elif [ -n "${HAPROXY_SSL_CERT-}" ]; then
   # if provided via environment variable, use it.
@@ -159,11 +170,11 @@ case "$MODE" in
 esac
 
 if [ ${VAULT_ENABLED} -eq 1 ]; then 
-  echo "Downloading marathon credentials from Vault..."
+  INFO "Downloading marathon credentials from Vault..."
   getPass dcs marathon rest
   CREDENTIALS="$MARATHON_REST_USER:$MARATHON_REST_PASS"
   ARGS="$ARGS --auth-credentials $CREDENTIALS"
-  echo "Downloaded"
+  INFO "Downloaded"
 fi
 
 for arg in "$@"; do

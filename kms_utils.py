@@ -1,3 +1,4 @@
+import common
 import json
 import logging
 import os
@@ -15,7 +16,10 @@ vault_token = os.getenv('VAULT_TOKEN', '')
 vault_accessor = os.getenv('ACCESSOR_TOKEN','')
 MAX_PERCENTAGE_EXPIRATION = 0.9
 
-logging.basicConfig(level=logging.DEBUG)
+logger = None
+def init_log():
+    global logger
+    logger = common.marathon_lb_logger.getChild('kms_utils.py')
 
 def login():
   global vault_token
@@ -31,7 +35,7 @@ def get_cert(cluster, instance, fqdn, o_format, store_path):
   command = ' '.join(['getCert', cluster, instance, fqdn, o_format, store_path]) 
   output = exec_with_kms_utils(variables, command , '')
   resp,_ = output.communicate()
-  logging.debug('get_cert for ' + instance + ' returned ' + str(output.returncode) + ' and ' + resp.decode("utf-8"))
+  logger.debug('get_cert for ' + instance + ' returned ' + str(output.returncode) + ' and ' + resp.decode("utf-8"))
   
   return output.returncode == 0
 
@@ -42,8 +46,8 @@ def get_token_info():
   resp,_ = output.communicate()
   respArr = resp.decode("utf-8").split(',')
   jsonValue = json.loads(','.join(respArr[1:]))
-  logging.debug('status ' + respArr[0])
-  logging.debug(jsonValue)
+  logger.debug('status ' + respArr[0])
+  logger.debug(jsonValue)
   
   return jsonValue
 
@@ -64,16 +68,16 @@ def check_token_needs_renewal(force):
   else:
     percentage = (currentTime - creationTime) / ttl
   
-  logging.debug('Checked token expiration: percentage -> ' + str(percentage))
+  logger.debug('Checked token expiration: percentage -> ' + str(percentage))
   
   if (percentage >= MAX_PERCENTAGE_EXPIRATION and percentage < 1):
-    logging.info('Token about to expire... need renewal')
+    logger.info('Token about to expire... need renewal')
     renewal_token(ttl)
   elif (percentage >= 1):
-    logging.info('Token expired... need renewal')
+    logger.info('Token expired... need renewal')
     renewal_token(ttl)
   elif force:
-    logging.info('Forced renewal')
+    logger.info('Forced renewal')
     renewal_token(ttl)
   else:
     renewal = False
@@ -87,11 +91,11 @@ def renewal_token(ttl):
   resp,_ = output.communicate()
   respArr = resp.decode("utf-8").split(',')
   jsonValue = json.loads(','.join(respArr[1:]))
-  logging.debug('status ' + respArr[0])
-  logging.debug(jsonValue) 
+  logger.debug('status ' + respArr[0])
+  logger.debug(jsonValue) 
 
 def exec_with_kms_utils(variables, command, extra_command):
-  logging.debug('>>> exec_with_kms_utils: [COMM:'+command+', VARS:'+variables+', EXTRA_COMM:'+extra_command+']')
+  logger.debug('>>> exec_with_kms_utils: [COMM:'+command+', VARS:'+variables+', EXTRA_COMM:'+extra_command+']')
   output = subprocess.Popen(['bash', '-c', head_vault_hosts + variables + source_kms_utils + command + ';' + extra_command], shell=False, stdout=subprocess.PIPE)
   
   return output

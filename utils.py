@@ -7,10 +7,14 @@ import socket
 
 import pycurl
 
+import common
 from common import DCOSAuth
 from lrucache import LRUCache
 
-logger = logging.getLogger('utils')
+logger = None
+def init_log():
+    global logger
+    logger = common.marathon_lb_logger.getChild('utils.py')
 
 # The maximum number of clashes to allow when assigning a port.
 MAX_CLASHES = 50

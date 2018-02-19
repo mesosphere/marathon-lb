@@ -2,22 +2,26 @@
 exec 2>&1
 export PIDFILE="/tmp/haproxy.pid"
 
+source /usr/sbin/b-log.sh
+B_LOG --stdout true
+DOCKER_LOG_LEVEL=${DOCKER_LOG_LEVEL:-INFO}
+eval LOG_LEVEL_${DOCKER_LOG_LEVEL}
+
 LOG_PREFIX="$(pwd) $0"
 log() {
-    logline="[$LOG_PREFIX] $1\n"
-    printf "$logline" >&1
+    logline="[$LOG_PREFIX] $1"
+    INFO "$logline"
 }
 log_error() {
-    logline="[$LOG_PREFIX] $1\n"
-    printf "$logline" >&1
-    printf "$logline" >&2
+    logline="[$LOG_PREFIX] $1"
+    ERROR "$logline"
 }
 
 addFirewallRules() {
   FIRST_RULE=$(iptables -L INPUT | grep cali-INPUT | cut -f 1 -d ' ')
   IFS=',' read -ra ADDR <<< "$PORTS"
   for i in "${ADDR[@]}"; do
-    if [ $FIRST_RULE = "cali-INPUT" ]; then
+    if [ "$FIRST_RULE" = "cali-INPUT" ]; then
       iptables -w -I INPUT 2 -p tcp --dport $i --syn -j DROP
     else
       iptables -w -I INPUT -p tcp --dport $i --syn -j DROP

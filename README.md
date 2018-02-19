@@ -306,7 +306,7 @@ The default value when not specified is `redispatch,http-server-close,dontlognul
      }
    }
  ```
-
+* There's other options to use rsyslog instead of syslogd. This can be achieved by setting the `HAPROXY_RSYSLOG` environment variable.
 
 ## Zero-downtime Deployments
 

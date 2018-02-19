@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 
+import common
 import logging
 import os
 
-logger = logging.getLogger('marathon_lb')
-
-
+logger = None
+def init_log():
+    global logger
+    logger = common.marathon_lb_logger.getChild('config.py')
+    
 class ConfigTemplate:
     def __init__(self, name, value, overridable, description):
         self.name = name
@@ -66,6 +69,7 @@ AES256-SHA256:!aNULL:!MD5:!DSS
 defaults
   load-server-state-from-file global
   log               global
+  log-format "%ci:%cp [%tr] %ft %b/%s %TR/%Tw/%Tc/%Tr/%Ta %ST %B %CC %CS %tsc %ac/%fc/%bc/%sc/%rc %sq/%bq %hr %hs %HM %HU %HV"
   retries                   3
   backlog               10000
   maxconn               10000

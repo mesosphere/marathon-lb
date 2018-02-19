@@ -1,17 +1,13 @@
 #!/usr/bin/env python3
+import common
+from common import (init_logger)
 import os
 import sys
 import time
 import errno
 import logging
 
-logger = logging.getLogger('haproxy_wrapper')
-logger.setLevel(getattr(logging, 'DEBUG'))
-formatter = logging.Formatter("%(asctime)-15s %(name)s: %(message)s")
-consoleHandler = logging.StreamHandler()
-consoleHandler.setFormatter(formatter)
-logger.addHandler(consoleHandler)
-
+logger = None
 
 def create_haproxy_pipe():
     logger.debug("create_haproxy_pipe called")
@@ -53,6 +49,9 @@ def wait_on_haproxy_pipe(pipefd):
     return True
 
 
+init_logger("/dev/null", "%(asctime)s.%(msecs)03d%(timezoneiso8601) %(levelname)s - 0 python %(name)s {\"@message\": \"%(message)s\"}", "DEBUG")
+logger = common.marathon_lb_logger.getChild('haproxy_wrapper.py')
+        
 pipefd = create_haproxy_pipe()
 
 pid = os.fork()

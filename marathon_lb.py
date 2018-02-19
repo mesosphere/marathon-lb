@@ -44,15 +44,18 @@ import dateutil.parser
 import requests
 import pycurl
 
+import common
 from common import (get_marathon_auth_params, set_logging_args,
-                    set_marathon_auth_args, setup_logging, cleanup_json)
+                    set_marathon_auth_args, setup_logging, cleanup_json,
+                    init_logger)
+import config as config_mlb
 from config import ConfigTemplater, label_keys
 from lrucache import LRUCache
+import utils as utils_mlb
 from utils import (CurlHttpEventStream, get_task_ip_and_ports, ip_cache,
                    ServicePortAssigner)
 
-
-logger = logging.getLogger('marathon_lb')
+logger = None
 SERVICE_PORT_ASSIGNER = ServicePortAssigner()
 
 
@@ -1514,24 +1517,15 @@ def get_apps(marathon, apps=[]):
 
     return apps_list
 
-
-def regenerate_config(marathon, config_file, groups, bind_http_https,
-                      ssl_certs, templater, haproxy_map):
+def download_certificates_from_vault(app_map_array, ssl_certs):
     CLUSTER  = 'userland'
     CERT_EXT = '.pem'
     KEY_EXT  = '.key'
     BKP_EXT  = '.bkp'
     O_FORMAT = 'PEM'
-    domain_map_array = []
-    app_map_array = []
-    apps = get_apps(marathon)
-    generated_config = config(apps, groups, bind_http_https, ssl_certs,
-                              templater, haproxy_map, domain_map_array,
-                              app_map_array, config_file)
 
     logger.debug("Checking Vault token expiration")
     kms_utils.check_token_needs_renewal(False)    
-    
     #{'/appid1': 'front/backend1'}, {'/folder/appid2': 'front/backend2'}
     logger.debug("Download certificates for appid (if not exists) from Vault")
     currentListAppidCert = list()
@@ -1563,6 +1557,17 @@ def regenerate_config(marathon, config_file, groups, bind_http_https,
         if not any(certfile in elem for elem in currentListAppidCert) and certfile != 'marathon-lb.pem':
             os.remove(os.path.join(ssl_certs, certfile))
             logger.info("Deleted certificate " + certfile)
+
+def regenerate_config(marathon, config_file, groups, bind_http_https,
+                      ssl_certs, templater, haproxy_map):
+    domain_map_array = []
+    app_map_array = []
+    apps = get_apps(marathon)
+    generated_config = config(apps, groups, bind_http_https, ssl_certs,
+                              templater, haproxy_map, domain_map_array,
+                              app_map_array, config_file)
+
+    download_certificates_from_vault(app_map_array, ssl_certs)
 
     (changed, config_valid) = compareWriteAndReloadConfig(
         generated_config, config_file, domain_map_array, app_map_array,
@@ -1900,8 +1905,14 @@ if __name__ == '__main__':
     a = requests.adapters.HTTPAdapter(max_retries=3)
     s.mount('http://', a)
 
+    # Init logging
+    init_logger(args.syslog_socket, args.log_format, args.log_level)
+    logger = common.marathon_lb_logger.getChild('marathon_lb.py')
+    config_mlb.init_log()
+    utils_mlb.init_log()
+    kms_utils.init_log()
     # Setup logging
-    setup_logging(logger, args.syslog_socket, args.log_format, args.log_level)
+    #setup_logging(logger, args.syslog_socket, args.log_format, args.log_level)
 
     # initialize health check LRU cache
     if args.health_check:

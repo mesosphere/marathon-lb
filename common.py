@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import datetime
 import json
 import logging
 import os
@@ -11,6 +12,34 @@ import jwt
 import requests
 from requests.auth import AuthBase
 
+PARENT_LOG_NAME = 'marathon-lb'
+TIME_ZONE_LOG_FORMAT='%(timezoneiso8601)'
+
+def init_logger(syslog_socket, log_format, log_level):
+    global marathon_lb_logger
+    marathon_lb_logger = get_logger(PARENT_LOG_NAME, syslog_socket, log_format, log_level)
+
+def get_logger(logger_name, syslog_socket, log_format, log_level='DEBUG'):
+    if TIME_ZONE_LOG_FORMAT in log_format:
+        timezone = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat()[-6:]
+        log_format = log_format.replace(TIME_ZONE_LOG_FORMAT,timezone)
+    logging.basicConfig(format=log_format, datefmt='%Y-%m-%dT%H:%M:%S')
+    
+    logger = logging.getLogger(logger_name)
+    
+    log_level = log_level.upper()
+
+    if log_level not in ['CRITICAL', 'ERROR', 'WARNING',
+                         'INFO', 'DEBUG', 'NOTSET']:
+        raise Exception('Invalid log level: {}'.format(log_level.upper()))
+
+    logger.setLevel(getattr(logging, log_level))
+
+    if syslog_socket != '/dev/null':
+        syslogHandler = SysLogHandler(syslog_socket)
+        syslogHandler.setFormatter(formatter)
+        logger.addHandler(syslogHandler)
+    return logger
 
 def setup_logging(logger, syslog_socket, log_format, log_level='DEBUG'):
     log_level = log_level.upper()
