@@ -121,6 +121,10 @@ if [ ${VAULT_ENABLED} -eq 1 ]; then
 	
   SSL_CERTS="$SSL_CERTS/"
   INFO "Downloaded"
+  
+  INFO "Downloading ca-bundle from vault..."
+  getCAbundle /etc/ssl PEM
+  INFO "Downloaded"
 
 elif [ -n "${HAPROXY_SSL_CERT-}" ]; then
   # if provided via environment variable, use it.
