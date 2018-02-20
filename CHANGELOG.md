@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.0 (upcoming)
+
+* Pending changelog
+
 ## 0.3.0 (upcoming)
 
 * [EOS-987] Marathon-lb-sec logging format should comply with standard
