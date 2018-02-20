@@ -4,7 +4,7 @@
 
 * Pending changelog
 
-## 0.3.0 (upcoming)
+## 0.3.0 (February 20, 2018)
 
 * [EOS-987] Marathon-lb-sec logging format should comply with standard
 * [EOS-987] Included b-log version 0.4.0
