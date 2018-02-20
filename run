@@ -21,6 +21,8 @@ eval LOG_LEVEL_${DOCKER_LOG_LEVEL}
 # # # # # # # # #
 VAULT_ENABLED=0
 
+MARATHON_LB_CERT_NAME="000_marathon-lb.pem"
+
 # KMS_UTILS & Dynamic authentication
 if [ -n "${STRING_VAULT_HOST-}" ] && [ -n "${VAULT_PORT-}" ]; then
   OLD_IFS=${IFS}
@@ -112,6 +114,10 @@ if [ ${VAULT_ENABLED} -eq 1 ]; then
   chmod 644 "$SSL_CERTS/marathon-lb.pem"
   cat "$SSL_CERTS/marathon-lb.key" >> "$SSL_CERTS/marathon-lb.pem"
   rm -f "$SSL_CERTS/marathon-lb.key"
+  # Change the name to be the first alphabetical order certificate (SNI)
+  mv "$SSL_CERTS/marathon-lb.pem" "$SSL_CERTS/$MARATHON_LB_CERT_NAME"
+  # Copy the certificate to make it available in the old default path
+  cp "$SSL_CERTS/$MARATHON_LB_CERT_NAME" /etc/ssl/cert.pem
 	
   SSL_CERTS="$SSL_CERTS/"
   INFO "Downloaded"
@@ -187,6 +193,7 @@ cat > $LB_SERVICE/run << EOF
 exec 2>&1
 cd /marathon-lb
 exec /marathon-lb/marathon_lb.py \
+    --marathon-lb-cert-name "$MARATHON_LB_CERT_NAME" \
     --syslog-socket $SYSLOG_SOCKET \
     --haproxy-config /marathon-lb/haproxy.cfg \
     --ssl-certs "${SSL_CERTS}" \

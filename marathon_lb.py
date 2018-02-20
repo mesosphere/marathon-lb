@@ -57,7 +57,7 @@ from utils import (CurlHttpEventStream, get_task_ip_and_ports, ip_cache,
 
 logger = None
 SERVICE_PORT_ASSIGNER = ServicePortAssigner()
-
+mlb_cert_name = ""
 
 class MarathonBackend(object):
 
@@ -1554,7 +1554,7 @@ def download_certificates_from_vault(app_map_array, ssl_certs):
 
     logger.debug("Clean certificates not present in the current appid list")
     for certfile in os.listdir(ssl_certs):
-        if not any(certfile in elem for elem in currentListAppidCert) and certfile != 'marathon-lb.pem':
+        if not any(certfile in elem for elem in currentListAppidCert) and certfile != mlb_cert_name:
             os.remove(os.path.join(ssl_certs, certfile))
             logger.info("Deleted certificate " + certfile)
 
@@ -1779,6 +1779,10 @@ def get_arg_parser():
     parser = argparse.ArgumentParser(
         description="Marathon HAProxy Load Balancer",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--marathon-lb-cert-name",
+                        help="Default marathon-lb certificate name",
+                        default="marathon-lb.pem"
+                        )
     parser.add_argument("--longhelp",
                         help="Print out configuration details",
                         action="store_true"
@@ -1913,6 +1917,8 @@ if __name__ == '__main__':
     kms_utils.init_log()
     # Setup logging
     #setup_logging(logger, args.syslog_socket, args.log_format, args.log_level)
+
+    mlb_cert_name = args.marathon_lb_cert_name
 
     # initialize health check LRU cache
     if args.health_check:

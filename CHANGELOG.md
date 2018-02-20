@@ -8,6 +8,9 @@
 * Included b-log version 0.4.0
 * Updated Marathon-LB main version v1.11.3
 * Bug fixing with race conditions
+* Bug fixing with dead connections to Vault
+* Ensure the default marathon-lb certificate to be present by SNI if there's no certificate for the concrete app
+* Add iptables rules in position 2 if a calico rule is present
 
 ## 0.2.0 (December 19, 2017)
 
