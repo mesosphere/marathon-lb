@@ -2,7 +2,7 @@
 
 ## 0.4.0 (upcoming)
 
-* Pending changelog
+* Fix isolate failed backends when regenerating config"
 
 ## 0.3.0 (February 20, 2018)
 

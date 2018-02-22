@@ -1593,6 +1593,9 @@ def make_config_valid_and_regenerate(marathon, groups, bind_http_https,
         marathon_apps = marathon.list()
         apps = []
         excluded_ids = []
+        final_generated_config = ""
+        final_domain_map_array = []
+        final_app_map_array = []
 
         for app in marathon_apps:
             valid_marathon_apps.append(app)
@@ -1617,14 +1620,22 @@ def make_config_valid_and_regenerate(marathon, groups, bind_http_https,
 
                 if len(valid_marathon_apps) == 0:
                     apps = []
+            else:
+                final_generated_config = generated_config
+                final_domain_map_array = domain_map_array
+                final_app_map_array = app_map_array
 
         if len(valid_marathon_apps) > 0:
             logger.debug("regentrating valid config which excludes the"
                          "following apps: %s", excluded_ids)
-            compareWriteAndReloadConfig(generated_config,
+
+            (changed, config_valid) = compareWriteAndReloadConfig(final_generated_config,
                                         config_file,
-                                        domain_map_array,
-                                        app_map_array, haproxy_map)
+                                        final_domain_map_array,
+                                        final_app_map_array, haproxy_map)
+            #Force reload
+            reloadConfig()
+
         else:
             logger.error("A valid config file could not be generated after"
                          "excluding all apps! skipping reload")
