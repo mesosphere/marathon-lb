@@ -389,13 +389,18 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
         logger.debug("frontend at %s:%d with backend %s",
                      app.bindAddr, app.servicePort, backend)
 
+        # Ensure the tcplog format only for tcp backends.
+        # By default the format is custom and with HTTP fields
+        if app.mode is 'tcp':
+            app.mode = 'tcp\n  option tcplog'
+
         # If app has HAPROXY_{n}_MODE set, use that setting.
         # Otherwise use 'http' if HAPROXY_{N}_VHOST is set, and 'tcp' if not.
         if app.mode is None:
             if app.hostname:
                 app.mode = 'http'
             else:
-                app.mode = 'tcp'
+                app.mode = 'tcp\n  option tcplog'
 
         if app.authUser:
             userlist_head = templater.haproxy_userlist_head(app)
