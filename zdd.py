@@ -413,11 +413,18 @@ def scale_new_app_instances(args, new_app, old_app):
        meet or surpass instances deployed for old_app.
        At which point go right to the new_app deployment target
     """
-    instances = (math.floor(new_app['instances'] +
-                 (new_app['instances'] + 1) / 2))
+    linear = (args.linear_increase and args.linear_increase > 0)
+    if linear:
+        instances = new_app['instances'] + args.linear_increase
+    else:
+        instances = (math.floor(new_app['instances'] +
+                     (new_app['instances'] + 1) / 2))
     if is_hybrid_deployment(args, new_app):
         if instances > get_new_instance_count(new_app):
             instances = get_new_instance_count(new_app)
+    elif linear:
+        if instances > get_deployment_target(new_app):
+            instances = get_deployment_target(new_app)
     else:
         if instances >= old_app['instances']:
             instances = get_deployment_target(new_app)
@@ -752,6 +759,14 @@ def get_arg_parser():
                         " existing instances, then this will be overridden"
                         " by the latter number",
                         type=int, default=1
+                        )
+    parser.add_argument("--linear-increase",
+                        help="Instead of scaling the new app by factor 0.5 if"
+                        " its existing instances and going to the new target"
+                        " in a single final step if it meets or surpasses the"
+                        " number of old instances, continously scale the new"
+                        " app by this number.",
+                        type=int, default=0
                         )
     parser.add_argument("--resume", "-r",
                         help="Resume from a previous deployment",
