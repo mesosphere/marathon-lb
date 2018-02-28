@@ -1311,6 +1311,7 @@ def get_apps(marathon, apps=[]):
     # to a deployment group.
     processed_apps = []
     deployment_groups = {}
+
     for app in apps:
         deployment_group = None
         if 'HAPROXY_DEPLOYMENT_GROUP' in app['labels']:
@@ -1531,7 +1532,7 @@ def regenerate_config(marathon, config_file, groups, bind_http_https,
         generated_config, config_file, domain_map_array, app_map_array,
         haproxy_map)
 
-    if changed and not config_valid:
+    if changed and not config_valid and not args.skip_config_cleanup:
         apps = make_config_valid_and_regenerate(
             marathon, groups, bind_http_https, ssl_certs, templater,
             haproxy_map, domain_map_array, app_map_array, config_file)
@@ -1802,6 +1803,10 @@ def get_arg_parser():
                         default="/etc/ssl/cert.pem")
     parser.add_argument("--skip-validation",
                         help="Skip haproxy config file validation",
+                        action="store_true")
+    parser.add_argument("--skip-config-cleanup",
+                        help="If one app fails, don't try to make configuration "
+                        "valid by removing apps one by one",
                         action="store_true")
     parser.add_argument("--dry", "-d",
                         help="Only print configuration to console",
