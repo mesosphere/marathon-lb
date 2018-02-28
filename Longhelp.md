@@ -26,7 +26,7 @@ usage: marathon_lb.py [-h] [--longhelp] [--marathon MARATHON [MARATHON ...]]
                       [--lru-cache-capacity LRU_CACHE_CAPACITY]
                       [--haproxy-map] [--dont-bind-http-https]
                       [--group-https-by-vhost] [--ssl-certs SSL_CERTS]
-                      [--skip-validation] [--dry]
+                      [--skip-validation] [--skip-config-cleanup] [--dry]
                       [--min-serv-port-ip-per-task MIN_SERV_PORT_IP_PER_TASK]
                       [--max-serv-port-ip-per-task MAX_SERV_PORT_IP_PER_TASK]
                       [--syslog-socket SYSLOG_SOCKET]
@@ -88,6 +88,9 @@ optional arguments:
                         /etc/ssl/site1.co.pem,/etc/ssl/site2.co.pem (default:
                         /etc/ssl/cert.pem)
   --skip-validation     Skip haproxy config file validation (default: False)
+  --skip-config-cleanup
+                        If one app fails, don't try to make configuration
+                        valid by removing apps one by one (default: False)
   --dry, -d             Only print configuration to console (default: False)
   --min-serv-port-ip-per-task MIN_SERV_PORT_IP_PER_TASK
                         Minimum port number to use when auto-assigning service
