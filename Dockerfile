@@ -1,5 +1,7 @@
 FROM debian:buster
 
+LABEL LAST_MODIFIED=20180308
+
 # runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
