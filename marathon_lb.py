@@ -1619,6 +1619,11 @@ def get_apps(marathon, apps=[]):
                                task['id'])
                 continue
 
+            if task['state'] != 'TASK_RUNNING':
+                logger.warning("Ignoring non-running task " + task['id'] +
+                               " with state " + task['state'])
+                continue
+
             if marathon.health_check() and 'healthChecks' in app and \
                len(app['healthChecks']) > 0:
                 alive = True
