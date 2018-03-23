@@ -8,6 +8,7 @@ else
   PIPCMD='pip3'
 fi
 
+$PIPCMD install --upgrade pip setuptools
 $PIPCMD install -r requirements-dev.txt
 
 PYTHONPATH=. coverage run "$(which nosetests)"
