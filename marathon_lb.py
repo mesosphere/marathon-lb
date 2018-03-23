@@ -1676,7 +1676,6 @@ def regenerate_config(marathon, config_file, groups, bind_http_https,
     generated_config = config(apps, groups, bind_http_https, ssl_certs,
                               templater, haproxy_map, domain_map_array,
                               app_map_array, config_file, group_https_by_vhost)
-
     (changed, config_valid) = compareWriteAndReloadConfig(
         generated_config, config_file, domain_map_array, app_map_array,
         haproxy_map)
@@ -1692,7 +1691,6 @@ def regenerate_config(marathon, config_file, groups, bind_http_https,
                                                 app_map_array,
                                                 config_file,
                                                 group_https_by_vhost)
-
     return apps
 
 
@@ -1731,7 +1729,6 @@ def make_config_valid_and_regenerate(marathon,
                                                          app_map_array,
                                                          haproxy_map,
                                                          group_https_by_vhost)
-
             if not config_valid:
                 logger.warn(
                     "invalid configuration caused by app %s; "
