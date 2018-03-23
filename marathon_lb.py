@@ -1200,7 +1200,7 @@ def truncateMapFileIfExists(map_file):
 
 
 def generateAndValidateTempConfig(config, config_file, domain_map_array,
-                              app_map_array, haproxy_map):
+                                  app_map_array, haproxy_map):
     temp_config_file = "%s.tmp" % config_file
     domain_map_file = os.path.join(os.path.dirname(temp_config_file),
                                    "domain2backend.map.tmp")
@@ -1577,10 +1577,10 @@ def regenerate_config(marathon, config_file, groups, bind_http_https,
 
 # Build up a valid configuration by adding one app at a time and checking
 # for valid config file after each app
-def make_config_valid_and_regenerate(marathon, raw_apps, groups, bind_http_https,
-                                     ssl_certs, templater, haproxy_map,
-                                     domain_map_array, app_map_array,
-                                     config_file):
+def make_config_valid_and_regenerate(marathon, raw_apps, groups,
+                                     bind_http_https, ssl_certs, templater,
+                                     haproxy_map, domain_map_array,
+                                     app_map_array, config_file):
     try:
         start_time = time.time()
         apps = []
