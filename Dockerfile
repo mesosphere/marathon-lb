@@ -1,6 +1,6 @@
 FROM debian:buster
 
-LABEL LAST_MODIFIED=20180308
+LABEL LAST_MODIFIED=20180325
 
 # runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         runit \
         gnupg-agent \
         socat \
+        make \
     && rm -rf /var/lib/apt/lists/*
 
 ENV TINI_VERSION=v0.16.1 \
@@ -53,7 +54,6 @@ RUN set -x \
         liblua5.3-dev \
         libpcre3-dev \
         libssl-dev \
-        make \
         python3-dev \
         python3-pip \
         python3-setuptools \
