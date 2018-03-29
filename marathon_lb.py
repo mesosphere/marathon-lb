@@ -33,7 +33,7 @@ import sys
 import threading
 import time
 import datetime
-from itertools import cycle, groupby
+from itertools import cycle
 from collections import defaultdict
 from operator import attrgetter
 from shutil import move
@@ -49,6 +49,7 @@ from config import ConfigTemplater, label_keys
 from lrucache import LRUCache
 from utils import (CurlHttpEventStream, get_task_ip_and_ports, ip_cache,
                    ServicePortAssigner)
+
 
 logger = logging.getLogger('marathon_lb')
 SERVICE_PORT_ASSIGNER = ServicePortAssigner()
@@ -294,7 +295,6 @@ def get_backend_port(apps, app, idx):
     then the app idx-th backend is returned instead.
 
     """
-
     def get_backends(app):
         key_func = attrgetter('host', 'port')
         return sorted(list(app.backends), key=key_func)
@@ -348,7 +348,8 @@ def mergeVhostTable(left, right):
 
 def config(apps, groups, bind_http_https, ssl_certs, templater,
            haproxy_map=False, domain_map_array=[], app_map_array=[],
-           config_file="/etc/haproxy/haproxy.cfg", group_https_by_vhosts=False):
+           config_file="/etc/haproxy/haproxy.cfg",
+           group_https_by_vhosts=False):
     logger.info("generating config")
     config = templater.haproxy_head
     groups = frozenset(groups)
@@ -453,7 +454,8 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
             https_frontend_list.append((backend_weight, s_fe))
 
             if group_https_by_vhosts:
-                https_grouped_frontend_list = mergeVhostTable(https_grouped_frontend_list, g_fe)
+                https_grouped_frontend_list = mergeVhostTable(
+                    https_grouped_frontend_list, g_fe)
 
         # if app mode is http, we add the app to the second http frontend
         # selecting apps by http header X-Marathon-App-Id
@@ -515,14 +517,14 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
         # Set network allowed ACLs
         if app.mode == 'http' and app.network_allowed:
             for network in app.network_allowed.split():
-                backends += templater. \
-                    haproxy_http_backend_network_allowed_acl(app). \
+                backends += templater.\
+                    haproxy_http_backend_network_allowed_acl(app).\
                     format(network_allowed=network)
             backends += templater.haproxy_http_backend_acl_allow_deny
         elif app.mode == 'tcp' and app.network_allowed:
             for network in app.network_allowed.split():
-                backends += templater. \
-                    haproxy_tcp_backend_network_allowed_acl(app). \
+                backends += templater.\
+                    haproxy_tcp_backend_network_allowed_acl(app).\
                     format(network_allowed=network)
             backends += templater.haproxy_tcp_backend_acl_allow_deny
 
@@ -535,7 +537,7 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
 
         do_backend_healthcheck_options_once = True
         key_func = attrgetter('host', 'port')
-        for backend_service_idx, backendServer \
+        for backend_service_idx, backendServer\
                 in enumerate(sorted(app.backends, key=key_func)):
             if do_backend_healthcheck_options_once:
                 if app.healthCheck:
@@ -580,7 +582,7 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
                     (backendServer.ip + '_' +
                      str(backendServer.port)))
             shortHashedServerName = hashlib.sha1(serverName.encode()) \
-                                        .hexdigest()[:10]
+                .hexdigest()[:10]
 
             server_health_check_options = None
             if app.healthCheck:
@@ -611,7 +613,7 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
                 port=backendServer.port,
                 serverName=serverName,
                 cookieOptions=' check cookie ' +
-                              shortHashedServerName if app.sticky else '',
+                shortHashedServerName if app.sticky else '',
                 healthCheckOptions=server_health_check_options
                 if server_health_check_options else '',
                 otherOptions=' disabled' if backendServer.draining else ''
@@ -624,8 +626,10 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
         http_frontends += backend[1]
     if group_https_by_vhosts:
         for backend in sorted(https_grouped_frontend_list.keys()):
-            https_frontends += templater.haproxy_https_grouped_vhost_frontend_acl.format(
-                backend=re.sub(r'[^a-zA-Z0-9\-]', '_', backend), host=backend)
+            https_frontends +=\
+                templater.haproxy_https_grouped_vhost_frontend_acl.format(
+                    backend=re.sub(r'[^a-zA-Z0-9\-]', '_', backend),
+                    host=backend)
 
     else:
         for backend in https_frontend_list:
@@ -639,17 +643,27 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
         config += https_frontends
         if group_https_by_vhosts:
             for vhost in sorted(https_grouped_frontend_list.keys()):
-                config += templater.haproxy_https_grouped_vhost_backend_head.format(
-                    name=re.sub(r'[^a-zA-Z0-9\-]', '_', vhost))
+                config +=\
+                    templater\
+                    .haproxy_https_grouped_vhost_backend_head\
+                    .format(
+                        name=re.sub(r'[^a-zA-Z0-9\-]', '_', vhost))
                 frontend = templater \
                     .haproxy_https_grouped_vhost_frontend_head \
                     .format(name=re.sub(r'[^a-zA-Z0-9\-]', '_', vhost),
                             sslCerts=" ".join(
                                 map(lambda cert: "crt " + cert,
-                                    defaultValue(https_grouped_frontend_list[vhost][1], set(_ssl_certs)))),
-                            bindOpts=" ".join(map(lambda opts: " " + opts, https_grouped_frontend_list[vhost][2]))
+                                    defaultValue(
+                                        https_grouped_frontend_list[vhost][1],
+                                                 set(_ssl_certs)))),
+                            bindOpts=" ".join(
+                                map(lambda opts: " " + opts,
+                                    https_grouped_frontend_list[vhost][2]))
                             )
-                for v in sorted(https_grouped_frontend_list[vhost][0], key=lambda x: x[0], reverse=True):
+                for v in sorted(
+                        https_grouped_frontend_list[vhost][0],
+                        key=lambda x: x[0],
+                        reverse=True):
                     frontend += v[1]
                 config += frontend
     config += frontends
@@ -768,15 +782,15 @@ def generateHttpVhostAcl(
             "vhost label specifies multiple hosts: %s", app.hostname)
         vhosts = app.hostname.split(',')
         acl_name = re.sub(r'[^a-zA-Z0-9\-]', '_', vhosts[0]) + \
-                   '_' + app.appId[1:].replace('/', '_')
+            '_' + app.appId[1:].replace('/', '_')
 
         if app.path:
             if app.authRealm:
                 # Set the path ACL if it exists
                 logger.debug("adding path acl, path=%s", app.path)
                 http_frontend_acl = \
-                    templater. \
-                        haproxy_http_frontend_acl_only_with_path_and_auth(app)
+                    templater.\
+                    haproxy_http_frontend_acl_only_with_path_and_auth(app)
                 staging_http_frontends += http_frontend_acl.format(
                     path=app.path,
                     cleanedUpHostname=acl_name,
@@ -785,8 +799,8 @@ def generateHttpVhostAcl(
                     backend=backend
                 )
                 https_frontend_acl = \
-                    templater. \
-                        haproxy_https_frontend_acl_only_with_path(app)
+                    templater.\
+                    haproxy_https_frontend_acl_only_with_path(app)
                 staging_https_frontends += https_frontend_acl.format(
                     path=app.path,
                     cleanedUpHostname=acl_name,
@@ -812,18 +826,20 @@ def generateHttpVhostAcl(
         temp_frontend_head = staging_https_frontends
 
         for vhost_hostname in vhosts:
-            https_grouped_frontend_list[vhost_hostname][0].append((app.backend_weight, temp_frontend_head))
+            https_grouped_frontend_list[vhost_hostname][0].append(
+                (app.backend_weight, temp_frontend_head))
             if app.sslCert is not None:
                 https_grouped_frontend_list[vhost_hostname][1].add(app.sslCert)
             if app.bindOptions is not None:
-                https_grouped_frontend_list[vhost_hostname][2].add(app.bindOptions)
+                https_grouped_frontend_list[vhost_hostname][2].add(
+                    app.bindOptions)
 
             logger.debug("processing vhost %s", vhost_hostname)
             if haproxy_map and not app.path and not app.authRealm and \
                     not app.redirectHttpToHttps:
                 if 'map_http_frontend_acl' not in duplicate_map:
                     app.backend_weight = -1
-                    http_frontend_acl = templater. \
+                    http_frontend_acl = templater.\
                         haproxy_map_http_frontend_acl_only(app)
                     staging_http_frontends += http_frontend_acl.format(
                         haproxy_dir=haproxy_dir
@@ -834,7 +850,7 @@ def generateHttpVhostAcl(
                 if map_element not in map_array:
                     map_array.append(map_element)
             else:
-                http_frontend_acl = templater. \
+                http_frontend_acl = templater.\
                     haproxy_http_frontend_acl_only(app)
                 staging_http_frontends += http_frontend_acl.format(
                     cleanedUpHostname=acl_name,
@@ -844,7 +860,7 @@ def generateHttpVhostAcl(
             # Tack on the SSL ACL as well
             if app.path:
                 if app.authRealm:
-                    https_frontend_acl = templater. \
+                    https_frontend_acl = templater.\
                         haproxy_https_frontend_acl_with_auth_and_path(app)
                     staging_https_frontend = https_frontend_acl.format(
                         cleanedUpHostname=acl_name,
@@ -854,7 +870,8 @@ def generateHttpVhostAcl(
                         backend=backend
                     )
                     staging_https_frontends += staging_https_frontend
-                    https_grouped_frontend_list[vhost_hostname][0].append((app.backend_weight, staging_https_frontend))
+                    https_grouped_frontend_list[vhost_hostname][0].append(
+                        (app.backend_weight, staging_https_frontend))
                 else:
                     https_frontend_acl = \
                         templater.haproxy_https_frontend_acl_with_path(app)
@@ -865,7 +882,8 @@ def generateHttpVhostAcl(
                         backend=backend
                     )
                     staging_https_frontends += staging_https_frontend
-                    https_grouped_frontend_list[vhost_hostname][0].append((app.backend_weight, staging_https_frontend))
+                    https_grouped_frontend_list[vhost_hostname][0].append(
+                        (app.backend_weight, staging_https_frontend))
             else:
                 if app.authRealm:
                     https_frontend_acl = \
@@ -878,20 +896,25 @@ def generateHttpVhostAcl(
                         backend=backend
                     )
                     staging_https_frontends += staging_https_frontend
-                    https_grouped_frontend_list[vhost_hostname][0].append((app.backend_weight, staging_https_frontend))
+                    https_grouped_frontend_list[vhost_hostname][0].append(
+                        (app.backend_weight, staging_https_frontend))
                 else:
                     if haproxy_map:
                         if 'map_https_frontend_acl' not in duplicate_map:
+<<<<<<< HEAD
                             app.backend_weight = -1
+=======
+>>>>>>> Review fixes
                             https_frontend_acl = templater.\
                                 haproxy_map_https_frontend_acl(app)
                             staging_https_frontend = https_frontend_acl. \
                                 format(
-                                hostname=vhost_hostname,
-                                haproxy_dir=haproxy_dir
-                            )
+                                    hostname=vhost_hostname,
+                                    haproxy_dir=haproxy_dir
+                                )
                             staging_https_frontends += staging_https_frontend
-                            https_grouped_frontend_list[vhost_hostname][0].append(
+                            https_grouped_frontend_list[vhost_hostname][0]\
+                                .append(
                                 (app.backend_weight, staging_https_frontend))
                             duplicate_map['map_https_frontend_acl'] = 1
                         map_element = {}
@@ -900,7 +923,7 @@ def generateHttpVhostAcl(
                             map_array.append(map_element)
 
                     else:
-                        https_frontend_acl = templater. \
+                        https_frontend_acl = templater.\
                             haproxy_https_frontend_acl(app)
                         staging_https_frontend = https_frontend_acl.format(
                             cleanedUpHostname=acl_name,
@@ -917,8 +940,8 @@ def generateHttpVhostAcl(
             logger.debug("writing rule to redirect http to https traffic")
             if app.path:
                 haproxy_backend_redirect_http_to_https = \
-                    templater. \
-                        haproxy_backend_redirect_http_to_https_with_path(app)
+                    templater.\
+                    haproxy_backend_redirect_http_to_https_with_path(app)
                 frontend = haproxy_backend_redirect_http_to_https.format(
                     bindAddr=app.bindAddr,
                     cleanedUpHostname=acl_name,
@@ -936,8 +959,8 @@ def generateHttpVhostAcl(
         elif app.path:
             if app.authRealm:
                 http_frontend_route = \
-                    templater. \
-                        haproxy_http_frontend_routing_only_with_path_and_auth(app)
+                    templater.\
+                    haproxy_http_frontend_routing_only_with_path_and_auth(app)
                 staging_http_frontends += http_frontend_route.format(
                     cleanedUpHostname=acl_name,
                     realm=app.authRealm,
@@ -953,8 +976,8 @@ def generateHttpVhostAcl(
         else:
             if app.authRealm:
                 http_frontend_route = \
-                    templater. \
-                        haproxy_http_frontend_routing_only_with_auth(app)
+                    templater.\
+                    haproxy_http_frontend_routing_only_with_auth(app)
                 staging_http_frontends += http_frontend_route.format(
                     cleanedUpHostname=acl_name,
                     realm=app.authRealm,
@@ -974,7 +997,7 @@ def generateHttpVhostAcl(
         logger.debug(
             "adding virtual host for app with hostname %s", app.hostname)
         acl_name = re.sub(r'[^a-zA-Z0-9\-]', '_', app.hostname) + \
-                   '_' + app.appId[1:].replace('/', '_')
+            '_' + app.appId[1:].replace('/', '_')
         if app.sslCert is not None:
             https_grouped_frontend_list[app.hostname][1].add(app.sslCert)
         if app.bindOptions is not None:
@@ -997,8 +1020,8 @@ def generateHttpVhostAcl(
                     backend=backend
                 )
                 haproxy_backend_redirect_http_to_https = \
-                    templater. \
-                        haproxy_backend_redirect_http_to_https_with_path(app)
+                    templater.\
+                    haproxy_backend_redirect_http_to_https_with_path(app)
                 frontend = haproxy_backend_redirect_http_to_https.format(
                     bindAddr=app.bindAddr,
                     cleanedUpHostname=acl_name,
@@ -1008,8 +1031,8 @@ def generateHttpVhostAcl(
             else:
                 if app.authRealm:
                     http_frontend_acl = \
-                        templater. \
-                            haproxy_http_frontend_acl_with_auth_and_path(app)
+                        templater.\
+                        haproxy_http_frontend_acl_with_auth_and_path(app)
                     staging_http_frontends += http_frontend_acl.format(
                         cleanedUpHostname=acl_name,
                         hostname=app.hostname,
@@ -1035,12 +1058,13 @@ def generateHttpVhostAcl(
                 backend=backend
             )
             staging_https_frontends += staging_https_frontend
-            https_grouped_frontend_list[app.hostname][0].append((app.backend_weight, staging_https_frontend))
+            https_grouped_frontend_list[app.hostname][0].append(
+                (app.backend_weight, staging_https_frontend))
 
             if app.authRealm:
                 https_frontend_acl = \
-                    templater. \
-                        haproxy_https_frontend_acl_with_auth_and_path(app)
+                    templater.\
+                    haproxy_https_frontend_acl_with_auth_and_path(app)
                 staging_https_frontend = https_frontend_acl.format(
                     cleanedUpHostname=acl_name,
                     hostname=app.hostname,
@@ -1050,7 +1074,8 @@ def generateHttpVhostAcl(
                     backend=backend
                 )
                 staging_https_frontends += staging_https_frontend
-                https_grouped_frontend_list[app.hostname][0].append((app.backend_weight, staging_https_frontend))
+                https_grouped_frontend_list[app.hostname][0].append(
+                    (app.backend_weight, staging_https_frontend))
             else:
                 https_frontend_acl = \
                     templater.haproxy_https_frontend_acl_with_path(app)
@@ -1061,7 +1086,8 @@ def generateHttpVhostAcl(
                     backend=backend
                 )
                 staging_https_frontends += staging_https_frontend
-                https_grouped_frontend_list[app.hostname][0].append((app.backend_weight, staging_https_frontend))
+                https_grouped_frontend_list[app.hostname][0].append(
+                    (app.backend_weight, staging_https_frontend))
         else:
             if app.redirectHttpToHttps:
                 http_frontend_acl = \
@@ -1071,8 +1097,8 @@ def generateHttpVhostAcl(
                     hostname=app.hostname
                 )
                 haproxy_backend_redirect_http_to_https = \
-                    templater. \
-                        haproxy_backend_redirect_http_to_https(app)
+                    templater.\
+                    haproxy_backend_redirect_http_to_https(app)
                 frontend = haproxy_backend_redirect_http_to_https.format(
                     bindAddr=app.bindAddr,
                     cleanedUpHostname=acl_name
@@ -1123,12 +1149,13 @@ def generateHttpVhostAcl(
                     backend=backend
                 )
                 staging_https_frontends += staging_https_frontend
-                https_grouped_frontend_list[app.hostname][0].append((app.backend_weight, staging_https_frontend))
+                https_grouped_frontend_list[app.hostname][0].append(
+                    (app.backend_weight, staging_https_frontend))
             else:
                 if haproxy_map:
                     if 'map_https_frontend_acl' not in duplicate_map:
                         app.backend_weight = -1
-                        https_frontend_acl = templater. \
+                        https_frontend_acl = templater.\
                             haproxy_map_https_frontend_acl(app)
                         staging_https_frontend = https_frontend_acl.format(
                             hostname=app.hostname,
@@ -1143,7 +1170,7 @@ def generateHttpVhostAcl(
                     if map_element not in map_array:
                         map_array.append(map_element)
                 else:
-                    https_frontend_acl = templater. \
+                    https_frontend_acl = templater.\
                         haproxy_https_frontend_acl(app)
                     staging_https_frontend = https_frontend_acl.format(
                         cleanedUpHostname=acl_name,
@@ -1152,7 +1179,8 @@ def generateHttpVhostAcl(
                         backend=backend
                     )
                     staging_https_frontends += staging_https_frontend
-                    https_grouped_frontend_list[app.hostname][0].append((app.backend_weight, staging_https_frontend))
+                    https_grouped_frontend_list[app.hostname][0].append(
+                        (app.backend_weight, staging_https_frontend))
     return (app.backend_weight,
             staging_http_frontends,
             staging_https_frontends,
@@ -1565,7 +1593,7 @@ def get_apps(marathon, apps=[]):
                 continue
 
             if marathon.health_check() and 'healthChecks' in app and \
-                    len(app['healthChecks']) > 0:
+               len(app['healthChecks']) > 0:
                 alive = True
                 if 'healthCheckResults' not in task:
                     # use previously cached result, if it exists
@@ -1621,18 +1649,31 @@ def regenerate_config(marathon, config_file, groups, bind_http_https,
         generated_config, config_file, domain_map_array, app_map_array,
         haproxy_map)
     if changed and not config_valid:
-        apps = make_config_valid_and_regenerate(marathon, groups, bind_http_https, ssl_certs,
-                                                templater, haproxy_map, domain_map_array,
-                                                app_map_array, config_file, group_https_by_vhost)
+        apps = make_config_valid_and_regenerate(marathon, groups,
+                                                bind_http_https,
+                                                ssl_certs,
+                                                templater,
+                                                haproxy_map,
+                                                domain_map_array,
+                                                app_map_array,
+                                                config_file,
+                                                group_https_by_vhost)
 
     return apps
 
 
 # Build up a valid configuration by adding one app at a time and checking
 # for valid config file after each app
-def make_config_valid_and_regenerate(marathon, groups, bind_http_https, ssl_certs,
-                                     templater, haproxy_map, domain_map_array,
-                                     app_map_array, config_file, group_https_by_vhost):
+def make_config_valid_and_regenerate(marathon,
+                                     groups,
+                                     bind_http_https,
+                                     ssl_certs,
+                                     templater,
+                                     haproxy_map,
+                                     domain_map_array,
+                                     app_map_array,
+                                     config_file,
+                                     group_https_by_vhost):
     try:
         start_time = time.time()
         apps = []
@@ -1643,6 +1684,7 @@ def make_config_valid_and_regenerate(marathon, groups, bind_http_https, ssl_cert
         for app in raw_apps:
             domain_map_array = []
             app_map_array = []
+<<<<<<< HEAD
             valid_apps.append(app)
             apps = get_apps(marathon, valid_apps)
             generated_config = config(apps, groups, bind_http_https,
@@ -1657,6 +1699,24 @@ def make_config_valid_and_regenerate(marathon, groups, bind_http_https, ssl_cert
                                                          group_https_by_vhost)
 
             if not config_valid:
+=======
+
+            generated_config = config(apps,
+                                      groups,
+                                      bind_http_https,
+                                      ssl_certs,
+                                      templater,
+                                      haproxy_map,
+                                      domain_map_array,
+                                      app_map_array,
+                                      config_file,
+                                      group_https_by_vhost)
+
+            if not generateAndValidateConfig(generated_config, config_file,
+                                             domain_map_array, app_map_array,
+                                             haproxy_map):
+                invalid_id = valid_marathon_apps[-1]["id"]
+>>>>>>> Review fixes
                 logger.warn(
                     "invalid configuration caused by app %s; "
                     "it will be excluded", app["id"])
@@ -1693,8 +1753,13 @@ def make_config_valid_and_regenerate(marathon, groups, bind_http_https, ssl_cert
 
 class MarathonEventProcessor(object):
 
-    def __init__(self, marathon, config_file, groups,
-                 bind_http_https, ssl_certs, haproxy_map, group_https_by_vhost):
+    def __init__(self, marathon,
+                 config_file,
+                 groups,
+                 bind_http_https,
+                 ssl_certs,
+                 haproxy_map,
+                 group_https_by_vhost):
         self.__marathon = marathon
         # appId -> MarathonApp
         self.__apps = dict()
@@ -1773,8 +1838,8 @@ class MarathonEventProcessor(object):
 
             logger.debug("({0}): updating tasks finished, "
                          "took {1} seconds".format(
-                threading.get_ident(),
-                time.time() - start_time))
+                             threading.get_ident(),
+                             time.time() - start_time))
         except requests.exceptions.ConnectionError as e:
             logger.error("({0}): Connection error({1}): {2}".format(
                 threading.get_ident(), e.errno, e.strerror))
@@ -1786,7 +1851,7 @@ class MarathonEventProcessor(object):
             # Validate the existing config before reloading
             logger.debug("({}): attempting to reload existing "
                          "config...".format(
-                threading.get_ident()))
+                             threading.get_ident()))
             if validateConfig(self.__config_file):
                 reloadConfig()
         except Exception:
@@ -1847,8 +1912,8 @@ def get_arg_parser():
                         )
     parser.add_argument("--group",
                         help="[required] Only generate config for apps which"
-                             " list the specified names. Use '*' to match all"
-                             " groups, including those without a group specified.",
+                        " list the specified names. Use '*' to match all"
+                        " groups, including those without a group specified.",
                         action="append",
                         default=list())
     parser.add_argument("--command", "-c",
@@ -1856,35 +1921,35 @@ def get_arg_parser():
                         default=None)
     parser.add_argument("--max-reload-retries",
                         help="Max reload retries before failure. Reloads"
-                             " happen every --reload-interval seconds. Set to"
-                             " 0 to disable or -1 for infinite retries.",
+                        " happen every --reload-interval seconds. Set to"
+                        " 0 to disable or -1 for infinite retries.",
                         type=int, default=10)
     parser.add_argument("--reload-interval",
                         help="Wait this number of seconds between"
-                             " reload retries.",
+                        " reload retries.",
                         type=int, default=10)
     parser.add_argument("--strict-mode",
                         help="If set, backends are only advertised if"
-                             " HAPROXY_{n}_ENABLED=true. Strict mode will be"
-                             " enabled by default in a future release.",
+                        " HAPROXY_{n}_ENABLED=true. Strict mode will be"
+                        " enabled by default in a future release.",
                         action="store_true")
     parser.add_argument("--sse", "-s",
                         help="Use Server Sent Events",
                         action="store_true")
     parser.add_argument("--health-check", "-H",
                         help="If set, respect Marathon's health check "
-                             "statuses before adding the app instance into "
-                             "the backend pool.",
+                        "statuses before adding the app instance into "
+                        "the backend pool.",
                         action="store_true")
     parser.add_argument("--lru-cache-capacity",
                         help="LRU cache size (in number "
-                             "of items). This should be at least as large as the "
-                             "number of tasks exposed via marathon-lb.",
+                        "of items). This should be at least as large as the "
+                        "number of tasks exposed via marathon-lb.",
                         type=int, default=1000
                         )
     parser.add_argument("--haproxy-map",
                         help="Use HAProxy maps for domain name to backend"
-                             "mapping.", action="store_true")
+                        "mapping.", action="store_true")
     parser.add_argument("--dont-bind-http-https",
                         help="Don't bind to HTTP and HTTPS frontends.",
                         action="store_true")
@@ -1937,7 +2002,7 @@ if __name__ == '__main__':
         if args.marathon is None:
             arg_parser.error('argument --marathon/-m is required')
         if bool(args.min_serv_port_ip_per_task) != \
-                bool(args.max_serv_port_ip_per_task):
+           bool(args.max_serv_port_ip_per_task):
             arg_parser.error(
                 'either specify both --min-serv-port-ip-per-task '
                 'and --max-serv-port-ip-per-task or neither (set both to zero '
@@ -2005,11 +2070,11 @@ if __name__ == '__main__':
                         # marathon sometimes sends more than one json per event
                         # e.g. {}\r\n{}\r\n\r\n
                         for real_event_data in re.split(r'\r\n', event.data):
-                            data = load_json(real_event_data)
-                            logger.info(
-                                "received event of type {0}"
+                                data = load_json(real_event_data)
+                                logger.info(
+                                    "received event of type {0}"
                                     .format(data['eventType']))
-                            processor.handle_event(data)
+                                processor.handle_event(data)
                     else:
                         logger.info("skipping empty message")
             except pycurl.error as e:

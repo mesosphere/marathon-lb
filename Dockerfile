@@ -13,8 +13,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python3 \
         runit \
         gnupg-agent \
+<<<<<<< HEAD
         socat \
         make \
+=======
+	socat \
+>>>>>>> Review fixes
     && rm -rf /var/lib/apt/lists/*
 
 ENV TINI_VERSION=v0.13.2 \
@@ -62,10 +66,10 @@ RUN set -x \
     ' \
     && apt-get update \
     && apt-get install -y --no-install-recommends $buildDeps \
-    && rm -rf /var/lib/apt/lists/*
-
+    && rm -rf /var/lib/apt/lists/* \
+    \
 # Build HAProxy
-RUN wget -O haproxy.tar.gz "https://www.haproxy.org/download/$HAPROXY_MAJOR/src/haproxy-$HAPROXY_VERSION.tar.gz" \
+    && wget -O haproxy.tar.gz "https://www.haproxy.org/download/$HAPROXY_MAJOR/src/haproxy-$HAPROXY_VERSION.tar.gz" \
     && echo "$HAPROXY_MD5  haproxy.tar.gz" | md5sum -c \
     && mkdir -p /usr/src/haproxy \
     && tar -xzf haproxy.tar.gz -C /usr/src/haproxy --strip-components=1 \
@@ -81,19 +85,20 @@ RUN wget -O haproxy.tar.gz "https://www.haproxy.org/download/$HAPROXY_MAJOR/src/
         USE_REGPARM=1 \
         USE_STATIC_PCRE=1 \
         USE_ZLIB=1 \
-        USE_LINUX_TPROXY=1 \
         all \
         install-bin \
-    && rm -rf /usr/src/haproxy
-
+    && rm -rf /usr/src/haproxy \
+    \
 # Install Python dependencies
 # Install Python packages with --upgrade so we get new packages even if a system
 # package is already installed. Combine with --force-reinstall to ensure we get
 # a local package even if the system package is up-to-date as the system package
 # will probably be uninstalled with the build dependencies.
-RUN pip3 install --no-cache --upgrade --force-reinstall -r /marathon-lb/requirements.txt \
+    && pip3 install --no-cache --upgrade --force-reinstall -r /marathon-lb/requirements.txt \
     \
-    && apt-get purge -y --auto-remove $buildDeps
+    && apt-get purge -y --auto-remove $buildDeps \
+# Purge of python3-dev will delete python3 also
+    && apt-get update && apt-get install -y --no-install-recommends python3
 
 COPY  . /marathon-lb
 

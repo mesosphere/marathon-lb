@@ -833,7 +833,7 @@ frontend marathon_https_in
   http-request auth realm "realm" if { ssl_fc_sni test.example.com } \
 path_nginx_10000 !auth_test_example_com_nginx
   use_backend nginx_10000 if { ssl_fc_sni test.example.com } ''' + \
-                   '''path_nginx_10000
+                                      '''path_nginx_10000
   acl auth_test_example_com_nginx http_auth(user_nginx_10000)
   http-request auth realm "realm" if { ssl_fc_sni test } \
 path_nginx_10000 !auth_test_example_com_nginx
@@ -967,7 +967,7 @@ frontend marathon_https_in
   mode http
   acl path_nginx_10000 path_beg /some/path
   use_backend nginx_10000 if { ssl_fc_sni test.example.com } ''' + \
-                   '''path_nginx_10000
+                                      '''path_nginx_10000
   use_backend nginx_10000 if { ssl_fc_sni test } path_nginx_10000
 
 frontend nginx_10000
@@ -1102,7 +1102,7 @@ frontend marathon_https_in
   mode http
   acl path_nginx_10000 path_beg /some/path
   use_backend nginx_10000 if { ssl_fc_sni test.example.com } ''' + \
-                   '''path_nginx_10000
+                                      '''path_nginx_10000
   use_backend nginx_10000 if { ssl_fc_sni test } path_nginx_10000
 
 frontend nginx_10000
@@ -1172,7 +1172,7 @@ frontend marathon_https_in
   mode http
   acl path_nginx_10000 path_beg /some/path
   use_backend nginx_10000 if { ssl_fc_sni test.example.com } ''' + \
-                   '''path_nginx_10000
+                                      '''path_nginx_10000
   use_backend nginx_10000 if { ssl_fc_sni test } path_nginx_10000
 
 frontend nginx_10000
@@ -3196,7 +3196,8 @@ backend nginx2_10001
         config_file = "/etc/haproxy/haproxy.cfg"
         config = marathon_lb.config(apps, groups, bind_http_https, ssl_certs,
                                     templater, haproxy_map, domain_map_array,
-                                    app_map_array, config_file, group_https_by_vhost)
+                                    app_map_array, config_file,
+                                    group_https_by_vhost)
         expected = self.base_config + '''
 frontend marathon_http_in
   bind *:80
@@ -3205,19 +3206,23 @@ frontend marathon_http_in
   acl host_nginx_net_letsencrypt hdr(host) -i nginx.net
   acl host_nginx_net_letsencrypt hdr(host) -i server2.nginx.net
   acl host_nginx_net_letsencrypt hdr(host) -i server.nginx.net
-  use_backend letsencrypt_10002 if host_nginx_net_letsencrypt path_letsencrypt_10002
+  use_backend letsencrypt_10002 \
+if host_nginx_net_letsencrypt path_letsencrypt_10002
   acl host_server2_nginx_net_nginx3 hdr(host) -i server2.nginx.net
   acl path_nginx3_10002 path_beg /test2
-  use_backend nginx3_10002 if host_server2_nginx_net_nginx3 path_nginx3_10002
+  use_backend nginx3_10002 \
+if host_server2_nginx_net_nginx3 path_nginx3_10002
   acl host_server2_nginx_net_nginx2 hdr(host) -i server2.nginx.net
   acl path_nginx2_10001 path_beg /test
   use_backend nginx2_10001 if host_server2_nginx_net_nginx2 path_nginx2_10001
-  use_backend %[req.hdr(host),lower,regsub(:.*$,,),map(/etc/haproxy/domain2backend.map)]
+  use_backend %[req.hdr(host),\
+lower,regsub(:.*$,,),map(/etc/haproxy/domain2backend.map)]
 
 frontend marathon_http_appid_in
   bind *:9091
   mode http
-  use_backend %[req.hdr(x-marathon-app-id),lower,map(/etc/haproxy/app2backend.map)]
+  use_backend %[req.hdr(x-marathon-app-id),\
+lower,map(/etc/haproxy/app2backend.map)]
 
 frontend marathon_https_in
   bind *:443
@@ -3236,7 +3241,8 @@ frontend nginx_net
   mode http
   bind abns@nginx_net accept-proxy ssl crt /etc/ssl/cert.pem
   acl path_letsencrypt_10002 path_beg /.well-known/acme-challenge
-  use_backend letsencrypt_10002 if { ssl_fc_sni nginx.net } path_letsencrypt_10002
+  use_backend letsencrypt_10002 \
+if { ssl_fc_sni nginx.net } path_letsencrypt_10002
 
 backend server_nginx_net
   server loopback-for-tls abns@server_nginx_net send-proxy-v2
@@ -3245,7 +3251,8 @@ frontend server_nginx_net
   mode http
   bind abns@server_nginx_net accept-proxy ssl crt /etc/ssl/cert.pem
   acl path_letsencrypt_10002 path_beg /.well-known/acme-challenge
-  use_backend letsencrypt_10002 if { ssl_fc_sni server.nginx.net } path_letsencrypt_10002
+  use_backend letsencrypt_10002 \
+if { ssl_fc_sni server.nginx.net } path_letsencrypt_10002
   use_backend %[ssl_fc_sni,lower,map(/etc/haproxy/domain2backend.map)]
 
 backend server2_nginx_net
@@ -3255,11 +3262,14 @@ frontend server2_nginx_net
   mode http
   bind abns@server2_nginx_net accept-proxy ssl crt /etc/cert verify required
   acl path_letsencrypt_10002 path_beg /.well-known/acme-challenge
-  use_backend letsencrypt_10002 if { ssl_fc_sni server2.nginx.net } path_letsencrypt_10002
+  use_backend letsencrypt_10002 \
+if { ssl_fc_sni server2.nginx.net } path_letsencrypt_10002
   acl path_nginx3_10002 path_beg /test2
-  use_backend nginx3_10002 if { ssl_fc_sni server2.nginx.net } path_nginx3_10002
+  use_backend nginx3_10002 \
+if { ssl_fc_sni server2.nginx.net } path_nginx3_10002
   acl path_nginx2_10001 path_beg /test
-  use_backend nginx2_10001 if { ssl_fc_sni server2.nginx.net } path_nginx2_10001
+  use_backend nginx2_10001 \
+if { ssl_fc_sni server2.nginx.net } path_nginx2_10001
 
 backend server3_nginx_net
   server loopback-for-tls abns@server3_nginx_net send-proxy-v2
