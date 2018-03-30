@@ -901,10 +901,7 @@ def generateHttpVhostAcl(
                 else:
                     if haproxy_map:
                         if 'map_https_frontend_acl' not in duplicate_map:
-<<<<<<< HEAD
                             app.backend_weight = -1
-=======
->>>>>>> Review fixes
                             https_frontend_acl = templater.\
                                 haproxy_map_https_frontend_acl(app)
                             staging_https_frontend = https_frontend_acl. \
@@ -1649,7 +1646,9 @@ def regenerate_config(marathon, config_file, groups, bind_http_https,
         generated_config, config_file, domain_map_array, app_map_array,
         haproxy_map)
     if changed and not config_valid:
-        apps = make_config_valid_and_regenerate(marathon, groups,
+        apps = make_config_valid_and_regenerate(marathon,
+                                                raw_apps,
+                                                groups,
                                                 bind_http_https,
                                                 ssl_certs,
                                                 templater,
@@ -1665,6 +1664,7 @@ def regenerate_config(marathon, config_file, groups, bind_http_https,
 # Build up a valid configuration by adding one app at a time and checking
 # for valid config file after each app
 def make_config_valid_and_regenerate(marathon,
+                                     raw_apps,
                                      groups,
                                      bind_http_https,
                                      ssl_certs,
@@ -1684,7 +1684,6 @@ def make_config_valid_and_regenerate(marathon,
         for app in raw_apps:
             domain_map_array = []
             app_map_array = []
-<<<<<<< HEAD
             valid_apps.append(app)
             apps = get_apps(marathon, valid_apps)
             generated_config = config(apps, groups, bind_http_https,
@@ -1699,24 +1698,6 @@ def make_config_valid_and_regenerate(marathon,
                                                          group_https_by_vhost)
 
             if not config_valid:
-=======
-
-            generated_config = config(apps,
-                                      groups,
-                                      bind_http_https,
-                                      ssl_certs,
-                                      templater,
-                                      haproxy_map,
-                                      domain_map_array,
-                                      app_map_array,
-                                      config_file,
-                                      group_https_by_vhost)
-
-            if not generateAndValidateConfig(generated_config, config_file,
-                                             domain_map_array, app_map_array,
-                                             haproxy_map):
-                invalid_id = valid_marathon_apps[-1]["id"]
->>>>>>> Review fixes
                 logger.warn(
                     "invalid configuration caused by app %s; "
                     "it will be excluded", app["id"])
