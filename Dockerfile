@@ -92,7 +92,9 @@ RUN set -x \
 # will probably be uninstalled with the build dependencies.
     && pip3 install --no-cache --upgrade --force-reinstall -r /marathon-lb/requirements.txt \
     \
-    && apt-get purge -y --auto-remove $buildDeps
+    && apt-get purge -y --auto-remove $buildDeps \
+# Purge of python3-dev will delete python3 also
+    && apt-get update && apt-get install -y --no-install-recommends python3
 
 COPY  . /marathon-lb
 
