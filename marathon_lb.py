@@ -1450,6 +1450,9 @@ def get_apps(marathon, apps=[]):
 
     logger.debug("got apps %s", [app["id"] for app in apps])
 
+    excluded_states = {'TASK_KILLING', 'TASK_KILLED',
+                       'TASK_FINISHED', 'TASK_ERROR'}
+
     marathon_apps = []
     # This process requires 2 passes: the first is to gather apps belonging
     # to a deployment group.
@@ -1619,8 +1622,7 @@ def get_apps(marathon, apps=[]):
                                task['id'])
                 continue
 
-            if task['state'] in ['TASK_KILLING', 'TASK_KILLED',
-                                 'TASK_FINISHED', 'TASK_ERROR']:
+            if task['state'] in excluded_states:
                 logger.warning("Ignoring non-running task " + task['id'] +
                                " with state " + task['state'])
                 continue
