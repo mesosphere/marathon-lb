@@ -1622,7 +1622,9 @@ def get_apps(marathon, apps=[]):
                                task['id'])
                 continue
 
-            if task['state'] in excluded_states:
+            # 'state' will not be present in test cases.
+            # Should always be present in an actual cluster
+            if 'state' in task and task['state'] in excluded_states:
                 logger.warning("Ignoring non-running task " + task['id'] +
                                " with state " + task['state'])
                 continue
