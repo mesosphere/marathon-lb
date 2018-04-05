@@ -391,7 +391,7 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
 
         # Ensure the tcplog format only for tcp backends.
         # By default the format is custom and with HTTP fields
-        if app.mode is 'tcp':
+        if app.mode == 'tcp':
             app.mode = 'tcp\n  option tcplog'
 
         # If app has HAPROXY_{n}_MODE set, use that setting.
