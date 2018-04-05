@@ -1,0 +1,37 @@
+{
+  "id": "/nginx-ucr-host",
+  "backoffFactor": 1.15,
+  "backoffSeconds": 1,
+  "cmd": "sed -i \"s/80/${PORT0}/\" /etc/nginx/conf.d/default.conf; echo 'nginx-ucr-host' > /usr/share/nginx/html/index.html; nginx -g 'daemon off;'",
+  "container": {
+    "type": "MESOS",
+    "volumes": [],
+    "docker": {
+      "image": "nginx",
+      "forcePullImage": false,
+      "parameters": []
+    }
+  },
+  "cpus": 0.1,
+  "disk": 0,
+  "instances": 4,
+  "labels": {
+    "HAPROXY_GROUP": "external",
+    "HAPROXY_0_PORT": "10400",
+    "HAPROXY_0_VHOST": "nginx-ucr-host.test"
+  },
+  "maxLaunchDelaySeconds": 3600,
+  "mem": 32,
+  "gpus": 0,
+  "networks": [
+    {
+      "mode": "host"
+    }
+  ],
+  "portDefinitions": [
+    {
+      "protocol": "tcp",
+      "port": 10003
+    }
+  ]
+}

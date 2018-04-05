@@ -1,0 +1,41 @@
+{
+  "id": "/nginx-docker-bridge",
+  "cmd": "echo 'nginx-docker-bridge' > /usr/share/nginx/html/index.html; nginx -g 'daemon off;'",
+  "container": {
+    "portMappings": [
+      {
+        "containerPort": 80,
+        "hostPort": 0,
+        "protocol": "tcp"
+      }
+    ],
+    "type": "DOCKER",
+    "volumes": [],
+    "docker": {
+      "image": "nginx",
+      "network": "BRIDGE",
+      "portMappings": [
+        {
+          "containerPort": 80,
+          "hostPort": 0,
+          "protocol": "tcp"
+        }
+      ]
+    }
+  },
+  "cpus": 0.1,
+  "disk": 0,
+  "instances": 4,
+  "mem": 32,
+  "networks": [
+    {
+      "mode": "container/bridge"
+    }
+  ],
+  "requirePorts": false,
+  "labels": {
+    "HAPROXY_GROUP": "external",
+    "HAPROXY_0_PORT": "10100",
+    "HAPROXY_0_VHOST": "nginx-docker-bridge.test"
+  }
+}

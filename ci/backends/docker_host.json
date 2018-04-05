@@ -1,0 +1,31 @@
+{
+  "id": "/nginx-docker-host",
+  "cmd": "sed -i \"s/80/${PORT0}/\" /etc/nginx/conf.d/default.conf; echo 'nginx-docker-host' > /usr/share/nginx/html/index.html; nginx -g 'daemon off;'",
+  "container": {
+    "type": "DOCKER",
+    "volumes": [],
+    "docker": {
+      "image": "nginx",
+      "network": "HOST"
+    }
+  },
+  "cpus": 0.1,
+  "disk": 0,
+  "instances": 4,
+  "mem": 32,
+  "requirePorts": false,
+  "labels": {
+    "HAPROXY_GROUP": "external",
+    "HAPROXY_0_PORT": "10300",
+    "HAPROXY_0_VHOST": "nginx-docker-host.test"
+  },
+  "healthChecks": [],
+  "fetch": [],
+  "constraints": [],
+  "portDefinitions": [
+    {
+      "protocol": "tcp",
+      "port": 0
+    }
+  ]
+}
