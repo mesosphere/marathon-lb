@@ -1,9 +1,9 @@
 #!/bin/bash
 
-export LC_ALL="en_US.UTF-8"
-
 # Do not fail upon error
 set +eo pipefail
+
+export LC_ALL="en_US.UTF-8"
 
 export CLUSTER_URL=${CLUSTER_URL:="uninitialized"}
 export PUBLIC_AGENT_IP=${PUBLIC_AGENT_IP:="uninitialized"}
