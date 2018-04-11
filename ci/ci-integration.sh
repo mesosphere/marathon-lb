@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Do not fail upon error
-set +eo pipefail
+set -euxo pipefail
 
 export CLUSTER_URL=${CLUSTER_URL:="uninitialized"}
 export PUBLIC_AGENT_IP=${PUBLIC_AGENT_IP:="uninitialized"}
@@ -219,6 +219,8 @@ enterprise_authentication() {
         done
 
         echo "Authenticating"
+        # **
+        dcos config set core.ssl_verify false
         dcos cluster setup --no-check --username=$DCOS_USERNAME --password=$DCOS_PASSWORD $CLUSTER_URL
 
         echo "Verifying cluster authentication:"
