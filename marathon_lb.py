@@ -2102,4 +2102,5 @@ if __name__ == '__main__':
                           not args.dont_bind_http_https,
                           args.ssl_certs,
                           ConfigTemplater(),
-                          args.haproxy_map)
+                          args.haproxy_map,
+                          args.group_https_by_vhost)
