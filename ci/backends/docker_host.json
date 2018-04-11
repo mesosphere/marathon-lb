@@ -1,5 +1,6 @@
 {
   "id": "/nginx-docker-host",
+  "user":"root",
   "cmd": "sed -i \"s/80/${PORT0}/\" /etc/nginx/conf.d/default.conf; echo 'nginx-docker-host' > /usr/share/nginx/html/index.html; nginx -g 'daemon off;'",
   "container": {
     "type": "DOCKER",
@@ -17,7 +18,8 @@
   "labels": {
     "HAPROXY_GROUP": "external",
     "HAPROXY_0_PORT": "10300",
-    "HAPROXY_0_VHOST": "nginx-docker-host.test"
+    "HAPROXY_0_VHOST": "nginx-docker-host.test",
+    "HAPROXY_0_ENABLED": "true"
   },
   "healthChecks": [],
   "fetch": [],

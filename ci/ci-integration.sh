@@ -151,7 +151,7 @@ EOF
     time wrapped_dcos_launch wait
     wrapped_dcos_launch describe
 
-    CLUSTER_URL=http://$(wrapped_dcos_launch describe | jq -r .masters[0].public_ip)
+    CLUSTER_URL=https://$(wrapped_dcos_launch describe | jq -r .masters[0].public_ip)
     PUBLIC_AGENT_IP=$(wrapped_dcos_launch describe | jq -r .public_agents[0].public_ip)
 
     echo "CLUSTER_URL=$CLUSTER_URL"
@@ -175,6 +175,7 @@ oss_authentication() {
     # Authentication is slightly different for DC/OS 1.9.
     if [ "${DCOS_VERSION}" == '1.9' ]; then
         status_line "Authenticating DC/OS OSS"
+        dcos config set core.ssl_verify false
         dcos config set core.dcos_url $CLUSTER_URL
 
 cat <<EOF | expect -
@@ -207,6 +208,7 @@ enterprise_authentication() {
     # Authentication is slightly different for DC/OS 1.9.
     if [ "${DCOS_VERSION}" == '1.9' ]; then
         status_line "Authenticating DC/OS Enterprise"
+        dcos config set core.ssl_verify false
         dcos config set core.dcos_url $CLUSTER_URL
         dcos auth login --username=$DCOS_USERNAME --password=$DCOS_PASSWORD
     else
@@ -260,28 +262,60 @@ launch_marathonlb() {
     echo "Retrieving authentication token for cluster."
     AUTH_TOKEN=$(dcos config show core.dcos_acs_token)
 
-    PAYLOAD="{\"packageName\": \"marathon-lb\"}"
+    MLB_OPTIONS_JSON="mlb-options.json"
+    RENDER_RESPONSE_JSON="response.json"
+    MLB_JSON="mlb.json"    
 
-    RESPONSE="response.json"
-    JSON_TEMPLATE="template.json"
-    MLB_JSON="mlb_json.json"
+    # Strict mode requires having a service account.
+    if [ "${SECURITY_MODE}" == 'strict' ]; then
+        echo "Installing DC/OS Enterprise CLI."
+        dcos package install dcos-enterprise-cli --yes
 
-    CODE=$(curl -X POST -s -k -o $RESPONSE -H "Authorization: token=$AUTH_TOKEN" -w "%{http_code}" -H "Content-Type: application/vnd.dcos.package.render-request+json;charset=utf-8;version=v1" -H "Accept: application/vnd.dcos.package.render-response+json;charset=utf-8;version=v1" -d "$PAYLOAD" $CLUSTER_URL/package/render)
+        echo "Creating a key pair."
+        dcos security org service-accounts keypair mlb-private-key.pem mlb-public-key.pem
 
-    if [ "$CODE" -eq "200" ]; then
-        echo " "
-        cat $RESPONSE | jq -r ".marathonJson" > $JSON_TEMPLATE
-        cat $JSON_TEMPLATE | jq --arg DOCKER_IMAGE "$DOCKER_IMAGE"  '.container.docker.image=$DOCKER_IMAGE' | jq --arg MLB_VERSION "$MLB_VERSION" '.labels.DCOS_PACKAGE_VERSION=$MLB_VERSION' > $MLB_JSON
-        cat $MLB_JSON
-        echo " "
+        echo "Creating a service account: mlb-principal."
+        dcos security org service-accounts create -p mlb-public-key.pem -d "Marathon-LB service account" mlb-principal || true
+
+        echo "Verifying service account creation:"
+        dcos security org service-accounts show mlb-principal
+
+        echo "Adding mlb-principal as a superuser."
+        dcos security org groups add_user superusers mlb-principal
+
+        echo "Creating new secret: mlb-secret."
+        dcos security secrets create-sa-secret --strict mlb-private-key.pem mlb-principal mlb-secret || true
+
+        echo "Verfiying secret creation:"
+        dcos security secrets list /
+
+        echo "Retrieving mlb secret:"
+        dcos security secrets get /mlb-secret --json | jq -r .value | jq
+
+tee $MLB_OPTIONS_JSON <<EOF
+{
+    "marathon-lb": {
+        "secret_name": "mlb-secret",
+        "marathon-uri": "https://master.mesos:8443",
+        "strict-mode": true
+    }
+}
+EOF
+        dcos package describe marathon-lb --app --render --options=$MLB_OPTIONS_JSON > $RENDER_RESPONSE_JSON
+
+        echo "Giving root permissions to dcos_marathon service account."
+        curl -X PUT -k -H "Authorization: token=$(dcos config show core.dcos_acs_token)" -H "Content-Type: application/json" -d '{"description":"dcos:mesos:master:task:user:root"}' $(dcos config show core.dcos_url)/acs/api/v1/acls/dcos:mesos:master:task:user:root
+
+        curl -X PUT -k -H "Authorization: token=$(dcos config show core.dcos_acs_token)" -H "Content-Type: application/json" -d '{"description":"dcos:mesos:master:task:user:root"}' $(dcos config show core.dcos_url)/acs/api/v1/acls/dcos:mesos:master:task:user:root/users/dcos_marathon/full
+
     else
-        echo " "
-        echo "POST to package/render endpoint failed: $CODE"
-        delete_cluster
-        exit 1
+        dcos package describe marathon-lb --app --render > $RENDER_RESPONSE_JSON
     fi
+    
+    cat $RENDER_RESPONSE_JSON | jq --arg DOCKER_IMAGE "$DOCKER_IMAGE" '.container.docker.image=$DOCKER_IMAGE' | jq --arg MLB_VERSION "$MLB_VERSION" '.labels.DCOS_PACKAGE_VERSION=$MLB_VERSION' > $MLB_JSON
+    cat $MLB_JSON
 
-    # Launch MLB app.
+    echo "Launching Marathon-lb." 
     dcos marathon app add $MLB_JSON
 
     # Sleeping to wait for MLB to deploy.

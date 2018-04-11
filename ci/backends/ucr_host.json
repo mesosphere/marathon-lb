@@ -1,5 +1,6 @@
 {
   "id": "/nginx-ucr-host",
+  "user":"root",
   "backoffFactor": 1.15,
   "backoffSeconds": 1,
   "cmd": "sed -i \"s/80/${PORT0}/\" /etc/nginx/conf.d/default.conf; echo 'nginx-ucr-host' > /usr/share/nginx/html/index.html; nginx -g 'daemon off;'",
@@ -18,7 +19,8 @@
   "labels": {
     "HAPROXY_GROUP": "external",
     "HAPROXY_0_PORT": "10400",
-    "HAPROXY_0_VHOST": "nginx-ucr-host.test"
+    "HAPROXY_0_VHOST": "nginx-ucr-host.test",
+    "HAPROXY_0_ENABLED": "true"
   },
   "maxLaunchDelaySeconds": 3600,
   "mem": 32,

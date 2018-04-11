@@ -1,5 +1,6 @@
 {
   "id": "/nginx-ucr-ippc",
+  "user":"root",
   "backoffFactor": 1.15,
   "backoffSeconds": 1,
   "cmd": "echo 'nginx-ucr-ippc' > /usr/share/nginx/html/index.html; nginx -g 'daemon off;'",
@@ -19,7 +20,8 @@
     "HAPROXY_GROUP": "external",
     "HAPROXY_0_PORT": "10600",
     "HAPROXY_0_VHOST": "nginx-ucr-ippc.test",
-    "HAPROXY_0_BACKEND_SERVER_OPTIONS": "  server {serverName} {host_ipv4}:80 {cookieOptions}{healthCheckOptions}{otherOptions}\n"
+    "HAPROXY_0_BACKEND_SERVER_OPTIONS": "  server {serverName} {host_ipv4}:80 {cookieOptions}{healthCheckOptions}{otherOptions}\n",
+    "HAPROXY_0_ENABLED": "true"
   },
   "mem": 32,
   "gpus": 0,

@@ -1,5 +1,6 @@
 {
   "id": "/nginx-ucr-bridge",
+  "user":"root",
   "cmd": "echo 'nginx-ucr-bridge' > /usr/share/nginx/html/index.html; nginx -g 'daemon off;'",
   "container": {
     "portMappings": [
@@ -23,7 +24,8 @@
   "labels": {
     "HAPROXY_GROUP": "external",
     "HAPROXY_0_PORT": "10500",
-    "HAPROXY_0_VHOST": "nginx-ucr-bridge.test"
+    "HAPROXY_0_VHOST": "nginx-ucr-bridge.test",
+    "HAPROXY_0_ENABLED": "true"
   },
   "networks": [
     {
