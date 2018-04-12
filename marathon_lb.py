@@ -1909,18 +1909,15 @@ def get_arg_parser():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--longhelp",
                         help="Print out configuration details",
-                        action="store_true"
-    )
+                        action="store_true")
     parser.add_argument("--marathon", "-m",
                         nargs="+",
                         help="[required] Marathon endpoint, eg. " +
                         "-m http://marathon1:8080 http://marathon2:8080",
-                        default=["http://master.mesos:8080"]
-    )
+                        default=["http://master.mesos:8080"])
     parser.add_argument("--haproxy-config",
                         help="Location of haproxy configuration",
-                        default="/etc/haproxy/haproxy.cfg"
-    )
+                        default="/etc/haproxy/haproxy.cfg")
     parser.add_argument("--group",
                         help="[required] Only generate config for apps which"
                         " list the specified names. Use '*' to match all"
