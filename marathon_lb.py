@@ -366,6 +366,7 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
             https_frontends = templater.haproxy_https_frontend_head.format(
                 sslCerts=" ".join(map(lambda cert: "crt " + cert, _ssl_certs))
             )
+
     # This should handle situations where customers have a custom HAPROXY_HEAD
     # that includes the 'daemon' flag or does not expose listener fds:
     if 'daemon' in config or "expose-fd listeners" not in config:
@@ -377,7 +378,7 @@ Add "stats socket /var/run/haproxy/socket expose-fd listeners". \
 More information can be found here: \
 https://docs.mesosphere.com/services/marathon-lb/advanced/#global-template.\
 '''
-        logger.exception(upgrade_warning)
+        raise Exception(upgrade_warning)
 
     userlists = str()
     frontends = str()
