@@ -137,7 +137,7 @@ EOF
     # DefaultInstanceType parameter has not been backported into 1.9 CF templates.
     # The templates actually hardcode in this parameter instead.
     if [ "${DCOS_VERSION}" != '1.9' ]; then
-        echo "    DefaultInstanceType: m4.large" >> config.yaml
+        echo "    DefaultInstanceType: m4.xlarge" >> config.yaml
     fi
 
     if [ "${VARIANT}" == 'ee' ]; then
