@@ -1,0 +1,33 @@
+{
+  "id": "/nginx-docker-ippc",
+  "user":"root",
+  "cmd": "echo 'nginx-docker-ippc' > /usr/share/nginx/html/index.html; nginx -g 'daemon off;'",
+  "cpus": 0.1,
+  "mem": 32,
+  "disk": 0,
+  "instances": 4,
+  "container": {
+    "type": "DOCKER",
+    "volumes": [],
+    "docker": {
+      "image": "nginx",
+      "parameters": []
+    },
+    "portMappings": [
+      {
+        "containerPort": 80
+      }
+    ]
+  },
+  "requirePorts": false,
+  "labels": {
+    "HAPROXY_GROUP": "external",
+    "HAPROXY_0_PORT": "10200",
+    "HAPROXY_0_VHOST": "nginx-docker-ippc.test",
+    "HAPROXY_0_ENABLED": "true"
+  },
+  "ipAddress": {
+    "groups": [],
+    "networkName": "dcos"
+  }
+}
