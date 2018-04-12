@@ -36,7 +36,7 @@ import datetime
 from itertools import cycle
 from collections import defaultdict
 from operator import attrgetter
-from shutil import move
+from shutil import move, copy
 from tempfile import mkstemp
 
 import dateutil.parser
@@ -366,6 +366,19 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
             https_frontends = templater.haproxy_https_frontend_head.format(
                 sslCerts=" ".join(map(lambda cert: "crt " + cert, _ssl_certs))
             )
+
+    # This should handle situations where customers have a custom HAPROXY_HEAD
+    # that includes the 'daemon' flag or does not expose listener fds:
+    if 'daemon' in config or "expose-fd listeners" not in config:
+        upgrade_warning = '''\
+Error in custom HAPROXY_HEAD template: \
+In Marathon-LB 1.12, the default HAPROXY_HEAD section changed, please \
+make the following changes to your custom template: Remove "daemon", \
+Add "stats socket /var/run/haproxy/socket expose-fd listeners". \
+More information can be found here: \
+https://docs.mesosphere.com/services/marathon-lb/advanced/#global-template.\
+'''
+        raise Exception(upgrade_warning)
 
     userlists = str()
     frontends = str()
@@ -1214,8 +1227,8 @@ def writeConfigAndValidate(
     if validateConfig(haproxyTempConfigFile):
         # Move into place
         if haproxy_map:
-            moveTempFile(domain_temp_map_file, domain_map_file)
-            moveTempFile(app_temp_map_file, app_map_file)
+            moveTempFile(domain_temp_map_file, domain_map_file, "domain_map")
+            moveTempFile(app_temp_map_file, app_map_file, "app_map")
 
             # Edit the config file again to point to the actual map paths
             with open(haproxyTempConfigFile, 'w') as tempConfig:
@@ -1224,7 +1237,7 @@ def writeConfigAndValidate(
             truncateMapFileIfExists(domain_map_file)
             truncateMapFileIfExists(app_map_file)
 
-        moveTempFile(haproxyTempConfigFile, config_file)
+        moveTempFile(haproxyTempConfigFile, config_file, "hap_cfg")
         return True
     else:
         return False
@@ -1267,8 +1280,18 @@ def validateConfig(haproxy_config_file):
         return False
 
 
-def moveTempFile(temp_file, dest_file):
+def moveTempFile(temp_file, dest_file, tmp_filename):
     # Replace the old file with the new from its temporary location
+    for suffix in range(args.archive_versions - 1, 0, -1):
+        tmp_src_file = "/tmp/" + tmp_filename + "." + str(suffix)
+        tmp_dest_file = "/tmp/" + tmp_filename + "." + str(suffix + 1)
+        if os.path.isfile(tmp_src_file):
+            logger.debug("Copying temp file %s to %s",
+                         tmp_src_file, tmp_dest_file)
+            copy(tmp_src_file, tmp_dest_file)
+    logger.debug("Copying temp files %s to %s",
+                 temp_file, "/tmp/" + tmp_filename + ".1")
+    copy(temp_file, "/tmp/" + tmp_filename + ".1")
     logger.debug("moving temp file %s to %s", temp_file, dest_file)
     move(temp_file, dest_file)
 
@@ -1419,6 +1442,9 @@ def get_apps(marathon, apps=[]):
         apps = marathon.list()
 
     logger.debug("got apps %s", [app["id"] for app in apps])
+
+    excluded_states = {'TASK_KILLING', 'TASK_KILLED',
+                       'TASK_FINISHED', 'TASK_ERROR'}
 
     marathon_apps = []
     # This process requires 2 passes: the first is to gather apps belonging
@@ -1589,6 +1615,13 @@ def get_apps(marathon, apps=[]):
                                task['id'])
                 continue
 
+            # 'state' will not be present in test cases.
+            # Should always be present in an actual cluster
+            if 'state' in task and task['state'] in excluded_states:
+                logger.warning("Ignoring non-running task " + task['id'] +
+                               " with state " + task['state'])
+                continue
+
             if marathon.health_check() and 'healthChecks' in app and \
                len(app['healthChecks']) > 0:
                 alive = True
@@ -1641,7 +1674,6 @@ def regenerate_config(marathon, config_file, groups, bind_http_https,
     generated_config = config(apps, groups, bind_http_https, ssl_certs,
                               templater, haproxy_map, domain_map_array,
                               app_map_array, config_file, group_https_by_vhost)
-
     (changed, config_valid) = compareWriteAndReloadConfig(
         generated_config, config_file, domain_map_array, app_map_array,
         haproxy_map)
@@ -1657,7 +1689,6 @@ def regenerate_config(marathon, config_file, groups, bind_http_https,
                                                 app_map_array,
                                                 config_file,
                                                 group_https_by_vhost)
-
     return apps
 
 
@@ -1696,7 +1727,6 @@ def make_config_valid_and_regenerate(marathon,
                                                          app_map_array,
                                                          haproxy_map,
                                                          group_https_by_vhost)
-
             if not config_valid:
                 logger.warn(
                     "invalid configuration caused by app %s; "
@@ -1858,8 +1888,8 @@ class MarathonEventProcessor(object):
 
     def handle_event(self, event):
         if event['eventType'] == 'status_update_event' or \
-                event['eventType'] == 'health_status_changed_event' or \
-                event['eventType'] == 'api_post_event':
+           event['eventType'] == 'health_status_changed_event' or \
+           event['eventType'] == 'api_post_event':
             self.reset_from_tasks()
 
     def handle_signal(self, sig, stack):
@@ -1879,18 +1909,15 @@ def get_arg_parser():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--longhelp",
                         help="Print out configuration details",
-                        action="store_true"
-                        )
+                        action="store_true")
     parser.add_argument("--marathon", "-m",
                         nargs="+",
                         help="[required] Marathon endpoint, eg. " +
-                             "-m http://marathon1:8080 http://marathon2:8080",
-                        default=["http://master.mesos:8080"]
-                        )
+                        "-m http://marathon1:8080 http://marathon2:8080",
+                        default=["http://master.mesos:8080"])
     parser.add_argument("--haproxy-config",
                         help="Location of haproxy configuration",
-                        default="/etc/haproxy/haproxy.cfg"
-                        )
+                        default="/etc/haproxy/haproxy.cfg")
     parser.add_argument("--group",
                         help="[required] Only generate config for apps which"
                         " list the specified names. Use '*' to match all"
@@ -1917,6 +1944,9 @@ def get_arg_parser():
     parser.add_argument("--sse", "-s",
                         help="Use Server Sent Events",
                         action="store_true")
+    parser.add_argument("--archive-versions",
+                        help="Number of config versions to archive",
+                        type=int, default=5)
     parser.add_argument("--health-check", "-H",
                         help="If set, respect Marathon's health check "
                         "statuses before adding the app instance into "

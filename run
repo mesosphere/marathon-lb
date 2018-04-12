@@ -118,15 +118,18 @@ for arg in "$@"; do
     ARGS="$ARGS $escaped"
 done
 
+grep -q -F -w "sv reload ${HAPROXY_SERVICE}" /marathon-lb/reload_haproxy.sh || echo "sv reload ${HAPROXY_SERVICE}" >> /marathon-lb/reload_haproxy.sh
+
 cat > $LB_SERVICE/run << EOF
 #!/bin/sh
 exec 2>&1
+sv status /marathon-lb/service/haproxy || exit 1
 cd /marathon-lb
 exec /marathon-lb/marathon_lb.py \
     --syslog-socket $SYSLOG_SOCKET \
     --haproxy-config /marathon-lb/haproxy.cfg \
     --ssl-certs "${SSL_CERTS}" \
-    --command "sv reload ${HAPROXY_SERVICE}" \
+    --command "/marathon-lb/reload_haproxy.sh" \
     $ARGS
 EOF
 chmod 755 $LB_SERVICE/run

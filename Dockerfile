@@ -1,13 +1,14 @@
 FROM debian:buster
 
+LABEL LAST_MODIFIED=20180403
+
 # runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
         inetutils-syslogd \
-        iptables \
         libcurl3 \
         liblua5.3-0 \
-        libssl1.0.2 \
+        libssl1.1 \
         openssl \
         procps \
         python3 \
@@ -17,10 +18,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         make \
     && rm -rf /var/lib/apt/lists/*
 
-ENV TINI_VERSION=v0.13.2 \
+ENV TINI_VERSION=v0.16.1 \
     TINI_GPG_KEY=595E85A6B1B4779EA4DAAEC70B588DFF0527A9B7
 
-# Multiple gpg --recv-keys are intended to help with flakiness of key servers.
 RUN set -x \
     && apt-get update && apt-get install -y --no-install-recommends dirmngr gpg wget \
         && rm -rf /var/lib/apt/lists/* \
@@ -39,9 +39,9 @@ RUN set -x \
     && apt-get purge -y --auto-remove dirmngr gpg wget
 
 
-ENV HAPROXY_MAJOR=1.7 \
-    HAPROXY_VERSION=1.7.6 \
-    HAPROXY_MD5=8f4328cf66137f0dbf6901e065f603cc
+ENV HAPROXY_MAJOR=1.8 \
+    HAPROXY_VERSION=1.8.4 \
+    HAPROXY_MD5=540cd21169e8828d5d11894b2fa74ab4
 
 COPY requirements.txt /marathon-lb/
 
