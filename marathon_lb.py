@@ -370,13 +370,13 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
     # that includes the 'daemon' flag or does not expose listener fds:
     if 'daemon' in config or "expose-fd listeners" not in config:
         upgrade_warning = '''\
-        In Marathon-LB 1.12, the default HAPROXY_HEAD section changed, please
-        make the following changes to your custom template:
-          * Remove "daemon"
-          * Add "stats socket /var/run/haproxy/socket expose-fd listeners"
-        More information can be found here:
-        docs.mesosphere.com/services/marathon-lb/advanced/#global-template
-        '''
+Error in custom HAPROXY_HEAD template: \
+In Marathon-LB 1.12, the default HAPROXY_HEAD section changed, please \
+make the following changes to your custom template: Remove "daemon", \
+Add "stats socket /var/run/haproxy/socket expose-fd listeners". \
+More information can be found here: \
+https://docs.mesosphere.com/services/marathon-lb/advanced/#global-template.\
+'''
         logger.exception(upgrade_warning)
 
     userlists = str()
