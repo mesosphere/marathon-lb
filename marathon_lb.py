@@ -367,25 +367,17 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
                 sslCerts=" ".join(map(lambda cert: "crt " + cert, _ssl_certs))
             )
     # This should handle situations where customers have a custom HAPROXY_HEAD
-    # that includes the 'daemon' flag:
-    if 'daemon' in config:
-        logger.debug("Commenting out daemon setting")
-        config = config.replace("daemon", "# daemon", 1)
-
-    # This should handle situations where customers have a custom HAPROXY_HEAD
-    # that does not yet expose the listeners file descriptor
-    if "expose-fd listeners" not in config:
-        if "stats socket /var/run/haproxy/socket" in config:
-            logger.debug("Appending 'expose-fd listeners' to stats socket")
-            o = "stats socket /var/run/haproxy/socket"
-            n = "stats socket /var/run/haproxy/socket expose-fd listeners"
-            config = config.replace(o, n)
-        else:
-            o = "global"
-            n = ("global\n"
-                 "  stats socket /var/run/haproxy/socket expose-fd listeners")
-            logger.debug("Creating new expose-fd listeners socket config")
-            config = config.replace(o, n, 1)
+    # that includes the 'daemon' flag or does not expose listener fds:
+    if 'daemon' in config or "expose-fd listeners" not in config:
+        upgrade_warning = '''\
+        In Marathon-LB 1.12, the default HAPROXY_HEAD section changed, please
+        make the following changes to your custom template:
+          * Remove "daemon"
+          * Add "stats socket /var/run/haproxy/socket expose-fd listeners"
+        More information can be found here:
+        docs.mesosphere.com/services/marathon-lb/advanced/#global-template
+        '''
+        logger.exception(upgrade_warning)
 
     userlists = str()
     frontends = str()
@@ -1895,8 +1887,8 @@ class MarathonEventProcessor(object):
 
     def handle_event(self, event):
         if event['eventType'] == 'status_update_event' or \
-                event['eventType'] == 'health_status_changed_event' or \
-                event['eventType'] == 'api_post_event':
+           event['eventType'] == 'health_status_changed_event' or \
+           event['eventType'] == 'api_post_event':
             self.reset_from_tasks()
 
     def handle_signal(self, sig, stack):
@@ -1917,17 +1909,17 @@ def get_arg_parser():
     parser.add_argument("--longhelp",
                         help="Print out configuration details",
                         action="store_true"
-                        )
+    )
     parser.add_argument("--marathon", "-m",
                         nargs="+",
                         help="[required] Marathon endpoint, eg. " +
-                             "-m http://marathon1:8080 http://marathon2:8080",
+                        "-m http://marathon1:8080 http://marathon2:8080",
                         default=["http://master.mesos:8080"]
-                        )
+    )
     parser.add_argument("--haproxy-config",
                         help="Location of haproxy configuration",
                         default="/etc/haproxy/haproxy.cfg"
-                        )
+    )
     parser.add_argument("--group",
                         help="[required] Only generate config for apps which"
                         " list the specified names. Use '*' to match all"
