@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Do not fail upon error
-set -euxo pipefail
+set -exo pipefail
 
 export CLUSTER_URL=${CLUSTER_URL:="uninitialized"}
 export PUBLIC_AGENT_IP=${PUBLIC_AGENT_IP:="uninitialized"}
@@ -18,7 +18,6 @@ MLB_VERSION="dev-$GIT_SHA_10"
 echo "MLB_VERSION=$MLB_VERSION"
 
 WORKING_DIRECTORY=$(pwd)
-
 
 status_line() {
     printf "\n### $1 ###\n\n"
@@ -150,8 +149,13 @@ EOF
     time wrapped_dcos_launch create
     time wrapped_dcos_launch wait
     wrapped_dcos_launch describe
+    
+    if [ "${SECURITY_MODE}" == 'disabled' ] || [ "${VARIANT}" == 'open' ]; then
+        CLUSTER_URL=http://$(wrapped_dcos_launch describe | jq -r .masters[0].public_ip)
+    else
+        CLUSTER_URL=https://$(wrapped_dcos_launch describe | jq -r .masters[0].public_ip)
+    fi
 
-    CLUSTER_URL=https://$(wrapped_dcos_launch describe | jq -r .masters[0].public_ip)
     PUBLIC_AGENT_IP=$(wrapped_dcos_launch describe | jq -r .public_agents[0].public_ip)
 
     echo "CLUSTER_URL=$CLUSTER_URL"
@@ -175,7 +179,6 @@ oss_authentication() {
     # Authentication is slightly different for DC/OS 1.9.
     if [ "${DCOS_VERSION}" == '1.9' ]; then
         status_line "Authenticating DC/OS OSS"
-        dcos config set core.ssl_verify false
         dcos config set core.dcos_url $CLUSTER_URL
 
 cat <<EOF | expect -
@@ -208,7 +211,9 @@ enterprise_authentication() {
     # Authentication is slightly different for DC/OS 1.9.
     if [ "${DCOS_VERSION}" == '1.9' ]; then
         status_line "Authenticating DC/OS Enterprise"
-        dcos config set core.ssl_verify false
+        if [ "${SECURITY_MODE}" == 'strict' ] || [ "${SECURITY_MODE}" == 'permissive' ]; then
+            dcos config set core.ssl_verify false
+        fi
         dcos config set core.dcos_url $CLUSTER_URL
         dcos auth login --username=$DCOS_USERNAME --password=$DCOS_PASSWORD
     else
@@ -219,8 +224,6 @@ enterprise_authentication() {
         done
 
         echo "Authenticating"
-        # **
-        dcos config set core.ssl_verify false
         dcos cluster setup --no-check --username=$DCOS_USERNAME --password=$DCOS_PASSWORD $CLUSTER_URL
 
         echo "Verifying cluster authentication:"
@@ -291,9 +294,6 @@ launch_marathonlb() {
         echo "Verfiying secret creation:"
         dcos security secrets list /
 
-        echo "Retrieving mlb secret:"
-        dcos security secrets get /mlb-secret --json | jq -r .value | jq
-
 tee $MLB_OPTIONS_JSON <<EOF
 {
     "marathon-lb": {
@@ -305,6 +305,7 @@ tee $MLB_OPTIONS_JSON <<EOF
 EOF
         dcos package describe marathon-lb --app --render --options=$MLB_OPTIONS_JSON > $RENDER_RESPONSE_JSON
 
+        # Giving root permissions to dcos_marathon service account.
         echo "Giving root permissions to dcos_marathon service account."
         curl -X PUT -k -H "Authorization: token=$(dcos config show core.dcos_acs_token)" -H "Content-Type: application/json" -d '{"description":"dcos:mesos:master:task:user:root"}' $(dcos config show core.dcos_url)/acs/api/v1/acls/dcos:mesos:master:task:user:root
 
