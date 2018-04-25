@@ -1240,6 +1240,10 @@ def writeConfigAndValidate(
         moveTempFile(haproxyTempConfigFile, config_file, "hap_cfg")
         return True
     else:
+        moveTempFile(haproxyTempConfigFile, 'haproxy_tmp_conf_fail',
+                     'haproxy_temp_config_fail')
+        removeTempFileIfExist(domain_temp_map_file)
+        removeTempFileIfExist(app_temp_map_file)
         return False
 
 
@@ -1303,6 +1307,12 @@ def truncateMapFileIfExists(map_file):
         fd = os.open(map_file, os.O_RDWR)
         os.ftruncate(fd, 0)
         os.close(fd)
+
+
+def removeTempFileIfExist(temp_file):
+    if os.path.isfile(temp_file):
+        logger.debug("delete tempfile %s", temp_file)
+        os.remove(temp_file)
 
 
 def generateAndValidateTempConfig(config, config_file, domain_map_array,
@@ -1720,13 +1730,12 @@ def make_config_valid_and_regenerate(marathon,
             generated_config = config(apps, groups, bind_http_https,
                                       ssl_certs, templater, haproxy_map,
                                       domain_map_array, app_map_array,
-                                      config_file)
+                                      config_file, group_https_by_vhost)
             config_valid = generateAndValidateTempConfig(generated_config,
                                                          config_file,
                                                          domain_map_array,
                                                          app_map_array,
-                                                         haproxy_map,
-                                                         group_https_by_vhost)
+                                                         haproxy_map)
             if not config_valid:
                 logger.warn(
                     "invalid configuration caused by app %s; "
@@ -1745,7 +1754,7 @@ def make_config_valid_and_regenerate(marathon,
             valid_config = config(apps, groups, bind_http_https,
                                   ssl_certs, templater, haproxy_map,
                                   domain_map_array, app_map_array,
-                                  config_file)
+                                  config_file, group_https_by_vhost)
             compareWriteAndReloadConfig(valid_config,
                                         config_file,
                                         domain_map_array,
