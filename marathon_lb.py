@@ -387,6 +387,19 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
             logger.debug("Creating new expose-fd listeners socket config")
             config = config.replace(o, n, 1)
 
+    # This should handle situations where customers have a custom HAPROXY_HEAD
+    # that includes the 'daemon' flag or does not expose listener fds:
+    if 'daemon' in config or "expose-fd listeners" not in config:
+        upgrade_warning = '''\
+Error in custom HAPROXY_HEAD template: \
+In Marathon-LB 1.12, the default HAPROXY_HEAD section changed, please \
+make the following changes to your custom template: Remove "daemon", \
+Add "stats socket /var/run/haproxy/socket expose-fd listeners". \
+More information can be found here: \
+https://docs.mesosphere.com/services/marathon-lb/advanced/#global-template.\
+'''
+        raise Exception(upgrade_warning)
+
     userlists = str()
     frontends = str()
     backends = str()
@@ -1895,8 +1908,8 @@ class MarathonEventProcessor(object):
 
     def handle_event(self, event):
         if event['eventType'] == 'status_update_event' or \
-                event['eventType'] == 'health_status_changed_event' or \
-                event['eventType'] == 'api_post_event':
+           event['eventType'] == 'health_status_changed_event' or \
+           event['eventType'] == 'api_post_event':
             self.reset_from_tasks()
 
     def handle_signal(self, sig, stack):
@@ -1916,18 +1929,15 @@ def get_arg_parser():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--longhelp",
                         help="Print out configuration details",
-                        action="store_true"
-                        )
+                        action="store_true")
     parser.add_argument("--marathon", "-m",
                         nargs="+",
                         help="[required] Marathon endpoint, eg. " +
-                             "-m http://marathon1:8080 http://marathon2:8080",
-                        default=["http://master.mesos:8080"]
-                        )
+                        "-m http://marathon1:8080 http://marathon2:8080",
+                        default=["http://master.mesos:8080"])
     parser.add_argument("--haproxy-config",
                         help="Location of haproxy configuration",
-                        default="/etc/haproxy/haproxy.cfg"
-                        )
+                        default="/etc/haproxy/haproxy.cfg")
     parser.add_argument("--group",
                         help="[required] Only generate config for apps which"
                         " list the specified names. Use '*' to match all"
@@ -2142,4 +2152,5 @@ if __name__ == '__main__':
                           not args.dont_bind_http_https,
                           args.ssl_certs,
                           ConfigTemplater(),
-                          args.haproxy_map)
+                          args.haproxy_map,
+                          args.group_https_by_vhost)
