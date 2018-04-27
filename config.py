@@ -864,7 +864,7 @@ Specified as {specifiedAs}.
 '''
 
         override_example = '''\
-**Example Marathon label to override `{full_name}` for the first port of a given app:**
+**Example Marathon label to override `{full_name}` for port 0 of an app:**
 ```
 "HAPROXY_0_{name}": "{flat}"
 ```
@@ -886,14 +886,14 @@ Specified as {specifiedAs}.
             )
             if t.overridable:
                 descriptions += override_example.format(
-                    full_name = t.full_name,
-                    name = t.name,
+                    full_name=t.full_name,
+                    name=t.name,
                     # Escape out backslashes, quotes, and endlines
-                    flat = (
+                    flat=(
                         t.default_value
-                        .replace('\\','\\\\')
-                        .replace('"','\\\"')
-                        .replace('\n','\\n')
+                        .replace('\\', '\\\\')
+                        .replace('"',' \\\"')
+                        .replace('\n', '\\n')
                         )
                 )
 
@@ -1470,10 +1470,14 @@ Ex: `HAPROXY_0_PORT = 80`
 labels.append(Label(name='MODE',
                     func=set_mode,
                     description='''\
-Set the connection mode to either TCP or HTTP. The default is TCP. Following exceptions apply:
- * if `HAPROXY_{n}_VHOST` label was specified and `HAPROXY_{n}_MODE` was not set, then the mode will be set to `http`
- * if there is a healtcheck configured for the given port, with protocol field set to one of 'HTTP', 'HTTPS', 'MESOS_HTTP',
-'MESOS_HTTPS', the mode will be *overriden* to 'http', irrespective of the value of `HAPROXY_{n}_MODE` label.
+Set the connection mode to either TCP or HTTP. The default is TCP.
+Following exceptions apply:
+ * if `HAPROXY_{n}_VHOST` label was specified and `HAPROXY_{n}_MODE` \
+was not set, then the mode will be set to `http`
+ * if there is a healtcheck configured for the given port, \
+with protocol field set to one of 'HTTP', 'HTTPS', 'MESOS_HTTP',
+'MESOS_HTTPS', the mode will be *overriden* to 'http', \
+irrespective of the value of `HAPROXY_{n}_MODE` label.
 
 Ex: `HAPROXY_0_MODE = 'http'`
                     '''))
