@@ -21,7 +21,8 @@ usage: marathon_lb.py [-h] [--longhelp] [--marathon MARATHON [MARATHON ...]]
                       [--command COMMAND]
                       [--max-reload-retries MAX_RELOAD_RETRIES]
                       [--reload-interval RELOAD_INTERVAL] [--strict-mode]
-                      [--sse] [--health-check]
+                      [--sse] [--archive-versions ARCHIVE_VERSIONS]
+                      [--health-check]
                       [--lru-cache-capacity LRU_CACHE_CAPACITY]
                       [--haproxy-map] [--dont-bind-http-https]
                       [--group-https-by-vhost] [--ssl-certs SSL_CERTS]
@@ -65,6 +66,8 @@ optional arguments:
                         HAPROXY_{n}_ENABLED=true. Strict mode will be enabled
                         by default in a future release. (default: False)
   --sse, -s             Use Server Sent Events (default: False)
+  --archive-versions ARCHIVE_VERSIONS
+                        Number of config versions to archive (default: 5)
   --health-check, -H    If set, respect Marathon's health check statuses
                         before adding the app instance into the backend pool.
                         (default: False)
@@ -94,7 +97,7 @@ optional arguments:
                         ports for IP-per-task applications (default: 10100)
   --syslog-socket SYSLOG_SOCKET
                         Socket to write syslog messages to. Use '/dev/null' to
-                        disable logging to syslog (default: /var/run/syslog)
+                        disable logging to syslog (default: /dev/log)
   --log-format LOG_FORMAT
                         Set log message format (default: %(asctime)-15s
                         %(name)s: %(message)s)
@@ -521,7 +524,6 @@ The http auth request to the corresponding virtual host.
 
 Specified as `HAPROXY_HTTPS_FRONTEND_HEAD` template.
 
-
 An HTTPS frontend for encrypted connections that binds to port *:443 by
 default and gathers all virtual hosts as defined by the
 `HAPROXY_{n}_VHOST` label. You must modify this file to
@@ -575,7 +577,7 @@ frontend marathon_https_in
 Specified as `HAPROXY_HTTPS_GROUPED_VHOST_BACKEND_HEAD` template.
 
 An HTTPS backend for vhost.
-Works only with an enabled group-https-by-vhost flag. 
+Works only with an enabled group-https-by-vhost flag.
 
 
 **Default template for `HAPROXY_HTTPS_GROUPED_VHOST_BACKEND_HEAD`:**
@@ -590,7 +592,7 @@ backend {name}
 Specified as `HAPROXY_HTTPS_GROUPED_VHOST_FRONTEND_ACL` template.
 
 A route rule https entrypoint.
-Works only with an enabled group-https-by-vhost flag. 
+Works only with an enabled group-https-by-vhost flag.
 
 
 **Default template for `HAPROXY_HTTPS_GROUPED_VHOST_FRONTEND_ACL`:**
@@ -603,7 +605,7 @@ Works only with an enabled group-https-by-vhost flag.
 Specified as `HAPROXY_HTTPS_GROUPED_VHOST_FRONTEND_HEAD` template.
 
 An HTTPS frontend for vhost.
-Works only with an enabled group-https-by-vhost flag. 
+Works only with an enabled group-https-by-vhost flag.
 
 
 **Default template for `HAPROXY_HTTPS_GROUPED_VHOST_FRONTEND_HEAD`:**
