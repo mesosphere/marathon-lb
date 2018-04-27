@@ -892,7 +892,7 @@ Specified as {specifiedAs}.
                     flat=(
                         t.default_value
                         .replace('\\', '\\\\')
-                        .replace('"',' \\\"')
+                        .replace('"', ' \\\"')
                         .replace('\n', '\\n')
                         )
                 )
