@@ -860,8 +860,18 @@ Specified as {specifiedAs}.
 
 **Default template for `{full_name}`:**
 ```
-{default}```
+{default}
+```
 '''
+
+        override_example = '''\
+**Example Marathon label to override `{full_name}` for the first port of a given app:**
+```
+"HAPROXY_0_{name}":"{flat}"
+```
+
+'''
+
         for tname in sorted(self.t.keys()):
             t = self.t[tname]
             spec = "`HAPROXY_" + t.name + "` template"
@@ -875,6 +885,18 @@ Specified as {specifiedAs}.
                 description=t.description,
                 default=t.default_value
             )
+            if t.overridable:
+                descriptions += override_example.format(
+                    full_name = t.full_name,
+                    name = t.name,
+                    # Escape out backslashes, quotes, and endlines
+                    flat = (
+                        t.default_value
+                        .replace('\\','\\\\')
+                        .replace('"','\\\"')
+                        .replace('\n','\\n')
+                        )
+                )
 
         descriptions += '''\
 ## Other Labels
