@@ -186,8 +186,7 @@ frontend {name}
                            overridable=False,
                            description='''\
 An HTTPS frontend for vhost.
-Works only with an enabled\
- group-https-by-vhost flag.
+Works only with an enabled group-https-by-vhost flag.
 '''))
 
         self.add_template(
@@ -198,9 +197,8 @@ backend {name}
 ''',
                            overridable=False,
                            description='''\
-An HTTPS backend for vhost.\
-Works only with an enabled \
-group-https-by-vhost flag.
+An HTTPS backend for vhost.
+Works only with an enabled group-https-by-vhost flag.
 '''))
 
         self.add_template(
@@ -210,9 +208,8 @@ group-https-by-vhost flag.
 ''',
                            overridable=False,
                            description='''\
-A route rule https entrypoint.\
-Works only with an enabled \
-group-https-by-vhost flag.
+A route rule https entrypoint.
+Works only with an enabled group-https-by-vhost flag.
 '''))
 
         self.add_template(
@@ -1452,7 +1449,10 @@ Ex: `HAPROXY_0_PORT = 80`
 labels.append(Label(name='MODE',
                     func=set_mode,
                     description='''\
-Set the connection mode to either TCP or HTTP. The default is TCP.
+Set the connection mode to either TCP or HTTP. The default is TCP. Following exceptions apply:
+ * if `HAPROXY_{n}_VHOST` label was specified and `HAPROXY_{n}_MODE` was not set, then the mode will be set to `http`
+ * if there is a healtcheck configured for the given port, with protocol field set to one of 'HTTP', 'HTTPS', 'MESOS_HTTP',
+'MESOS_HTTPS', the mode will be *overriden* to 'http', irrespective of the value of `HAPROXY_{n}_MODE` label.
 
 Ex: `HAPROXY_0_MODE = 'http'`
                     '''))
