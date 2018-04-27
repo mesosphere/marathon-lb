@@ -860,14 +860,13 @@ Specified as {specifiedAs}.
 
 **Default template for `{full_name}`:**
 ```
-{default}
-```
+{default}```
 '''
 
         override_example = '''\
 **Example Marathon label to override `{full_name}` for the first port of a given app:**
 ```
-"HAPROXY_0_{name}":"{flat}"
+"HAPROXY_0_{name}": "{flat}"
 ```
 
 '''
