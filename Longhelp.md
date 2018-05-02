@@ -1422,8 +1422,8 @@ Specified as `HAPROXY_{n}_MODE`.
 
 Set the connection mode to either TCP or HTTP. The default is TCP. Following exceptions apply:
  * if `HAPROXY_{n}_VHOST` label was specified and `HAPROXY_{n}_MODE` was not set, then the mode will be set to `http`
- * if there is a healtcheck configured for the given port, with protocol field set to one of 'HTTP', 'HTTPS', 'MESOS_HTTP',
-'MESOS_HTTPS', the mode will be *overriden* to 'http', irrespective of the value of `HAPROXY_{n}_MODE` label.
+ * if there is a healthcheck configured for the given port, with protocol field set to one of 'HTTP', 'HTTPS', 'MESOS_HTTP',
+'MESOS_HTTPS', the mode will be *overridden* to 'http', irrespective of the value of `HAPROXY_{n}_MODE` label.
 
 Ex: `HAPROXY_0_MODE = 'http'`
                     
