@@ -1,0 +1,88 @@
+{
+  "volumes": null,
+  "id": "/nginx-qa",
+  "cmd": null,
+  "args": null,
+  "user": null,
+  "env": null,
+  "instances": 1,
+  "cpus": 1,
+  "mem": 256,
+  "disk": 0,
+  "gpus": 0,
+  "executor": null,
+  "constraints": null,
+  "fetch": null,
+  "storeUrls": null,
+  "backoffSeconds": 1,
+  "backoffFactor": 1.15,
+  "maxLaunchDelaySeconds": 3600,
+  "container": {
+    "docker": {
+      "image": "bitnami/nginx:1.10.3-r1",
+      "forcePullImage": false,
+      "privileged": false,
+      "portMappings": [
+        {
+          "containerPort": 80,
+          "protocol": "tcp",
+          "servicePort": 10000
+        },
+        {
+          "containerPort": 443,
+          "protocol": "tcp",
+          "servicePort": 10001
+        }
+      ],
+      "network": "BRIDGE"
+    }
+  },
+  "healthChecks": [
+    {
+      "protocol": "COMMAND",
+      "command": {
+        "value": "nami status nginx | grep -q 'com.bitnami.nginx is running'"
+      },
+      "gracePeriodSeconds": 300,
+      "intervalSeconds": 60,
+      "timeoutSeconds": 20,
+      "maxConsecutiveFailures": 3
+    }
+  ],
+  "readinessChecks": null,
+  "dependencies": null,
+  "upgradeStrategy": {
+    "minimumHealthCapacity": 1,
+    "maximumOverCapacity": 1
+  },
+  "labels": {
+    "DCOS_PACKAGE_RELEASE": "6",
+    "DCOS_PACKAGE_SOURCE": "https://universe.mesosphere.com/repo",
+    "HAPROXY_GROUP": "external",
+    "DCOS_PACKAGE_METADATA": "eyJwYWNrYWdpbmdWZXJzaW9uIjoiMi4wIiwibmFtZSI6Im5naW54IiwidmVyc2lvbiI6IjEuMTAuMyIsIm1haW50YWluZXIiOiJjb250YWluZXJzQGJpdG5hbWkuY29tIiwiZGVzY3JpcHRpb24iOiJuZ2lueCBpcyBhIGhpZ2ggcGVyZm9ybWFuY2UgSFRUUCBhbmQgcmV2ZXJzZSBwcm94eSBzZXJ2ZXIuIEFuIGV4YW1wbGUgZm9yIHRoaXMgcGFja2FnZSdzIHVzYWdlIGNhbiBiZSBmb3VuZCBhdCBodHRwczovL2dpdGh1Yi5jb20vZGNvcy9leGFtcGxlcy90cmVlL21hc3Rlci8xLjgvbmdpbngiLCJ0YWdzIjpbInByb3h5Iiwid2ViLXNlcnZlciIsImNhY2hlIiwicmV2ZXJzZS1wcm94eSJdLCJzZWxlY3RlZCI6ZmFsc2UsInNjbSI6Imh0dHA6Ly9oZy5uZ2lueC5vcmcvbmdpbngvIiwiZnJhbWV3b3JrIjpmYWxzZSwicHJlSW5zdGFsbE5vdGVzIjoiVGhpcyBEQy9PUyBTZXJ2aWNlIGlzIGN1cnJlbnRseSBpbiBwcmV2aWV3LiBUaGVyZSBtYXkgYmUgYnVncywgaW5jb21wbGV0ZSBmZWF0dXJlcywgaW5jb3JyZWN0IGRvY3VtZW50YXRpb24sIG9yIG90aGVyIGRpc2NyZXBhbmNpZXMuIEV4cGVyaW1lbnRhbCBwYWNrYWdlcyBzaG91bGQgbmV2ZXIgYmUgdXNlZCBpbiBwcm9kdWN0aW9uISIsInBvc3RJbnN0YWxsTm90ZXMiOiJOZ2lueCBoYXMgYmVlbiBpbnN0YWxsZWQuIiwicG9zdFVuaW5zdGFsbE5vdGVzIjoiTmdpbnggd2FzIHVuaW5zdGFsbGVkIHN1Y2Nlc3NmdWxseS4iLCJsaWNlbnNlcyI6W3sibmFtZSI6IkJTRCBsaWtlIiwidXJsIjoiaHR0cDovL25naW54Lm9yZy9MSUNFTlNFIn1dLCJpbWFnZXMiOnsiaWNvbi1zbWFsbCI6Imh0dHBzOi8vZG93bmxvYWRzLm1lc29zcGhlcmUuY29tL2Fzc2V0cy91bml2ZXJzZS8wMDAvbmdpbngtaWNvbi1zbWFsbC5wbmciLCJpY29uLW1lZGl1bSI6Imh0dHBzOi8vZG93bmxvYWRzLm1lc29zcGhlcmUuY29tL2Fzc2V0cy91bml2ZXJzZS8wMDAvbmdpbngtaWNvbi1tZWRpdW0ucG5nIiwiaWNvbi1sYXJnZSI6Imh0dHBzOi8vZG93bmxvYWRzLm1lc29zcGhlcmUuY29tL2Fzc2V0cy91bml2ZXJzZS8wMDAvbmdpbngtaWNvbi1sYXJnZS5wbmcifX0=",
+    "DCOS_PACKAGE_REGISTRY_VERSION": "2.0",
+    "DCOS_PACKAGE_VERSION": "1.10.3",
+    "DCOS_PACKAGE_NAME": "nginx-qa",
+    "DCOS_PACKAGE_IS_FRAMEWORK": "false",
+    "HAPROXY_0_VHOST": "nginx-qa.labs.stratio.com"
+  },
+  "acceptedResourceRoles": [
+    "*"
+  ],
+  "residency": null,
+  "secrets": null,
+  "taskKillGracePeriodSeconds": null,
+  "portDefinitions": [
+    {
+      "port": 10000,
+      "protocol": "tcp",
+      "labels": {}
+    },
+    {
+      "port": 10001,
+      "protocol": "tcp",
+      "labels": {}
+    }
+  ],
+  "requirePorts": false
+}
