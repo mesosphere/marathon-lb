@@ -31,6 +31,6 @@ Feature: [MARATHONLB-1386] Deploying marathon-lb-sec with an nginx certificate
 
 #Uninstalling marathon
 
-  @include(feature:../purge.feature,scenario:marathon-lb-sec can be uninstalled using cli)
-  Scenario: Prueba borrado
-  Then I wait '5' seconds
+#  @include(feature:../purge.feature,scenario:marathon-lb-sec can be uninstalled using cli)
+#  Scenario: Prueba borrado
+#  Then I wait '5' seconds

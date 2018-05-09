@@ -27,7 +27,9 @@ Feature: Deploying marathon-lb-sec with client certificate
     And I open a ssh connection to '${DCOS_CLI_HOST:-dcos-cli.demo.labs.stratio.com}' with user '${CLI_USER:-root}' and password '${CLI_PASSWORD:-stratio}'
     And I outbound copy 'src/test/resources/schemas/nginx-qa-config.json' through a ssh connection to '/tmp'
     And I run 'dcos marathon app add /tmp/nginx-qa-config.json' in the ssh connection
+
 #Uninstalling marathon-lb-sec
-  @include(feature:../purge.feature,scenario:marathon-lb-sec can be uninstalled using cli)
-  Scenario: Prueba borrado
-    Then I wait '5' seconds
+#  @include(feature:../purge.feature,scenario:marathon-lb-sec can be uninstalled using cli)
+#  Scenario: Prueba borrado
+#    Then I wait '5' seconds
+

@@ -17,3 +17,4 @@ CONSUL_DATACENTER=$(grep -Po '"consulDatacenter":\s"(\d*?,|.*?[^\\]")' /stratio_
 
 cd /stratio/paas-secret-utils/
 bash -e gencerts -l /stratio_volume/certs_client_marathonlb.list -w -v vault.service.$INTERNAL_DOMAIN -o 8200 -t $VAULT_TOKEN -d $INTERNAL_DOMAIN -c $CONSUL_DATACENTER
+
