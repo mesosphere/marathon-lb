@@ -346,6 +346,93 @@ def mergeVhostTable(left, right):
     return result
 
 
+def calculate_server_id(server_name, taken_server_ids):
+    """Calculate a stable server id given server name
+
+        Calculates stable server id [1] for the given server name [2]
+        which has following properties:
+        * is unique/has not been assigned yet
+        * is an integer from the range 1-32767
+        * is stable - i.e. calling this function repeatably with the same
+          server name must yield the same server id.
+
+        THE STABILITY OF SERVER_ID IS GUARANTEED IF THE ORDER OF CALLS OF THIS
+        FUNCTION IS PRESERVED, I.E. THE BACKEND LIST IS SORTED BEFORE
+        PROCESSING
+
+        [1] http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-id
+        [2] http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2
+
+        Args:
+            server_name(str): the name of the given backend server
+            taken_server_ids(set): list of allready assigned server ids
+
+        Returns:
+            An integer depicting the server ID
+    """
+    if server_name == '' or server_name is None:
+        raise ValueError("Malformed server name: {}".format(server_name))
+
+    server_name_encoded = server_name.encode('utf-8')
+    server_name_shasum = hashlib.sha256(server_name_encoded).hexdigest()
+
+    # The number 32767 is not coincidental. It is very important to notice
+    # in [1] that:
+    # * due to the use of atol() call [2], server id must not exceed the length
+    #   of 'long int' on a given platform. According to [3] it is at
+    #   least 32bits long so 32bits is a safe limit.
+    # * the atol() call returns `long int` which is assigned to puid var which
+    #   int turn is `int`. As per [4]:
+    #
+    # ```
+    # On a system where long is wider than int, if the value won't fit in an
+    # int, then the result of the conversion is implementation-defined. (Or,
+    # starting in C99, it can raise an implementation-defined signal, but I
+    # don't know of any compilers that actually do that.) What typically
+    # happens is that the high-order bits are discarded, but you shouldn't
+    # depend on that. (The rules are different for unsigned types; the result
+    # of converting a signed or unsigned integer to an unsigned type is well
+    # defined.)
+    # ```
+    #
+    # So we need to assume that server id is 16 bit signed integer. Server id
+    # must be a positive number so this gives us at most 2**15-1 = 32767
+    # possible server IDs. Beyond that there are dragons and the undefined
+    # behaviour of the C compiler ;)
+    #
+    # [1] https://github.com/haproxy/haproxy/blob/c55b88ece616afe0b28dc81eb39bad37b5f9c33f/src/server.c#L359-L388  # noqa: E501
+    # [2] https://github.com/haproxy/haproxy/blob/c55b88ece616afe0b28dc81eb39bad37b5f9c33f/src/server.c#L368  # noqa: E501
+    # [3] https://en.wikipedia.org/wiki/C_data_types
+    # [4] https://stackoverflow.com/a/13652624
+    server_id = int(server_name_shasum, 16) % 32767
+
+    if server_id not in taken_server_ids and server_id > 0:
+        taken_server_ids.add(server_id)
+        return server_id
+
+    # We try to solve the collisions by recursively calling
+    # calculate_backend_id() with the server name argument set to the initial
+    # server name plus the calculated `server_name_shasum` appended to it.
+    # This way we should get stable IDs during the next haproxy
+    # reconfiguration.  The more backends there are the more likely the
+    # collisions will get. Initially the probability is 1/(2**15-1) * 100 =
+    # 0.003%. As the new_server_id gets longer the sha sum calculation will be
+    # getting more CPU-heavy and the number of SHA sum calculations per backend
+    # server will increase. Still - it is unlikely that we will hit the number
+    # backend server that will this approach a problem - the number of backend
+    # servers would need to be in the order of thousands.
+    new_server_name = "{0} {1}".format(server_name, server_name_shasum)
+    if server_id == 0:
+        msg_fmt = ("server id == 0 for `%s`, retrying with `%s`")
+        logger.info(msg_fmt, server_name, new_server_name)
+    else:
+        msg_fmt = ("server id collision for `%s`: `%d` was already assigned, "
+                   "retrying with `%s`")
+        logger.info(msg_fmt, server_name, server_id, new_server_name)
+
+    return calculate_server_id(new_server_name, taken_server_ids)
+
+
 def config(apps, groups, bind_http_https, ssl_certs, templater,
            haproxy_map=False, domain_map_array=[], app_map_array=[],
            config_file="/etc/haproxy/haproxy.cfg",
@@ -550,6 +637,7 @@ https://docs.mesosphere.com/services/marathon-lb/advanced/#global-template.\
 
         do_backend_healthcheck_options_once = True
         key_func = attrgetter('host', 'port')
+        taken_server_ids = set()
         for backend_service_idx, backendServer\
                 in enumerate(sorted(app.backends, key=key_func)):
             if do_backend_healthcheck_options_once:
@@ -597,6 +685,11 @@ https://docs.mesosphere.com/services/marathon-lb/advanced/#global-template.\
             shortHashedServerName = hashlib.sha1(serverName.encode()) \
                 .hexdigest()[:10]
 
+            # In order to keep the state of backend servers consistent between
+            # reloads, server IDs need to be stable. See
+            # calculate_backend_id()'s docstring to learn how it is achieved.
+            server_id = calculate_server_id(serverName, taken_server_ids)
+
             server_health_check_options = None
             if app.healthCheck:
                 template_server_healthcheck_options = None
@@ -625,10 +718,11 @@ https://docs.mesosphere.com/services/marathon-lb/advanced/#global-template.\
                 host_ipv4=backendServer.ip,
                 port=backendServer.port,
                 serverName=serverName,
-                cookieOptions=' check cookie ' +
-                shortHashedServerName if app.sticky else '',
+                serverId=server_id,
+                cookieOptions=' check cookie ' + shortHashedServerName
+                              if app.sticky else '',
                 healthCheckOptions=server_health_check_options
-                if server_health_check_options else '',
+                              if server_health_check_options else '',
                 otherOptions=' disabled' if backendServer.draining else ''
             )
 

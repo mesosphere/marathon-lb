@@ -2,6 +2,8 @@ import copy
 import json
 import unittest
 import os
+import string
+import random
 
 import marathon_lb
 
@@ -239,7 +241,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -292,7 +294,7 @@ frontend nginx_10000
 backend nginx_10000
   balance roundrobin
   mode tcp
-  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -353,7 +355,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -416,7 +418,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server agent1_192_0_2_1_1234 192.0.2.1:1234 check inter 2s fall 11
+  server agent1_192_0_2_1_1234 192.0.2.1:1234 id 15582 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -478,7 +480,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -542,7 +544,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server agent1_192_0_2_1_1234 192.0.2.1:1234 check inter 2s fall 11
+  server agent1_192_0_2_1_1234 192.0.2.1:1234 id 15582 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -615,7 +617,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -693,7 +695,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server agent1_192_0_2_1_1234 192.0.2.1:1234 check inter 2s fall 11
+  server agent1_192_0_2_1_1234 192.0.2.1:1234 id 15582 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -769,7 +771,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -851,7 +853,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server agent1_192_0_2_1_1234 192.0.2.1:1234 check inter 2s fall 11
+  server agent1_192_0_2_1_1234 192.0.2.1:1234 id 15582 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -915,7 +917,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -982,7 +984,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server agent1_192_0_2_1_1234 192.0.2.1:1234 check inter 2s fall 11
+  server agent1_192_0_2_1_1234 192.0.2.1:1234 id 15582 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -1048,7 +1050,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -1117,7 +1119,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server agent1_192_0_2_1_1234 192.0.2.1:1234 check inter 2s fall 11
+  server agent1_192_0_2_1_1234 192.0.2.1:1234 id 15582 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -1188,7 +1190,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server agent1_192_0_2_1_1234 192.0.2.1:1234 check inter 2s fall 11
+  server agent1_192_0_2_1_1234 192.0.2.1:1234 id 15582 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -1246,7 +1248,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -1303,7 +1305,7 @@ backend pywebserver_10101
   option forwardfor
   http-request set-header X-Forwarded-Port %[dst_port]
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
-  server 10_0_2_148_1565 10.0.2.148:1565
+  server 10_0_2_148_1565 10.0.2.148:1565 id 16827
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -1359,11 +1361,11 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 15s
-  server 10_0_1_147_25724 10.0.1.147:25724 check inter 3s fall 11
-  server 10_0_6_25_16916 10.0.6.25:16916 check inter 3s fall 11
-  server 10_0_6_25_23336 10.0.6.25:23336 check inter 3s fall 11
-  server 10_0_6_25_31184 10.0.6.25:31184 check inter 3s fall 11 disabled
-'''
+  server 10_0_1_147_25724 10.0.1.147:25724 id 9975 check inter 3s fall 11
+  server 10_0_6_25_16916 10.0.6.25:16916 id 14685 check inter 3s fall 11
+  server 10_0_6_25_23336 10.0.6.25:23336 id 14676 check inter 3s fall 11
+  server 10_0_6_25_31184 10.0.6.25:31184 id 27565 check inter 3s fall 11 disabled
+'''  # noqa: E501
         self.assertMultiLineEqual(config, expected)
 
     def test_config_simple_app_healthcheck_port(self):
@@ -1419,8 +1421,8 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11 port 1024
-'''
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363 check inter 2s fall 11 port 1024
+'''  # noqa: E501
         self.assertMultiLineEqual(config, expected)
 
     def test_config_simple_app_healthcheck_port_using_another_portindex(self):
@@ -1486,7 +1488,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server agent1_192_0_2_1_1024 192.0.2.1:1024 check inter 2s fall 11 port 1025
+  server agent1_192_0_2_1_1024 192.0.2.1:1024 id 18199 check inter 2s fall 11 port 1025
 
 backend nginx_10001
   balance roundrobin
@@ -1496,8 +1498,8 @@ backend nginx_10001
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server agent1_192_0_2_1_1025 192.0.2.1:1025 check inter 2s fall 11
-'''
+  server agent1_192_0_2_1_1025 192.0.2.1:1025 id 22260 check inter 2s fall 11
+'''  # noqa: E501
         self.assertMultiLineEqual(config, expected)
 
     def test_config_simple_app_healthcheck_port_diff_portindex_and_group(self):
@@ -1563,7 +1565,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server agent1_192_0_2_1_1024 192.0.2.1:1024 check inter 2s fall 11 port 1025
+  server agent1_192_0_2_1_1024 192.0.2.1:1024 id 18199 check inter 2s fall 11 port 1025
 
 backend nginx_10001
   balance roundrobin
@@ -1573,8 +1575,8 @@ backend nginx_10001
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server agent1_192_0_2_1_1025 192.0.2.1:1025 check inter 2s fall 11
-'''
+  server agent1_192_0_2_1_1025 192.0.2.1:1025 id 22260 check inter 2s fall 11
+'''  # noqa: E501
         self.assertMultiLineEqual(config, expected)
 
     def test_config_simple_app_healthcheck_port_portindex_out_of_range(self):
@@ -1647,7 +1649,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server agent1_192_0_2_1_1024 192.0.2.1:1024 check inter 2s fall 11 port 1024
+  server agent1_192_0_2_1_1024 192.0.2.1:1024 id 18199 check inter 2s fall 11 port 1024
 
 backend nginx_10001
   balance roundrobin
@@ -1657,8 +1659,8 @@ backend nginx_10001
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server agent1_192_0_2_1_1025 192.0.2.1:1025 check inter 2s fall 11
-'''
+  server agent1_192_0_2_1_1025 192.0.2.1:1025 id 22260 check inter 2s fall 11
+'''  # noqa: E501
         self.assertMultiLineEqual(config, expected)
 
     def test_config_simple_app_tcp_healthcheck(self):
@@ -1715,7 +1717,7 @@ backend nginx_10000
   option forwardfor
   http-request set-header X-Forwarded-Port %[dst_port]
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
-  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -1765,12 +1767,12 @@ frontend nginx_10001
 backend nginx_10000
   balance roundrobin
   mode tcp
-  server agent1_1_1_1_1_1024 1.1.1.1:1024
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363
 
 backend nginx_10001
   balance roundrobin
   mode tcp
-  server agent1_1_1_1_1_1025 1.1.1.1:1025
+  server agent1_1_1_1_1_1025 1.1.1.1:1025 id 19971
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -1815,7 +1817,7 @@ frontend nginx_10000
 backend nginx_10000
   balance roundrobin
   mode tcp
-  server agent1_1_1_1_1_1024 1.1.1.1:1024
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -1860,7 +1862,7 @@ frontend nginx_10001
 backend nginx_10001
   balance roundrobin
   mode tcp
-  server agent1_1_1_1_1_1025 1.1.1.1:1025
+  server agent1_1_1_1_1_1025 1.1.1.1:1025 id 19971
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -1916,7 +1918,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   http-request set-header Host test.example.com
   reqirep  "^([^ :]*)\ /test//?(.*)" "\\1\ /\\2"
-  server agent1_1_1_1_1_1024 1.1.1.1:1024
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -1971,7 +1973,7 @@ backend nginx_10000
   acl hdr_location res.hdr(Location) -m found
   rspirep "^Location: (https?://test.example.com(:[0-9]+)?)?(/.*)" "Location: \
   /test if hdr_location"
-  server agent1_1_1_1_1_1024 1.1.1.1:1024
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -2026,7 +2028,7 @@ backend nginx_10000
   acl is_root path -i /
   acl is_domain hdr(host) -i test.example.com
   redirect code 301 location /test if is_domain is_root
-  server agent1_1_1_1_1_1024 1.1.1.1:1024
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -2070,7 +2072,7 @@ backend nginx_10000
   balance roundrobin
   mode tcp
   cookie mesosphere_server_id insert indirect nocache
-  server agent1_1_1_1_1_1024 1.1.1.1:1024 check cookie d6ad48c81f
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363 check cookie d6ad48c81f
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -2190,7 +2192,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server agent1_192_0_2_1_1234 192.0.2.1:1234 check inter 2s fall 11
+  server agent1_192_0_2_1_1234 192.0.2.1:1234 id 15582 check inter 2s fall 11
 
 backend nginx1_10000
   balance roundrobin
@@ -2200,7 +2202,7 @@ backend nginx1_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server agent1_192_0_2_1_2234 192.0.2.1:2234 check inter 2s fall 11
+  server agent1_192_0_2_1_2234 192.0.2.1:2234 id 20338 check inter 2s fall 11
 
 backend nginx2_10000
   balance roundrobin
@@ -2210,7 +2212,7 @@ backend nginx2_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server agent1_192_0_2_1_3234 192.0.2.1:3234 check inter 2s fall 11
+  server agent1_192_0_2_1_3234 192.0.2.1:3234 id 3933 check inter 2s fall 11
 
 backend nginx3_10000
   balance roundrobin
@@ -2220,7 +2222,7 @@ backend nginx3_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 10s
-  server agent1_192_0_2_1_4234 192.0.2.1:4234 check inter 2s fall 11
+  server agent1_192_0_2_1_4234 192.0.2.1:4234 id 31229 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -2297,7 +2299,7 @@ backend apache_10001
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 15s
-  server agent2_2_2_2_2_1025 2.2.2.2:1025 check inter 3s fall 11
+  server agent2_2_2_2_2_1025 2.2.2.2:1025 id 5918 check inter 3s fall 11
 
 backend nginx_10000
   balance roundrobin
@@ -2307,7 +2309,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 15s
-  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 3s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363 check inter 3s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -2412,7 +2414,7 @@ backend apache_10001
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 15s
-  server agent2_2_2_2_2_1025 2.2.2.2:1025 check inter 3s fall 11
+  server agent2_2_2_2_2_1025 2.2.2.2:1025 id 5918 check inter 3s fall 11
 
 backend nginx_10000
   balance roundrobin
@@ -2422,7 +2424,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 15s
-  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 3s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363 check inter 3s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -2539,7 +2541,7 @@ backend nginx1_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 15s
-  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 3s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363 check inter 3s fall 11
 
 backend nginx2_10001
   balance roundrobin
@@ -2549,7 +2551,7 @@ backend nginx2_10001
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 15s
-  server agent2_2_2_2_2_1025 2.2.2.2:1025 check inter 3s fall 11
+  server agent2_2_2_2_2_1025 2.2.2.2:1025 id 5918 check inter 3s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -2655,7 +2657,7 @@ backend apache_10001
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 15s
-  server agent2_2_2_2_2_1025 2.2.2.2:1025 check inter 3s fall 11
+  server agent2_2_2_2_2_1025 2.2.2.2:1025 id 5918 check inter 3s fall 11
 
 backend nginx_10000
   balance roundrobin
@@ -2665,7 +2667,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 15s
-  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 3s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363 check inter 3s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -2766,7 +2768,7 @@ backend apache_10001
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 15s
-  server agent2_2_2_2_2_1025 2.2.2.2:1025 check inter 3s fall 11
+  server agent2_2_2_2_2_1025 2.2.2.2:1025 id 5918 check inter 3s fall 11
 
 backend nginx_10000
   balance roundrobin
@@ -2776,7 +2778,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 15s
-  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 3s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363 check inter 3s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -2865,7 +2867,7 @@ backend nginx_10000
   reqirep  "^([^ :]*)\ ''' + app.proxypath + '''/?(.*)" "\\1\ /\\2"
   option  httpchk GET /
   timeout check 10s
-  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -2925,7 +2927,7 @@ backend nginx_10000
   reqirep  "^([^ :]*)\ /proxy/path/?(.*)" "\\1\ /\\2"
   option  httpchk GET /
   timeout check 10s
-  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -2986,7 +2988,7 @@ backend nginx_10000
 "Location:   /proxy/path if hdr_location"
   option  httpchk GET /
   timeout check 10s
-  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 2s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363 check inter 2s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -3057,7 +3059,7 @@ backend nginx2_10001
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 15s
-  server agent2_2_2_2_2_1025 2.2.2.2:1025 check inter 3s fall 11
+  server agent2_2_2_2_2_1025 2.2.2.2:1025 id 5918 check inter 3s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -3131,7 +3133,7 @@ backend nginx2_10001
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 15s
-  server agent2_2_2_2_2_1025 2.2.2.2:1025 check inter 3s fall 11
+  server agent2_2_2_2_2_1025 2.2.2.2:1025 id 5918 check inter 3s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -3305,7 +3307,7 @@ backend letsencrypt_10002
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 15s
-  server agent4_4_4_4_4_1026 4.4.4.4:1026 check inter 3s fall 11
+  server agent4_4_4_4_4_1026 4.4.4.4:1026 id 18496 check inter 3s fall 11
 
 backend nginx1_10000
   balance roundrobin
@@ -3315,7 +3317,7 @@ backend nginx1_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 15s
-  server agent1_1_1_1_1_1024 1.1.1.1:1024 check inter 3s fall 11
+  server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363 check inter 3s fall 11
 
 backend nginx2_10001
   balance roundrobin
@@ -3325,7 +3327,7 @@ backend nginx2_10001
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 15s
-  server agent2_2_2_2_2_1025 2.2.2.2:1025 check inter 3s fall 11
+  server agent2_2_2_2_2_1025 2.2.2.2:1025 id 5918 check inter 3s fall 11
 
 backend nginx3_10002
   balance roundrobin
@@ -3335,7 +3337,7 @@ backend nginx3_10002
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   option  httpchk GET /
   timeout check 15s
-  server agent3_3_3_3_3_1026 3.3.3.3:1026 check inter 3s fall 11
+  server agent3_3_3_3_3_1026 3.3.3.3:1026 id 638 check inter 3s fall 11
 '''
         self.assertMultiLineEqual(config, expected)
 
@@ -3377,3 +3379,115 @@ class TestFunctions(unittest.TestCase):
         data = marathon_lb.load_json(json_value)
         expected = ['k1', {'k3': ['k4', {}]}, 'k6']
         self.assertEquals(data, expected)
+
+
+class TestServerIdGeneration(unittest.TestCase):
+    @staticmethod
+    def _randomword(length):
+        letters = string.ascii_lowercase
+        return ''.join(random.choice(letters) for i in range(length))
+
+    def test_if_server_id_is_generated(self):
+        test_cases = [
+            ('0', 17068),
+            ('1', 25733),
+            ('a', 25929),
+            ('10_0_6_25_23336', 14676),
+            ]
+        taken_server_ids = set()
+        for i in range(0, len(test_cases)):
+            self.assertEqual(
+                marathon_lb.calculate_server_id(
+                    test_cases[i][0], taken_server_ids),
+                test_cases[i][1])
+
+        self.assertEqual(set([x[1] for x in test_cases]), taken_server_ids)
+
+    def test_if_server_id_collisions_are_handled_synthetic(self):
+        # All the test cases here generate the same server id in the first
+        # iteration. The idea is that if the collisions are handled, it will
+        # still result in different server ids returned by the
+        # calculate_server_id() function.
+        test_cases = [
+            ('yftjqzplpu', 28876),
+            ('ttccbfrdhi', 7893),
+            ('ilvparharq', 22002),
+            ('gpagkxfzou', 21805),
+            ('dcsfcvfolh', 20892),
+            ('tsqkugaath', 25675),
+            ]
+        taken_server_ids = set()
+        for i in range(0, len(test_cases)):
+            self.assertEqual(
+                marathon_lb.calculate_server_id(
+                    test_cases[i][0], taken_server_ids),
+                test_cases[i][1])
+
+        self.assertEqual(set([x[1] for x in test_cases]), taken_server_ids)
+
+    def test_if_server_id_collisions_are_handled_accurate(self):
+        num_server_names = 30000
+        # The approach of this test is more real-life like: we generate
+        # num_server_names unique server names. If num_server_names is close to
+        # the limit (i.e. 32767), collisions need to be handled gracefull in
+        # order to generate all the server id.
+        # Haproxy is most probably incapable of handling so many
+        # backend servers but still - passing this test should prove that we
+        # have enough headroom to handle all the real life scenarios.
+        taken_server_ids = set()
+        for i in range(0, num_server_names):
+            marathon_lb.calculate_server_id(
+                self._randomword(20), taken_server_ids)
+
+        self.assertEqual(len(taken_server_ids), num_server_names)
+
+    def test_if_server_id_is_always_nonzero(self):
+        # This test assumes some knowledge of the internal implementation of
+        # the tested function, as it uses pre-calculated strings which normally
+        # would result in server_id==0. Unfortunatelly there is no easy way to
+        # test it more reliably - i.e without making assumptions about the
+        # input.
+        test_cases = [
+            ('uudnntiqtd', 26825),
+            ('rghtavdepy', 5030),
+            ('ofdsehlvjo', 26512),
+            ('adwquoyjfl', 24165),
+            ('oebmwvpofe', 11608),
+            ]
+        for i in range(0, len(test_cases)):
+            self.assertEqual(
+                marathon_lb.calculate_server_id(test_cases[i][0], set()),
+                test_cases[i][1])
+
+    def test_service_name_sequence_to_service_id_sequence_stability(self):
+        num_server_names = 1000
+        # This test checks if given the same sequence of string of
+        # service_names the resulting sequence of service_ids will always be
+        # the same
+
+        server_ids = dict()
+        for i in range(0, num_server_names):
+            sn = self._randomword(20)
+            server_ids[sn] = list()
+
+        for i in range(0, 3):
+            tmp_set = set()
+            for sn in server_ids:
+                server_ids[sn].append(
+                    marathon_lb.calculate_server_id(sn, tmp_set))
+
+        for sn in server_ids:
+            # Compare first and the second server_id for the given server
+            # name:
+            self.assertEqual(server_ids[sn][0], server_ids[sn][1])
+            # Compare second and the third server_id for the given server
+            # name:
+            self.assertEqual(server_ids[sn][1], server_ids[sn][2])
+
+    def test_if_server_name_cant_be_empty_string(self):
+        with self.assertRaises(ValueError):
+            marathon_lb.calculate_server_id('', set())
+
+    def test_if_server_name_cant_be_none(self):
+        with self.assertRaises(ValueError):
+            marathon_lb.calculate_server_id(None, set())
