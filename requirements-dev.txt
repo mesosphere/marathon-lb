@@ -3,3 +3,4 @@ coverage
 flake8
 mock
 nose
+pytest==3.5.1
