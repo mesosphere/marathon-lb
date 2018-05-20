@@ -105,7 +105,7 @@ class MarathonService(object):
         self.authUser = None
         self.authPasswd = None
         self.sticky = False
-        self.enabled = not strictMode
+        self.enabled = True
         self.redirectHttpToHttps = False
         self.useHsts = False
         self.sslCert = None
