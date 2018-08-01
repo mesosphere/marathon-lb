@@ -158,7 +158,7 @@ class CurlHttpEventStream(object):
         self.curl.setopt(pycurl.CONNECTTIMEOUT, 10)
         self.curl.setopt(pycurl.WRITEDATA, self.received_buffer)
 
-        # Marathon >= 1.7.x returns 301 responses for /v2/events responses
+        # Marathon >= 1.7.x returns 30x responses for /v2/events responses
         # when they're coming from a non-leader. So we follow redirects.
         self.curl.setopt(pycurl.FOLLOWLOCATION, True)
         self.curl.setopt(pycurl.MAXREDIRS, 1)
