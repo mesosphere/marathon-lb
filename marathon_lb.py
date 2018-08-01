@@ -231,8 +231,6 @@ class Marathon(object):
               "event_type=status_update_event&" + \
               "event_type=health_status_changed_event&" + \
               "event_type=api_post_event"
-        if events:
-            url += "?" + urllib.parse.urlencode({'event_type': events}, doseq=True)
         return CurlHttpEventStream(url, self.__auth, self.__verify)
 
     def iter_events(self, stream):
