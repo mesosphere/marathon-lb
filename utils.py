@@ -158,6 +158,11 @@ class CurlHttpEventStream(object):
         self.curl.setopt(pycurl.CONNECTTIMEOUT, 10)
         self.curl.setopt(pycurl.WRITEDATA, self.received_buffer)
 
+        # Marathon >= 1.7.x returns 30x responses for /v2/events responses
+        # when they're coming from a non-leader. So we follow redirects.
+        self.curl.setopt(pycurl.FOLLOWLOCATION, True)
+        self.curl.setopt(pycurl.MAXREDIRS, 1)
+
         # The below settings are to prevent the connection from hanging if the
         # connection breaks silently. Since marathon-lb only listens, silent
         # connection failure results in marathon-lb waiting infinitely.
