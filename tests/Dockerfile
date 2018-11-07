@@ -6,7 +6,9 @@ RUN apt-get update && apt-get install -y ruby apache2 vim curl ruby-dev build-es
     && echo "deb http://debian.datastax.com/community stable main" | tee -a /etc/apt/sources.list.d/cassandra.sources.list \
     && curl -L http://debian.datastax.com/debian/repo_key | apt-key add - \
     && apt-get update && apt-get install -y cassandra \
-    && gem install --no-ri --no-rdoc cassandra-driver \
+    && gem install rubygems-update \
+    && update_rubygems \
+    && gem install --no-ri --no-rdoc cassandra-driver -v 3.2.0 \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /marathon-lb
