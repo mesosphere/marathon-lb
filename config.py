@@ -263,7 +263,7 @@ but includes a path.
         self.add_template(
             ConfigTemplate(name='BACKEND_HSTS_OPTIONS',
                            value='''\
-  rspadd  Strict-Transport-Security:\ max-age=15768000
+  rspadd  ''' + r'''Strict-Transport-Security:\ max-age=15768000
 ''',
                            overridable=True,
                            description='''\
@@ -590,10 +590,10 @@ Sets HTTP headers, for example X-Forwarded-For and X-Forwarded-Proto.
 
         self.add_template(
             ConfigTemplate(name='HTTP_BACKEND_PROXYPASS_GLUE',
-                           value='''\
-  http-request set-header Host {hostname}
-  reqirep  "^([^ :]*)\ {proxypath}/?(.*)" "\\1\ /\\2"
-''',
+                           value=('''\
+  http-request set-header Host {hostname}''' + r'''
+  reqirep  "^([^ :]*)\ {proxypath}/?(.*)" "\1\ /\2"
+'''),
                            overridable=True,
                            description='''\
 Backend glue for `HAPROXY_{n}_HTTP_BACKEND_PROXYPASS_PATH`.
