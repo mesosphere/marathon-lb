@@ -166,27 +166,35 @@ class Marathon(object):
             self.__verify = ca_cert
 
     def api_req_raw(self, method, path, auth, body=None, **kwargs):
+        response, exception = None, None
         for host in self.__hosts:
             path_str = os.path.join(host, 'v2')
 
             for path_elem in path:
                 path_str = path_str + "/" + path_elem
+            try:
+                response = requests.request(
+                    method,
+                    path_str,
+                    auth=auth,
+                    headers={
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    timeout=(3.05, 46),
+                    **kwargs
+                )
 
-            response = requests.request(
-                method,
-                path_str,
-                auth=auth,
-                headers={
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                timeout=(3.05, 46),
-                **kwargs
-            )
+                logger.debug("%s %s", method, response.url)
+                if response.status_code == 200:
+                    break
+            except Exception as e:
+                logger.debug("%s %s", method, path_str, exc_info=True)
+                exception = e
 
-            logger.debug("%s %s", method, response.url)
-            if response.status_code == 200:
-                break
+        if not response:
+            assert exception is not None
+            raise exception
 
         response.raise_for_status()
 
