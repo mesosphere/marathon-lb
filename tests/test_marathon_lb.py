@@ -1173,7 +1173,7 @@ frontend marathon_https_in
   mode http
   acl path_nginx_10000 path_beg /some/path
   use_backend nginx_10000 if { ssl_fc_sni test.example.com } ''' + \
-                                      '''path_nginx_10000
+                                      r'''path_nginx_10000
   use_backend nginx_10000 if { ssl_fc_sni test } path_nginx_10000
 
 frontend nginx_10000
@@ -1887,7 +1887,7 @@ backend nginx_10001
 
         config = marathon_lb.config(apps, groups, bind_http_https,
                                     ssl_certs, templater)
-        expected = self.base_config + '''
+        expected = self.base_config + r'''
 frontend marathon_http_in
   bind *:80
   mode http
@@ -1917,7 +1917,7 @@ backend nginx_10000
   http-request set-header X-Forwarded-Port %[dst_port]
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   http-request set-header Host test.example.com
-  reqirep  "^([^ :]*)\ /test//?(.*)" "\\1\ /\\2"
+  reqirep  "^([^ :]*)\ /test//?(.*)" "\1\ /\2"
   server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363
 '''
         self.assertMultiLineEqual(config, expected)
@@ -2849,7 +2849,7 @@ frontend marathon_http_appid_in
 frontend marathon_https_in
   bind *:443 ssl crt /etc/ssl/cert.pem
   mode http
-  acl path_nginx_10000 path_beg ''' + app.path + '''
+  acl path_nginx_10000 path_beg ''' + app.path + r'''
   use_backend nginx_10000 if { ssl_fc_sni testhost.com } path_nginx_10000
 
 frontend nginx_10000
@@ -2864,7 +2864,7 @@ backend nginx_10000
   http-request set-header X-Forwarded-Port %[dst_port]
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   http-request set-header Host testhost.com
-  reqirep  "^([^ :]*)\ ''' + app.proxypath + '''/?(.*)" "\\1\ /\\2"
+  reqirep  "^([^ :]*)\ ''' + app.proxypath + r'''/?(.*)" "\1\ /\2"
   option  httpchk GET /
   timeout check 10s
   server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363 check inter 2s fall 11
@@ -2897,7 +2897,7 @@ backend nginx_10000
 
         config = marathon_lb.config(apps, groups, bind_http_https,
                                     ssl_certs, templater)
-        expected = self.base_config + '''
+        expected = self.base_config + r'''
 frontend marathon_http_in
   bind *:80
   mode http
@@ -2924,7 +2924,7 @@ backend nginx_10000
   http-request set-header X-Forwarded-Port %[dst_port]
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   http-request set-header Host None
-  reqirep  "^([^ :]*)\ /proxy/path/?(.*)" "\\1\ /\\2"
+  reqirep  "^([^ :]*)\ /proxy/path/?(.*)" "\1\ /\2"
   option  httpchk GET /
   timeout check 10s
   server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363 check inter 2s fall 11
