@@ -167,7 +167,7 @@ class Marathon(object):
 
     def api_req_raw(self, method, path, auth, body=None, **kwargs):
         response, exception = None, None
-        for host in self.__hosts:
+        for i, host in enumerate(self.__hosts):
             path_str = os.path.join(host, 'v2')
 
             for path_elem in path:
@@ -187,6 +187,9 @@ class Marathon(object):
 
                 logger.debug("%s %s", method, response.url)
                 if response.status_code == 200:
+                    # stick to the host with the last successful requests
+                    if i != 0:
+                        self.__hosts = self.__hosts[i:] + self.__hosts[:i]
                     break
             except Exception as e:
                 logger.debug("%s %s", method, path_str, exc_info=True)
