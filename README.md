@@ -394,6 +394,54 @@ PRs are welcome, but here are a few general guidelines:
    bash /path/to/marathon-lb/scripts/install-git-hooks.sh
    ```
 
+### Using the Makefile and docker for developement and testing
+
+Running unit and integration tests is automated as `make` targets. Docker
+is required to use the targets as it will run all tests in containers.
+
+Several environment variables can be set to control the image tags,
+DCOS version/variant, etc. Check the top of the `Makefile` for more info.
+
+To run the unit tests:
+
+```bash
+make test-unit
+```
+
+To run the integration tests a DCOS installation will be started via
+[dcos-e2e](https://github.com/dcos/dcos-e2e). The installation of
+`dcos-e2e` and management of the cluster will all be done in docker
+containers. Since the installers are rather large downloads, it is
+benificial to specify a value for `DCOS_E2E_INSTALLERS_DIR`. By default
+`DCOS_E2E_INSTALLERS_DIR` is inside the `.cache` directory that will be
+removed upon `make clean`. You must provide a repository for the
+resultant docker image to be pushed to via the `CONTAINTER_REPO`
+environemnt variable. It is assumed that the local docker is already
+logged in and the image will be pushed prior to launching the cluster.
+
+To run the integration tests on the OSS variant of DCOS:
+
+```bash
+DCOS_E2E_INSTALLERS_DIR="${HOME}/dcos/installers" \
+CONTAINTER_REPO="my_docker_user/my-marathon-lb-repo" make test-integration
+```
+
+To run the integration tests on the ENTERPRISE variant of DCOS:
+
+
+```bash
+DCOS_LICENSE_KEY_PATH=${HOME}/license.txt \
+DCOS_E2E_VARIANT=enterprise \
+DCOS_E2E_INSTALLERS_DIR="${HOME}/dcos/installers"\
+CONTAINTER_REPO="my_docker_user/my-marathon-lb-repo" make test-integration
+```
+
+To run both unit and integration tests (add appropriate variables):
+
+```bash
+CONTAINTER_REPO="my_docker_user/my-marathon-lb-repo" make test
+```
+
 ### Troubleshooting your development environment setup
 
 #### FileNotFoundError: [Errno 2] No such file or directory: 'curl-config'

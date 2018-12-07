@@ -3,4 +3,10 @@ coverage
 flake8
 mock
 nose
-pytest==3.5.1
+pytest
+retrying
+dcos-shakedown
+cryptography
+https://github.com/dcos/dcos-e2e/archive/2018.12.10.0.zip
+https://github.com/dcos/dcos-test-utils/archive/master.zip
+https://github.com/mesosphere/dcos-installer-tools/archive/master.zip
