@@ -1,6 +1,7 @@
 .idea
 templates/
 __pycache__
+.pytest_cache
 *.pyc
 .env
 .cache
