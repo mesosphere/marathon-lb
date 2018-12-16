@@ -1,6 +1,6 @@
 FROM debian:buster
 
-LABEL LAST_MODIFIED=20180403
+LABEL LAST_MODIFIED=20181216
 
 # runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -40,8 +40,8 @@ RUN set -x \
 
 
 ENV HAPROXY_MAJOR=1.8 \
-    HAPROXY_VERSION=1.8.8 \
-    HAPROXY_MD5=8633b6e661169d2fc6a44d82a3aceae5
+    HAPROXY_VERSION=1.8.15 \
+    HAPROXY_MD5=ae732cbce52b3e04112a32ef116a11de
 
 COPY requirements.txt /marathon-lb/
 
