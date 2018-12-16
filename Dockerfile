@@ -6,7 +6,7 @@ LABEL LAST_MODIFIED=20181216
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
         inetutils-syslogd \
-        libcurl3 \
+        libcurl4 \
         liblua5.3-0 \
         libssl1.1 \
         openssl \
