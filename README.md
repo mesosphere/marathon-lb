@@ -22,7 +22,7 @@ fast, efficient, battle-tested, highly available load balancer with many advance
 
 ### Getting Started
 
- * [Using marathon-lb](https://docs.mesosphere.com/services/marathon-lb/marathon-lb-basic-tutorial/)
+ * [Using marathon-lb](https://docs.mesosphere.com/services/marathon-lb/mlb-basic-tutorial/)
  * [Securing your service with TLS/SSL (blog post)](https://mesosphere.com/blog/2016/04/06/lets-encrypt-dcos/)
 
 Take a look at [the marathon-lb wiki](https://github.com/mesosphere/marathon-lb/wiki) for example usage, templates, and more.
