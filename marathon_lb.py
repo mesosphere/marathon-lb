@@ -456,7 +456,7 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
 
     # This should handle situations where customers have a custom HAPROXY_HEAD
     # that includes the 'daemon' flag or does not expose listener fds:
-    if 'daemon' in config or "expose-fd listeners" not in config:
+    if 'daemon' in config.split() or "expose-fd listeners" not in config:
         upgrade_warning = '''\
 Error in custom HAPROXY_HEAD template: \
 In Marathon-LB 1.12, the default HAPROXY_HEAD section changed, please \
