@@ -133,7 +133,7 @@ def check_haproxy_reloading(haproxy_url):
         # Assume reloading on any error, this should be caught with a timeout
         return True
 
-    if len(pids) > 1:
+    if len(pids) > 2:
         logger.info("Waiting for {} pids on {}".format(len(pids), haproxy_url))
         return True
 
