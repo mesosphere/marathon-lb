@@ -21,6 +21,7 @@ class Arguments:
     complete_cur = False
     complete_prev = False
     dcos_auth_credentials = None
+    linear_increase = 0
 
 
 class MyResponse:
