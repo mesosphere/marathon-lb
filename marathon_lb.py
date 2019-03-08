@@ -1336,8 +1336,9 @@ def writeConfigAndValidate(
     else:
         moveTempFile(haproxyTempConfigFile, 'haproxy_tmp_conf_fail',
                      'haproxy_temp_config_fail')
-        removeTempFileIfExist(domain_temp_map_file)
-        removeTempFileIfExist(app_temp_map_file)
+        if haproxy_map:
+            removeTempFileIfExist(domain_temp_map_file)
+            removeTempFileIfExist(app_temp_map_file)
         return False
 
 
