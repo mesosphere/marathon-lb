@@ -2188,11 +2188,11 @@ if __name__ == '__main__':
                         # marathon sometimes sends more than one json per event
                         # e.g. {}\r\n{}\r\n\r\n
                         for real_event_data in re.split(r'\r\n', event.data):
-                                data = load_json(real_event_data)
-                                logger.info(
-                                    "received event of type {0}"
-                                    .format(data['eventType']))
-                                processor.handle_event(data)
+                            data = load_json(real_event_data)
+                            logger.info(
+                                "received event of type {0}"
+                                .format(data['eventType']))
+                            processor.handle_event(data)
                     else:
                         logger.info("skipping empty message")
             except pycurl.error as e:
