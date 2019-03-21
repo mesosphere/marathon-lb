@@ -33,12 +33,12 @@ import sys
 import threading
 import time
 import datetime
+import urllib.parse
 from itertools import cycle
 from collections import defaultdict
 from operator import attrgetter
 from shutil import move, copy
 from tempfile import mkstemp
-from urllib import parse
 
 import dateutil.parser
 import requests
@@ -230,7 +230,8 @@ class Marathon(object):
     def get_event_stream(self, events):
         url = self.host + "/v2/events"
         if events:
-            url += "?" + urllib.parse.urlencode({'event_type': events}, doseq=True)
+            url += "?" + urllib.parse.urlencode({'event_type': events},
+                                                doseq=True)
         return CurlHttpEventStream(url, self.__auth, self.__verify)
 
     def iter_events(self, stream):
