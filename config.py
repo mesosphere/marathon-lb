@@ -1288,6 +1288,7 @@ def set_redirpath(x, k, v):
 def set_network_allowed(x, k, v):
     x.network_allowed = v
 
+
 # remove any line-ending inconsistencies
 # https://github.com/mesosphere/marathon-lb/pull/430
 def normalize_line_endings(v):
