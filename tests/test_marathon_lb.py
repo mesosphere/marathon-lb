@@ -2985,7 +2985,7 @@ backend nginx_10000
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
   acl hdr_location res.hdr(Location) -m found
   rspirep "^Location: (https?://None(:[0-9]+)?)?(/.*)" \
-"Location:   /proxy/path if hdr_location"
+"Location:   /proxy/path" if hdr_location
   option  httpchk GET /
   timeout check 10s
   server agent1_1_1_1_1_1024 1.1.1.1:1024 id 28363 check inter 2s fall 11
