@@ -454,6 +454,7 @@ frontend marathon_http_in
   bind *:80
   mode http
   acl host_test_example_com_nginx hdr(host) -i test.example.com
+  use_backend nginx_10000 if host_test_example_com_nginx
   redirect scheme https code 301 if !{ ssl_fc } host_test_example_com_nginx
 
 frontend marathon_http_appid_in
