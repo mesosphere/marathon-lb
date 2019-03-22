@@ -33,7 +33,6 @@ class ConfigTemplater(object):
             ConfigTemplate(name='HEAD',
                            value='''\
 global
-  daemon
   log /dev/log local0
   log /dev/log local1 notice
   spread-checks 5
@@ -56,7 +55,7 @@ ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:DHE-RSA-AES128-SHA256:\
 DHE-RSA-AES256-SHA256:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:\
 AES256-SHA256:!aNULL:!MD5:!DSS
   ssl-default-server-options no-sslv3 no-tlsv10 no-tls-tickets
-  stats socket /var/run/haproxy/socket
+  stats socket /var/run/haproxy/socket expose-fd listeners
   server-state-file global
   server-state-base /var/state/haproxy/
   lua-load /marathon-lb/getpids.lua
@@ -161,6 +160,57 @@ default and gathers all virtual hosts as defined by the
 `HAPROXY_{n}_VHOST` label. You must modify this file to
 include your certificate.
 '''))
+        self.add_template(
+            ConfigTemplate(name='HTTPS_GROUPED_FRONTEND_HEAD',
+                           value='''
+frontend marathon_https_in
+  bind *:443
+  mode tcp
+  tcp-request inspect-delay 5s
+  tcp-request content accept if { req_ssl_hello_type 1 }
+''',
+                           overridable=False,
+                           description='''\
+An HTTPS frontend for encrypted connections that binds to port *:443 by
+default and gathers all virtual hosts as defined by the
+`HAPROXY_{n}_VHOST` label. Useful for adding client certificated per domain.
+Works only with an enabled group-https-by-vhost flag.
+'''))
+        self.add_template(
+            ConfigTemplate(name='HTTPS_GROUPED_VHOST_FRONTEND_HEAD',
+                           value='''
+frontend {name}
+  mode http
+  bind abns@{name} accept-proxy ssl {sslCerts}{bindOpts}
+''',
+                           overridable=False,
+                           description='''\
+An HTTPS frontend for vhost.
+Works only with an enabled group-https-by-vhost flag.
+'''))
+
+        self.add_template(
+            ConfigTemplate(name='HTTPS_GROUPED_VHOST_BACKEND_HEAD',
+                           value='''
+backend {name}
+  server loopback-for-tls abns@{name} send-proxy-v2
+''',
+                           overridable=False,
+                           description='''\
+An HTTPS backend for vhost.
+Works only with an enabled group-https-by-vhost flag.
+'''))
+
+        self.add_template(
+            ConfigTemplate(name='HTTPS_GROUPED_VHOST_FRONTEND_ACL',
+                           value='''\
+  use_backend {backend} if {{ req_ssl_sni -i {host} }}
+''',
+                           overridable=False,
+                           description='''\
+A route rule https entrypoint.
+Works only with an enabled group-https-by-vhost flag.
+'''))
 
         self.add_template(
             ConfigTemplate(name='FRONTEND_HEAD',
@@ -213,7 +263,7 @@ but includes a path.
         self.add_template(
             ConfigTemplate(name='BACKEND_HSTS_OPTIONS',
                            value='''\
-  rspadd  Strict-Transport-Security:\ max-age=15768000
+  rspadd  ''' + r'''Strict-Transport-Security:\ max-age=15768000
 ''',
                            overridable=True,
                            description='''\
@@ -540,10 +590,10 @@ Sets HTTP headers, for example X-Forwarded-For and X-Forwarded-Proto.
 
         self.add_template(
             ConfigTemplate(name='HTTP_BACKEND_PROXYPASS_GLUE',
-                           value='''\
-  http-request set-header Host {hostname}
-  reqirep  "^([^ :]*)\ {proxypath}/?(.*)" "\\1\ /\\2"
-''',
+                           value=('''\
+  http-request set-header Host {hostname}''' + r'''
+  reqirep  "^([^ :]*)\ {proxypath}/?(.*)" "\1\ /\2"
+'''),
                            overridable=True,
                            description='''\
 Backend glue for `HAPROXY_{n}_HTTP_BACKEND_PROXYPASS_PATH`.
@@ -554,7 +604,7 @@ Backend glue for `HAPROXY_{n}_HTTP_BACKEND_PROXYPASS_PATH`.
                            value='''\
   acl hdr_location res.hdr(Location) -m found
   rspirep "^Location: (https?://{hostname}(:[0-9]+)?)?(/.*)" "Location: \
-  {rootpath} if hdr_location"
+  {rootpath}" if hdr_location
 ''',
                            overridable=True,
                            description='''\
@@ -642,7 +692,7 @@ Sets a cookie for services where `HAPROXY_{n}_STICKY` is true.
         self.add_template(
             ConfigTemplate(name='BACKEND_SERVER_OPTIONS',
                            value='''\
-  server {serverName} {host_ipv4}:{port}{cookieOptions}\
+  server {serverName} {host_ipv4}:{port} id {serverId}{cookieOptions}\
 {healthCheckOptions}{otherOptions}
 ''',
                            overridable=True,
@@ -770,17 +820,25 @@ Use with HAPROXY_TCP_BACKEND_ACL_ALLOW_DENY.
         self.__load_templates()
 
     def __load_templates(self):
-        '''Loads template files if they exist, othwerwise it sets defaults'''
+        '''Look in environment variables for templates.  If not set in env,
+        load template files if they exist. Othwerwise it sets defaults'''
 
         for template in self.t:
             name = self.t[template].full_name
-            try:
-                filename = os.path.join(self.__template_directory, name)
-                with open(filename) as f:
-                    logger.info('overriding %s from %s', name, filename)
-                    self.t[template].value = f.read()
-            except IOError:
-                logger.debug("setting default value for %s", name)
+            if os.environ.get(name):
+                logger.info('overriding %s from environment variable', name)
+                env_template_val = os.environ.get(name)
+
+                # Handle escaped endlines
+                self.t[template].value = env_template_val.replace("\\n", "\n")
+            else:
+                try:
+                    filename = os.path.join(self.__template_directory, name)
+                    with open(filename) as f:
+                        logger.info('overriding %s from %s', name, filename)
+                        self.t[template].value = f.read()
+                except IOError:
+                    logger.debug("setting default value for %s", name)
 
     def get_descriptions(self):
         descriptions = '''\
@@ -804,6 +862,15 @@ Specified as {specifiedAs}.
 ```
 {default}```
 '''
+
+        override_example = '''\
+**Example Marathon label to override `{full_name}` for port 0 of an app:**
+```
+"HAPROXY_0_{name}": "{flat}"
+```
+
+'''
+
         for tname in sorted(self.t.keys()):
             t = self.t[tname]
             spec = "`HAPROXY_" + t.name + "` template"
@@ -817,6 +884,18 @@ Specified as {specifiedAs}.
                 description=t.description,
                 default=t.default_value
             )
+            if t.overridable:
+                descriptions += override_example.format(
+                    full_name=t.full_name,
+                    name=t.name,
+                    # Escape out backslashes, quotes, and endlines
+                    flat=(
+                        t.default_value
+                        .replace('\\', '\\\\')
+                        .replace('"', ' \\\"')
+                        .replace('\n', '\\n')
+                        )
+                )
 
         descriptions += '''\
 ## Other Labels
@@ -874,6 +953,22 @@ Specified as {specifiedAs}.
     @property
     def haproxy_https_frontend_head(self):
         return self.t['HTTPS_FRONTEND_HEAD'].value
+
+    @property
+    def haproxy_https_grouped_frontend_head(self):
+        return self.t['HTTPS_GROUPED_FRONTEND_HEAD'].value
+
+    @property
+    def haproxy_https_grouped_vhost_frontend_head(self):
+        return self.t['HTTPS_GROUPED_VHOST_FRONTEND_HEAD'].value
+
+    @property
+    def haproxy_https_grouped_vhost_backend_head(self):
+        return self.t['HTTPS_GROUPED_VHOST_BACKEND_HEAD'].value
+
+    @property
+    def haproxy_https_grouped_vhost_frontend_acl(self):
+        return self.t['HTTPS_GROUPED_VHOST_FRONTEND_ACL'].value
 
     def haproxy_userlist_head(self, app):
         if 'HAPROXY_{0}_USERLIST_HEAD' in app.labels:
@@ -1376,6 +1471,13 @@ labels.append(Label(name='MODE',
                     func=set_mode,
                     description='''\
 Set the connection mode to either TCP or HTTP. The default is TCP.
+Following exceptions apply:
+ * if `HAPROXY_{n}_VHOST` label was specified and `HAPROXY_{n}_MODE` \
+was not set, then the mode will be set to `http`
+ * if there is a healtcheck configured for the given port, \
+with protocol field set to one of 'HTTP', 'HTTPS', 'MESOS_HTTP',
+'MESOS_HTTPS', the mode will be *overriden* to 'http', \
+irrespective of the value of `HAPROXY_{n}_MODE` label.
 
 Ex: `HAPROXY_0_MODE = 'http'`
                     '''))

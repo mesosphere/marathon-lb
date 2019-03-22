@@ -32,18 +32,19 @@ import subprocess
 import sys
 import threading
 import time
-import traceback
 import datetime
 from itertools import cycle
+from collections import defaultdict
 from operator import attrgetter
-from shutil import move
+from shutil import move, copy
 from tempfile import mkstemp
 
 import dateutil.parser
 import requests
+import pycurl
 
 from common import (get_marathon_auth_params, set_logging_args,
-                    set_marathon_auth_args, setup_logging)
+                    set_marathon_auth_args, setup_logging, cleanup_json)
 from config import ConfigTemplater, label_keys
 from lrucache import LRUCache
 from utils import (CurlHttpEventStream, get_task_ip_and_ports, ip_cache,
@@ -189,16 +190,18 @@ class Marathon(object):
 
         response.raise_for_status()
 
-        if 'message' in response.json():
+        resp_json = cleanup_json(response.json())
+        if 'message' in resp_json:
             response.reason = "%s (%s)" % (
                 response.reason,
-                response.json()['message'])
+                resp_json['message'])
 
         return response
 
     def api_req(self, method, path, **kwargs):
-        return self.api_req_raw(method, path, self.__auth,
+        data = self.api_req_raw(method, path, self.__auth,
                                 verify=self.__verify, **kwargs).json()
+        return cleanup_json(data)
 
     def create(self, app_json):
         return self.api_req('POST', ['apps'], app_json)
@@ -224,17 +227,21 @@ class Marathon(object):
         return self.api_req('GET', ['tasks'])["tasks"]
 
     def get_event_stream(self):
-        url = self.host + "/v2/events"
-        logger.info(
-            "SSE Active, trying fetch events from {0}".format(url))
+        url = self.host + "/v2/events?plan-format=light&" + \
+              "event_type=status_update_event&" + \
+              "event_type=health_status_changed_event&" + \
+              "event_type=api_post_event"
+        return CurlHttpEventStream(url, self.__auth, self.__verify)
 
-        resp = CurlHttpEventStream(url, self.__auth, self.__verify)
+    def iter_events(self, stream):
+        logger.info(
+            "SSE Active, trying fetch events from {0}".format(stream.url))
 
         class Event(object):
             def __init__(self, data):
                 self.data = data
 
-        for line in resp.iter_lines():
+        for line in stream.iter_lines():
             if line.strip() != '':
                 for real_event_data in re.split(r'\r\n',
                                                 line.decode('utf-8')):
@@ -326,9 +333,110 @@ def _get_health_check_options(template, health_check, health_check_port):
     )
 
 
+def mergeVhostTable(left, right):
+    result = left.copy()
+    for key in right:
+        if key in result:
+            result[key][0].extend(right[key][0])
+            result[key][1].update(right[key][1])
+            result[key][2].update(right[key][2])
+        else:
+            result[key] = right[key]
+
+    return result
+
+
+def calculate_server_id(server_name, taken_server_ids):
+    """Calculate a stable server id given server name
+
+        Calculates stable server id [1] for the given server name [2]
+        which has following properties:
+        * is unique/has not been assigned yet
+        * is an integer from the range 1-32767
+        * is stable - i.e. calling this function repeatably with the same
+          server name must yield the same server id.
+
+        THE STABILITY OF SERVER_ID IS GUARANTEED IF THE ORDER OF CALLS OF THIS
+        FUNCTION IS PRESERVED, I.E. THE BACKEND LIST IS SORTED BEFORE
+        PROCESSING
+
+        [1] http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-id
+        [2] http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2
+
+        Args:
+            server_name(str): the name of the given backend server
+            taken_server_ids(set): list of allready assigned server ids
+
+        Returns:
+            An integer depicting the server ID
+    """
+    if server_name == '' or server_name is None:
+        raise ValueError("Malformed server name: {}".format(server_name))
+
+    server_name_encoded = server_name.encode('utf-8')
+    server_name_shasum = hashlib.sha256(server_name_encoded).hexdigest()
+
+    # The number 32767 is not coincidental. It is very important to notice
+    # in [1] that:
+    # * due to the use of atol() call [2], server id must not exceed the length
+    #   of 'long int' on a given platform. According to [3] it is at
+    #   least 32bits long so 32bits is a safe limit.
+    # * the atol() call returns `long int` which is assigned to puid var which
+    #   int turn is `int`. As per [4]:
+    #
+    # ```
+    # On a system where long is wider than int, if the value won't fit in an
+    # int, then the result of the conversion is implementation-defined. (Or,
+    # starting in C99, it can raise an implementation-defined signal, but I
+    # don't know of any compilers that actually do that.) What typically
+    # happens is that the high-order bits are discarded, but you shouldn't
+    # depend on that. (The rules are different for unsigned types; the result
+    # of converting a signed or unsigned integer to an unsigned type is well
+    # defined.)
+    # ```
+    #
+    # So we need to assume that server id is 16 bit signed integer. Server id
+    # must be a positive number so this gives us at most 2**15-1 = 32767
+    # possible server IDs. Beyond that there are dragons and the undefined
+    # behaviour of the C compiler ;)
+    #
+    # [1] https://github.com/haproxy/haproxy/blob/c55b88ece616afe0b28dc81eb39bad37b5f9c33f/src/server.c#L359-L388  # noqa: E501
+    # [2] https://github.com/haproxy/haproxy/blob/c55b88ece616afe0b28dc81eb39bad37b5f9c33f/src/server.c#L368  # noqa: E501
+    # [3] https://en.wikipedia.org/wiki/C_data_types
+    # [4] https://stackoverflow.com/a/13652624
+    server_id = int(server_name_shasum, 16) % 32767
+
+    if server_id not in taken_server_ids and server_id > 0:
+        taken_server_ids.add(server_id)
+        return server_id
+
+    # We try to solve the collisions by recursively calling
+    # calculate_backend_id() with the server name argument set to the initial
+    # server name plus the calculated `server_name_shasum` appended to it.
+    # This way we should get stable IDs during the next haproxy
+    # reconfiguration.  The more backends there are the more likely the
+    # collisions will get. Initially the probability is 1/(2**15-1) * 100 =
+    # 0.003%. As the new_server_id gets longer the sha sum calculation will be
+    # getting more CPU-heavy and the number of SHA sum calculations per backend
+    # server will increase. Still - it is unlikely that we will hit the number
+    # backend server that will this approach a problem - the number of backend
+    # servers would need to be in the order of thousands.
+    new_server_name = "{0} {1}".format(server_name, server_name_shasum)
+    if server_id == 0:
+        msg_fmt = ("server id == 0 for `%s`, retrying with `%s`")
+        logger.info(msg_fmt, server_name, new_server_name)
+    else:
+        msg_fmt = ("server id collision for `%s`: `%d` was already assigned, "
+                   "retrying with `%s`")
+        logger.info(msg_fmt, server_name, server_id, new_server_name)
+
+    return calculate_server_id(new_server_name, taken_server_ids)
+
+
 def config(apps, groups, bind_http_https, ssl_certs, templater,
            haproxy_map=False, domain_map_array=[], app_map_array=[],
-           config_file="/etc/haproxy/haproxy.cfg"):
+           config_file="/etc/haproxy/haproxy.cfg",
+           group_https_by_vhosts=False):
     logger.info("generating config")
     config = templater.haproxy_head
     groups = frozenset(groups)
@@ -339,9 +447,25 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
 
     if bind_http_https:
         http_frontends = templater.haproxy_http_frontend_head
-        https_frontends = templater.haproxy_https_frontend_head.format(
-            sslCerts=" ".join(map(lambda cert: "crt " + cert, _ssl_certs))
-        )
+        if group_https_by_vhosts:
+            https_frontends = templater.haproxy_https_grouped_frontend_head
+        else:
+            https_frontends = templater.haproxy_https_frontend_head.format(
+                sslCerts=" ".join(map(lambda cert: "crt " + cert, _ssl_certs))
+            )
+
+    # This should handle situations where customers have a custom HAPROXY_HEAD
+    # that includes the 'daemon' flag or does not expose listener fds:
+    if 'daemon' in config.split() or "expose-fd listeners" not in config:
+        upgrade_warning = '''\
+Error in custom HAPROXY_HEAD template: \
+In Marathon-LB 1.12, the default HAPROXY_HEAD section changed, please \
+make the following changes to your custom template: Remove "daemon", \
+Add "stats socket /var/run/haproxy/socket expose-fd listeners". \
+More information can be found here: \
+https://docs.mesosphere.com/services/marathon-lb/advanced/#global-template.\
+'''
+        raise Exception(upgrade_warning)
 
     userlists = str()
     frontends = str()
@@ -350,6 +474,7 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
     apps_with_http_appid_backend = []
     http_frontend_list = []
     https_frontend_list = []
+    https_grouped_frontend_list = defaultdict(lambda: ([], set(), set()))
     haproxy_dir = os.path.dirname(config_file)
     logger.debug("HAProxy dir is %s", haproxy_dir)
 
@@ -417,7 +542,7 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
         # TODO(lloesche): Check if the hostname is already defined by another
         # service
         if bind_http_https and app.hostname:
-            backend_weight, p_fe, s_fe = \
+            backend_weight, p_fe, s_fe, g_fe = \
                 generateHttpVhostAcl(templater,
                                      app,
                                      backend,
@@ -427,6 +552,10 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
                                      duplicate_map)
             http_frontend_list.append((backend_weight, p_fe))
             https_frontend_list.append((backend_weight, s_fe))
+
+            if group_https_by_vhosts:
+                https_grouped_frontend_list = mergeVhostTable(
+                    https_grouped_frontend_list, g_fe)
 
         # if app mode is http, we add the app to the second http frontend
         # selecting apps by http header X-Marathon-App-Id
@@ -508,13 +637,15 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
 
         do_backend_healthcheck_options_once = True
         key_func = attrgetter('host', 'port')
+        taken_server_ids = set()
         for backend_service_idx, backendServer\
                 in enumerate(sorted(app.backends, key=key_func)):
             if do_backend_healthcheck_options_once:
                 if app.healthCheck:
                     template_backend_health_check = None
                     if app.mode == 'tcp' \
-                            or app.healthCheck['protocol'] == 'TCP':
+                            or app.healthCheck['protocol'] == 'TCP' \
+                            or app.healthCheck['protocol'] == 'MESOS_TCP':
                         template_backend_health_check = templater \
                             .haproxy_backend_tcp_healthcheck_options(app)
                     elif app.mode == 'http':
@@ -554,10 +685,17 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
             shortHashedServerName = hashlib.sha1(serverName.encode()) \
                 .hexdigest()[:10]
 
+            # In order to keep the state of backend servers consistent between
+            # reloads, server IDs need to be stable. See
+            # calculate_backend_id()'s docstring to learn how it is achieved.
+            server_id = calculate_server_id(serverName, taken_server_ids)
+
             server_health_check_options = None
             if app.healthCheck:
                 template_server_healthcheck_options = None
-                if app.mode == 'tcp' or app.healthCheck['protocol'] == 'TCP':
+                if app.mode == 'tcp' \
+                        or app.healthCheck['protocol'] == 'TCP' \
+                        or app.healthCheck['protocol'] == 'MESOS_TCP':
                     template_server_healthcheck_options = templater \
                         .haproxy_backend_server_tcp_healthcheck_options(app)
                 elif app.mode == 'http':
@@ -580,10 +718,11 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
                 host_ipv4=backendServer.ip,
                 port=backendServer.port,
                 serverName=serverName,
-                cookieOptions=' check cookie ' +
-                shortHashedServerName if app.sticky else '',
+                serverId=server_id,
+                cookieOptions=' check cookie ' + shortHashedServerName
+                              if app.sticky else '',
                 healthCheckOptions=server_health_check_options
-                if server_health_check_options else '',
+                              if server_health_check_options else '',
                 otherOptions=' disabled' if backendServer.draining else ''
             )
 
@@ -592,8 +731,16 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
 
     for backend in http_frontend_list:
         http_frontends += backend[1]
-    for backend in https_frontend_list:
-        https_frontends += backend[1]
+    if group_https_by_vhosts:
+        for backend in sorted(https_grouped_frontend_list.keys()):
+            https_frontends +=\
+                templater.haproxy_https_grouped_vhost_frontend_acl.format(
+                    backend=re.sub(r'[^a-zA-Z0-9\-]', '_', backend),
+                    host=backend)
+
+    else:
+        for backend in https_frontend_list:
+            https_frontends += backend[1]
 
     config += userlists
     if bind_http_https:
@@ -601,10 +748,42 @@ def config(apps, groups, bind_http_https, ssl_certs, templater,
     config += http_appid_frontends
     if bind_http_https:
         config += https_frontends
+        if group_https_by_vhosts:
+            for vhost in sorted(https_grouped_frontend_list.keys()):
+                config +=\
+                    templater\
+                    .haproxy_https_grouped_vhost_backend_head\
+                    .format(
+                        name=re.sub(r'[^a-zA-Z0-9\-]', '_', vhost))
+                frontend = templater \
+                    .haproxy_https_grouped_vhost_frontend_head \
+                    .format(name=re.sub(r'[^a-zA-Z0-9\-]', '_', vhost),
+                            sslCerts=" ".join(
+                                map(lambda cert: "crt " + cert,
+                                    defaultValue(
+                                        https_grouped_frontend_list[vhost][1],
+                                                 set(_ssl_certs)))),
+                            bindOpts=" ".join(
+                                map(lambda opts: " " + opts,
+                                    https_grouped_frontend_list[vhost][2]))
+                            )
+                for v in sorted(
+                        https_grouped_frontend_list[vhost][0],
+                        key=lambda x: x[0],
+                        reverse=True):
+                    frontend += v[1]
+                config += frontend
     config += frontends
     config += backends
 
     return config
+
+
+def defaultValue(col, default):
+    if len(col) == 0:
+        return default
+    else:
+        return col
 
 
 def get_haproxy_pids():
@@ -613,7 +792,8 @@ def get_haproxy_pids():
             "pidof haproxy",
             stderr=subprocess.STDOUT,
             shell=True).split()))
-    except subprocess.CalledProcessError:
+    except subprocess.CalledProcessError as ex:
+        logger.debug("Unable to get haproxy pids: %s", ex)
         return set()
 
 
@@ -644,14 +824,46 @@ def reloadConfig():
         logger.info("reloading using %s", " ".join(reloadCommand))
         try:
             start_time = time.time()
+            checkpoint_time = start_time
+            # Retry or log the reload every 10 seconds
+            reload_frequency = args.reload_interval
+            reload_retries = args.max_reload_retries
+            enable_retries = True
+            infinite_retries = False
+            if reload_retries == 0:
+                enable_retries = False
+            elif reload_retries < 0:
+                infinite_retries = True
             old_pids = get_haproxy_pids()
             subprocess.check_call(reloadCommand, close_fds=True)
+            new_pids = get_haproxy_pids()
+            logger.debug("Waiting for new haproxy pid (old pids: [%s], " +
+                         "new_pids: [%s])...", old_pids, new_pids)
             # Wait until the reload actually occurs and there's a new PID
-            while len(get_haproxy_pids() - old_pids) < 1:
-                logger.debug("Waiting for new haproxy pid...")
+            while True:
+                if len(new_pids - old_pids) >= 1:
+                    logger.debug("new pids: [%s]", new_pids)
+                    logger.debug("reload finished, took %s seconds",
+                                 time.time() - start_time)
+                    break
+                timeSinceCheckpoint = time.time() - checkpoint_time
+                if (timeSinceCheckpoint >= reload_frequency):
+                    logger.debug("Still waiting for new haproxy pid after " +
+                                 "%s seconds (old pids: [%s], " +
+                                 "new_pids: [%s]).",
+                                 time.time() - start_time, old_pids, new_pids)
+                    checkpoint_time = time.time()
+                    if enable_retries:
+                        if not infinite_retries:
+                            reload_retries -= 1
+                            if reload_retries == 0:
+                                logger.debug("reload failed after %s seconds",
+                                             time.time() - start_time)
+                                break
+                        logger.debug("Attempting reload again...")
+                        subprocess.check_call(reloadCommand, close_fds=True)
                 time.sleep(0.1)
-            logger.debug("reload finished, took %s seconds",
-                         time.time() - start_time)
+                new_pids = get_haproxy_pids()
         except OSError as ex:
             logger.error("unable to reload config using command %s",
                          " ".join(reloadCommand))
@@ -670,6 +882,7 @@ def generateHttpVhostAcl(
     # to use alternate templates from the default one-acl/one-use_backend.
     staging_http_frontends = ""
     staging_https_frontends = ""
+    https_grouped_frontend_list = defaultdict(lambda: ([], set(), set()))
 
     if "," in app.hostname:
         logger.debug(
@@ -717,8 +930,17 @@ def generateHttpVhostAcl(
                     path=app.path,
                     backend=backend
                 )
+        temp_frontend_head = staging_https_frontends
 
         for vhost_hostname in vhosts:
+            https_grouped_frontend_list[vhost_hostname][0].append(
+                (app.backend_weight, temp_frontend_head))
+            if app.sslCert is not None:
+                https_grouped_frontend_list[vhost_hostname][1].add(app.sslCert)
+            if app.bindOptions is not None:
+                https_grouped_frontend_list[vhost_hostname][2].add(
+                    app.bindOptions)
+
             logger.debug("processing vhost %s", vhost_hostname)
             if haproxy_map and not app.path and not app.authRealm and \
                     not app.redirectHttpToHttps:
@@ -747,43 +969,57 @@ def generateHttpVhostAcl(
                 if app.authRealm:
                     https_frontend_acl = templater.\
                         haproxy_https_frontend_acl_with_auth_and_path(app)
-                    staging_https_frontends += https_frontend_acl.format(
+                    staging_https_frontend = https_frontend_acl.format(
                         cleanedUpHostname=acl_name,
                         hostname=vhost_hostname,
                         appId=app.appId,
                         realm=app.authRealm,
                         backend=backend
                     )
+                    staging_https_frontends += staging_https_frontend
+                    https_grouped_frontend_list[vhost_hostname][0].append(
+                        (app.backend_weight, staging_https_frontend))
                 else:
                     https_frontend_acl = \
                         templater.haproxy_https_frontend_acl_with_path(app)
-                    staging_https_frontends += https_frontend_acl.format(
+                    staging_https_frontend = https_frontend_acl.format(
                         cleanedUpHostname=acl_name,
                         hostname=vhost_hostname,
                         appId=app.appId,
                         backend=backend
                     )
+                    staging_https_frontends += staging_https_frontend
+                    https_grouped_frontend_list[vhost_hostname][0].append(
+                        (app.backend_weight, staging_https_frontend))
             else:
                 if app.authRealm:
                     https_frontend_acl = \
                         templater.haproxy_https_frontend_acl_with_auth(app)
-                    staging_https_frontends += https_frontend_acl.format(
+                    staging_https_frontend = https_frontend_acl.format(
                         cleanedUpHostname=acl_name,
                         hostname=vhost_hostname,
                         appId=app.appId,
                         realm=app.authRealm,
                         backend=backend
                     )
+                    staging_https_frontends += staging_https_frontend
+                    https_grouped_frontend_list[vhost_hostname][0].append(
+                        (app.backend_weight, staging_https_frontend))
                 else:
                     if haproxy_map:
                         if 'map_https_frontend_acl' not in duplicate_map:
+                            app.backend_weight = -1
                             https_frontend_acl = templater.\
                                 haproxy_map_https_frontend_acl(app)
-                            staging_https_frontends += https_frontend_acl.\
+                            staging_https_frontend = https_frontend_acl. \
                                 format(
                                     hostname=vhost_hostname,
                                     haproxy_dir=haproxy_dir
                                 )
+                            staging_https_frontends += staging_https_frontend
+                            https_grouped_frontend_list[vhost_hostname][0]\
+                                .append(
+                                (app.backend_weight, staging_https_frontend))
                             duplicate_map['map_https_frontend_acl'] = 1
                         map_element = {}
                         map_element[vhost_hostname] = backend
@@ -793,12 +1029,15 @@ def generateHttpVhostAcl(
                     else:
                         https_frontend_acl = templater.\
                             haproxy_https_frontend_acl(app)
-                        staging_https_frontends += https_frontend_acl.format(
+                        staging_https_frontend = https_frontend_acl.format(
                             cleanedUpHostname=acl_name,
                             hostname=vhost_hostname,
                             appId=app.appId,
                             backend=backend
                         )
+                        staging_https_frontends += staging_https_frontend
+                        https_grouped_frontend_list[vhost_hostname][0].append(
+                            (app.backend_weight, staging_https_frontend))
 
         # We've added the http acl lines, now route them to the same backend
         if app.redirectHttpToHttps:
@@ -863,6 +1102,10 @@ def generateHttpVhostAcl(
             "adding virtual host for app with hostname %s", app.hostname)
         acl_name = re.sub(r'[^a-zA-Z0-9\-]', '_', app.hostname) + \
             '_' + app.appId[1:].replace('/', '_')
+        if app.sslCert is not None:
+            https_grouped_frontend_list[app.hostname][1].add(app.sslCert)
+        if app.bindOptions is not None:
+            https_grouped_frontend_list[app.hostname][2].add(app.bindOptions)
 
         if app.path:
             if app.redirectHttpToHttps:
@@ -914,15 +1157,19 @@ def generateHttpVhostAcl(
                     )
             https_frontend_acl = \
                 templater.haproxy_https_frontend_acl_only_with_path(app)
-            staging_https_frontends += https_frontend_acl.format(
+            staging_https_frontend = https_frontend_acl.format(
                 path=app.path,
                 backend=backend
             )
+            staging_https_frontends += staging_https_frontend
+            https_grouped_frontend_list[app.hostname][0].append(
+                (app.backend_weight, staging_https_frontend))
+
             if app.authRealm:
                 https_frontend_acl = \
                     templater.\
                     haproxy_https_frontend_acl_with_auth_and_path(app)
-                staging_https_frontends += https_frontend_acl.format(
+                staging_https_frontend = https_frontend_acl.format(
                     cleanedUpHostname=acl_name,
                     hostname=app.hostname,
                     path=app.path,
@@ -930,22 +1177,29 @@ def generateHttpVhostAcl(
                     realm=app.authRealm,
                     backend=backend
                 )
+                staging_https_frontends += staging_https_frontend
+                https_grouped_frontend_list[app.hostname][0].append(
+                    (app.backend_weight, staging_https_frontend))
             else:
                 https_frontend_acl = \
                     templater.haproxy_https_frontend_acl_with_path(app)
-                staging_https_frontends += https_frontend_acl.format(
+                staging_https_frontend = https_frontend_acl.format(
                     cleanedUpHostname=acl_name,
                     hostname=app.hostname,
                     appId=app.appId,
                     backend=backend
                 )
+                staging_https_frontends += staging_https_frontend
+                https_grouped_frontend_list[app.hostname][0].append(
+                    (app.backend_weight, staging_https_frontend))
         else:
             if app.redirectHttpToHttps:
                 http_frontend_acl = \
-                    templater.haproxy_http_frontend_acl_only(app)
+                    templater.haproxy_http_frontend_acl(app)
                 staging_http_frontends += http_frontend_acl.format(
                     cleanedUpHostname=acl_name,
-                    hostname=app.hostname
+                    hostname=app.hostname,
+                    backend=backend
                 )
                 haproxy_backend_redirect_http_to_https = \
                     templater.\
@@ -992,23 +1246,29 @@ def generateHttpVhostAcl(
             if app.authRealm:
                 https_frontend_acl = \
                     templater.haproxy_https_frontend_acl_with_auth(app)
-                staging_https_frontends += https_frontend_acl.format(
+                staging_https_frontend = https_frontend_acl.format(
                     cleanedUpHostname=acl_name,
                     hostname=app.hostname,
                     appId=app.appId,
                     realm=app.authRealm,
                     backend=backend
                 )
+                staging_https_frontends += staging_https_frontend
+                https_grouped_frontend_list[app.hostname][0].append(
+                    (app.backend_weight, staging_https_frontend))
             else:
                 if haproxy_map:
                     if 'map_https_frontend_acl' not in duplicate_map:
                         app.backend_weight = -1
                         https_frontend_acl = templater.\
                             haproxy_map_https_frontend_acl(app)
-                        staging_https_frontends += https_frontend_acl.format(
+                        staging_https_frontend = https_frontend_acl.format(
                             hostname=app.hostname,
                             haproxy_dir=haproxy_dir
                         )
+                        staging_https_frontends += staging_https_frontend
+                        https_grouped_frontend_list[app.hostname][0].append(
+                            (app.backend_weight, staging_https_frontend))
                         duplicate_map['map_https_frontend_acl'] = 1
                     map_element = {}
                     map_element[app.hostname] = backend
@@ -1017,15 +1277,19 @@ def generateHttpVhostAcl(
                 else:
                     https_frontend_acl = templater.\
                         haproxy_https_frontend_acl(app)
-                    staging_https_frontends += https_frontend_acl.format(
+                    staging_https_frontend = https_frontend_acl.format(
                         cleanedUpHostname=acl_name,
                         hostname=app.hostname,
                         appId=app.appId,
                         backend=backend
                     )
+                    staging_https_frontends += staging_https_frontend
+                    https_grouped_frontend_list[app.hostname][0].append(
+                        (app.backend_weight, staging_https_frontend))
     return (app.backend_weight,
             staging_http_frontends,
-            staging_https_frontends)
+            staging_https_frontends,
+            https_grouped_frontend_list)
 
 
 def writeConfigAndValidate(
@@ -1058,8 +1322,8 @@ def writeConfigAndValidate(
     if validateConfig(haproxyTempConfigFile):
         # Move into place
         if haproxy_map:
-            moveTempFile(domain_temp_map_file, domain_map_file)
-            moveTempFile(app_temp_map_file, app_map_file)
+            moveTempFile(domain_temp_map_file, domain_map_file, "domain_map")
+            moveTempFile(app_temp_map_file, app_map_file, "app_map")
 
             # Edit the config file again to point to the actual map paths
             with open(haproxyTempConfigFile, 'w') as tempConfig:
@@ -1068,9 +1332,14 @@ def writeConfigAndValidate(
             truncateMapFileIfExists(domain_map_file)
             truncateMapFileIfExists(app_map_file)
 
-        moveTempFile(haproxyTempConfigFile, config_file)
+        moveTempFile(haproxyTempConfigFile, config_file, "hap_cfg")
         return True
     else:
+        moveTempFile(haproxyTempConfigFile, 'haproxy_tmp_conf_fail',
+                     'haproxy_temp_config_fail')
+        if haproxy_map:
+            removeTempFileIfExist(domain_temp_map_file)
+            removeTempFileIfExist(app_temp_map_file)
         return False
 
 
@@ -1111,8 +1380,18 @@ def validateConfig(haproxy_config_file):
         return False
 
 
-def moveTempFile(temp_file, dest_file):
+def moveTempFile(temp_file, dest_file, tmp_filename):
     # Replace the old file with the new from its temporary location
+    for suffix in range(args.archive_versions - 1, 0, -1):
+        tmp_src_file = "/tmp/" + tmp_filename + "." + str(suffix)
+        tmp_dest_file = "/tmp/" + tmp_filename + "." + str(suffix + 1)
+        if os.path.isfile(tmp_src_file):
+            logger.debug("Copying temp file %s to %s",
+                         tmp_src_file, tmp_dest_file)
+            copy(tmp_src_file, tmp_dest_file)
+    logger.debug("Copying temp files %s to %s",
+                 temp_file, "/tmp/" + tmp_filename + ".1")
+    copy(temp_file, "/tmp/" + tmp_filename + ".1")
     logger.debug("moving temp file %s to %s", temp_file, dest_file)
     move(temp_file, dest_file)
 
@@ -1126,8 +1405,37 @@ def truncateMapFileIfExists(map_file):
         os.close(fd)
 
 
+def removeTempFileIfExist(temp_file):
+    if os.path.isfile(temp_file):
+        logger.debug("delete tempfile %s", temp_file)
+        os.remove(temp_file)
+
+
+def generateAndValidateTempConfig(config, config_file, domain_map_array,
+                                  app_map_array, haproxy_map):
+    temp_config_file = "%s.tmp" % config_file
+    domain_map_file = os.path.join(os.path.dirname(temp_config_file),
+                                   "domain2backend.map.tmp")
+    app_map_file = os.path.join(os.path.dirname(temp_config_file),
+                                "app2backend.map.tmp")
+
+    domain_map_string = str()
+    app_map_string = str()
+
+    if haproxy_map:
+        domain_map_string = generateMapString(domain_map_array)
+        app_map_string = generateMapString(app_map_array)
+
+    return writeConfigAndValidate(
+                config, temp_config_file, domain_map_string, domain_map_file,
+                app_map_string, app_map_file, haproxy_map)
+
+
 def compareWriteAndReloadConfig(config, config_file, domain_map_array,
                                 app_map_array, haproxy_map):
+    changed = False
+    config_valid = False
+
     # See if the last config on disk matches this, and if so don't reload
     # haproxy
     domain_map_file = os.path.join(os.path.dirname(config_file),
@@ -1159,10 +1467,16 @@ def compareWriteAndReloadConfig(config, config_file, domain_map_array,
                     config, config_file, domain_map_string, domain_map_file,
                     app_map_string, app_map_file, haproxy_map):
                 reloadConfig()
+                changed = True
+                config_valid = True
             else:
                 logger.warning("skipping reload: config/map not valid")
+                changed = True
+                config_valid = False
         else:
             logger.debug("skipping reload: config/map unchanged")
+            changed = False
+            config_valid = True
     else:
         truncateMapFileIfExists(domain_map_file)
         truncateMapFileIfExists(app_map_file)
@@ -1174,10 +1488,18 @@ def compareWriteAndReloadConfig(config, config_file, domain_map_array,
                     config, config_file, domain_map_string, domain_map_file,
                     app_map_string, app_map_file, haproxy_map):
                 reloadConfig()
+                changed = True
+                config_valid = True
             else:
                 logger.warning("skipping reload: config not valid")
+                changed = True
+                config_valid = False
         else:
+            changed = False
+            config_valid = True
             logger.debug("skipping reload: config unchanged")
+
+    return changed, config_valid
 
 
 def generateMapString(map_array):
@@ -1221,9 +1543,14 @@ def get_health_check(app, portIndex):
 healthCheckResultCache = LRUCache()
 
 
-def get_apps(marathon):
-    apps = marathon.list()
+def get_apps(marathon, apps=[]):
+    if len(apps) == 0:
+        apps = marathon.list()
+
     logger.debug("got apps %s", [app["id"] for app in apps])
+
+    excluded_states = {'TASK_KILLING', 'TASK_KILLED',
+                       'TASK_FINISHED', 'TASK_ERROR'}
 
     marathon_apps = []
     # This process requires 2 passes: the first is to gather apps belonging
@@ -1278,8 +1605,11 @@ def get_apps(marathon):
                         old = new
                         new = temp
 
-            target_instances = \
-                int(new['labels']['HAPROXY_DEPLOYMENT_TARGET_INSTANCES'])
+                target_instances = \
+                    int(new['labels']['HAPROXY_DEPLOYMENT_TARGET_INSTANCES'])
+
+            else:
+                target_instances = 1
 
             # Mark N tasks from old app as draining, where N is the
             # number of instances in the new app.  Sort the old tasks so that
@@ -1394,6 +1724,13 @@ def get_apps(marathon):
                                task['id'])
                 continue
 
+            # 'state' will not be present in test cases.
+            # Should always be present in an actual cluster
+            if 'state' in task and task['state'] in excluded_states:
+                logger.warning("Ignoring non-running task " + task['id'] +
+                               " with state " + task['state'])
+                continue
+
             if marathon.health_check() and 'healthChecks' in app and \
                len(app['healthChecks']) > 0:
                 alive = True
@@ -1410,7 +1747,7 @@ def get_apps(marathon):
                         continue
 
             task_ip, task_ports = get_task_ip_and_ports(app, task)
-            if not task_ip:
+            if task_ip is None:
                 logger.warning("Task has no resolvable IP address - skip")
                 continue
 
@@ -1437,23 +1774,111 @@ def get_apps(marathon):
     return apps_list
 
 
-def regenerate_config(apps, config_file, groups, bind_http_https,
-                      ssl_certs, templater, haproxy_map):
+def regenerate_config(marathon, config_file, groups, bind_http_https,
+                      ssl_certs, templater, haproxy_map, group_https_by_vhost):
     domain_map_array = []
     app_map_array = []
-
+    raw_apps = marathon.list()
+    apps = get_apps(marathon, raw_apps)
     generated_config = config(apps, groups, bind_http_https, ssl_certs,
                               templater, haproxy_map, domain_map_array,
-                              app_map_array, config_file)
+                              app_map_array, config_file, group_https_by_vhost)
+    (changed, config_valid) = compareWriteAndReloadConfig(
+        generated_config, config_file, domain_map_array, app_map_array,
+        haproxy_map)
+    if changed and not config_valid:
+        apps = make_config_valid_and_regenerate(marathon,
+                                                raw_apps,
+                                                groups,
+                                                bind_http_https,
+                                                ssl_certs,
+                                                templater,
+                                                haproxy_map,
+                                                domain_map_array,
+                                                app_map_array,
+                                                config_file,
+                                                group_https_by_vhost)
+    return apps
 
-    compareWriteAndReloadConfig(generated_config, config_file,
-                                domain_map_array, app_map_array, haproxy_map)
+
+# Build up a valid configuration by adding one app at a time and checking
+# for valid config file after each app
+def make_config_valid_and_regenerate(marathon,
+                                     raw_apps,
+                                     groups,
+                                     bind_http_https,
+                                     ssl_certs,
+                                     templater,
+                                     haproxy_map,
+                                     domain_map_array,
+                                     app_map_array,
+                                     config_file,
+                                     group_https_by_vhost):
+    try:
+        start_time = time.time()
+        apps = []
+        valid_apps = []
+        excluded_ids = []
+        included_ids = []
+
+        for app in raw_apps:
+            domain_map_array = []
+            app_map_array = []
+            valid_apps.append(app)
+            apps = get_apps(marathon, valid_apps)
+            generated_config = config(apps, groups, bind_http_https,
+                                      ssl_certs, templater, haproxy_map,
+                                      domain_map_array, app_map_array,
+                                      config_file, group_https_by_vhost)
+            config_valid = generateAndValidateTempConfig(generated_config,
+                                                         config_file,
+                                                         domain_map_array,
+                                                         app_map_array,
+                                                         haproxy_map)
+            if not config_valid:
+                logger.warn(
+                    "invalid configuration caused by app %s; "
+                    "it will be excluded", app["id"])
+                del valid_apps[-1]
+                excluded_ids.append(app["id"])
+            else:
+                included_ids.append(app["id"])
+
+        if len(valid_apps) > 0:
+            logger.debug("reloading valid config including apps: %s, and "
+                         "excluding apps: %s", included_ids, excluded_ids)
+            domain_map_array = []
+            app_map_array = []
+            apps = get_apps(marathon, valid_apps)
+            valid_config = config(apps, groups, bind_http_https,
+                                  ssl_certs, templater, haproxy_map,
+                                  domain_map_array, app_map_array,
+                                  config_file, group_https_by_vhost)
+            compareWriteAndReloadConfig(valid_config,
+                                        config_file,
+                                        domain_map_array,
+                                        app_map_array, haproxy_map)
+        else:
+            logger.error("A valid config file could not be generated after "
+                         "excluding all apps! skipping reload")
+
+        logger.debug("reloading while excluding invalid tasks finished, "
+                     "took %s seconds",
+                     time.time() - start_time)
+        return apps
+    except Exception:
+        logger.exception("Unexpected error!")
 
 
 class MarathonEventProcessor(object):
 
-    def __init__(self, marathon, config_file, groups,
-                 bind_http_https, ssl_certs, haproxy_map):
+    def __init__(self, marathon,
+                 config_file,
+                 groups,
+                 bind_http_https,
+                 ssl_certs,
+                 haproxy_map,
+                 group_https_by_vhost):
         self.__marathon = marathon
         # appId -> MarathonApp
         self.__apps = dict()
@@ -1461,6 +1886,7 @@ class MarathonEventProcessor(object):
         self.__groups = groups
         self.__templater = ConfigTemplater()
         self.__bind_http_https = bind_http_https
+        self.__group_https_by_vhost = group_https_by_vhost
         self.__ssl_certs = ssl_certs
 
         self.__condition = threading.Condition()
@@ -1468,28 +1894,36 @@ class MarathonEventProcessor(object):
         self.__pending_reload = False
         self.__haproxy_map = haproxy_map
 
+        self.__thread = None
+
         # Fetch the base data
         self.reset_from_tasks()
 
     def start(self):
         self.__stop = False
+        if self.__thread is not None and self.__thread.is_alive():
+            self.reset_from_tasks()
+            return
         self.__thread = threading.Thread(target=self.try_reset)
         self.__thread.start()
 
     def try_reset(self):
         with self.__condition:
-            logger.info('starting event processor thread')
+            logger.info('({}): starting event processor thread'.format(
+                threading.get_ident()))
             while True:
                 self.__condition.acquire()
 
                 if self.__stop:
-                    logger.info('stopping event processor thread')
+                    logger.info('({}): stopping event processor thread'.format(
+                        threading.get_ident()))
                     self.__condition.release()
                     return
 
                 if not self.__pending_reset and not self.__pending_reload:
                     if not self.__condition.wait(300):
-                        logger.info('condition wait expired')
+                        logger.info('({}): condition wait expired'.format(
+                            threading.get_ident()))
 
                 pending_reset = self.__pending_reset
                 pending_reload = self.__pending_reload
@@ -1512,30 +1946,34 @@ class MarathonEventProcessor(object):
         try:
             start_time = time.time()
 
-            self.__apps = get_apps(self.__marathon)
-            regenerate_config(self.__apps,
-                              self.__config_file,
-                              self.__groups,
-                              self.__bind_http_https,
-                              self.__ssl_certs,
-                              self.__templater,
-                              self.__haproxy_map)
+            self.__apps = regenerate_config(self.__marathon,
+                                            self.__config_file,
+                                            self.__groups,
+                                            self.__bind_http_https,
+                                            self.__ssl_certs,
+                                            self.__templater,
+                                            self.__haproxy_map,
+                                            self.__group_https_by_vhost)
 
-            logger.debug("updating tasks finished, took %s seconds",
-                         time.time() - start_time)
+            logger.debug("({0}): updating tasks finished, "
+                         "took {1} seconds".format(
+                             threading.get_ident(),
+                             time.time() - start_time))
         except requests.exceptions.ConnectionError as e:
-            logger.error("Connection error({0}): {1}".format(
-                e.errno, e.strerror))
-        except:
+            logger.error("({0}): Connection error({1}): {2}".format(
+                threading.get_ident(), e.errno, e.strerror))
+        except Exception:
             logger.exception("Unexpected error!")
 
     def do_reload(self):
         try:
             # Validate the existing config before reloading
-            logger.debug("attempting to reload existing config...")
+            logger.debug("({}): attempting to reload existing "
+                         "config...".format(
+                             threading.get_ident()))
             if validateConfig(self.__config_file):
                 reloadConfig()
-        except:
+        except Exception:
             logger.exception("Unexpected error!")
 
     def stop(self):
@@ -1558,8 +1996,8 @@ class MarathonEventProcessor(object):
 
     def handle_event(self, event):
         if event['eventType'] == 'status_update_event' or \
-                event['eventType'] == 'health_status_changed_event' or \
-                event['eventType'] == 'api_post_event':
+           event['eventType'] == 'health_status_changed_event' or \
+           event['eventType'] == 'api_post_event':
             self.reset_from_tasks()
 
     def handle_signal(self, sig, stack):
@@ -1579,18 +2017,15 @@ def get_arg_parser():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--longhelp",
                         help="Print out configuration details",
-                        action="store_true"
-                        )
+                        action="store_true")
     parser.add_argument("--marathon", "-m",
                         nargs="+",
                         help="[required] Marathon endpoint, eg. " +
-                             "-m http://marathon1:8080 http://marathon2:8080",
-                        default=["http://master.mesos:8080"]
-                        )
+                        "-m http://marathon1:8080 http://marathon2:8080",
+                        default=["http://master.mesos:8080"])
     parser.add_argument("--haproxy-config",
                         help="Location of haproxy configuration",
-                        default="/etc/haproxy/haproxy.cfg"
-                        )
+                        default="/etc/haproxy/haproxy.cfg")
     parser.add_argument("--group",
                         help="[required] Only generate config for apps which"
                         " list the specified names. Use '*' to match all"
@@ -1600,6 +2035,15 @@ def get_arg_parser():
     parser.add_argument("--command", "-c",
                         help="If set, run this command to reload haproxy.",
                         default=None)
+    parser.add_argument("--max-reload-retries",
+                        help="Max reload retries before failure. Reloads"
+                        " happen every --reload-interval seconds. Set to"
+                        " 0 to disable or -1 for infinite retries.",
+                        type=int, default=10)
+    parser.add_argument("--reload-interval",
+                        help="Wait this number of seconds between"
+                        " reload retries.",
+                        type=int, default=10)
     parser.add_argument("--strict-mode",
                         help="If set, backends are only advertised if"
                         " HAPROXY_{n}_ENABLED=true. Strict mode will be"
@@ -1608,6 +2052,9 @@ def get_arg_parser():
     parser.add_argument("--sse", "-s",
                         help="Use Server Sent Events",
                         action="store_true")
+    parser.add_argument("--archive-versions",
+                        help="Number of config versions to archive",
+                        type=int, default=5)
     parser.add_argument("--health-check", "-H",
                         help="If set, respect Marathon's health check "
                         "statuses before adding the app instance into "
@@ -1624,6 +2071,9 @@ def get_arg_parser():
                         "mapping.", action="store_true")
     parser.add_argument("--dont-bind-http-https",
                         help="Don't bind to HTTP and HTTPS frontends.",
+                        action="store_true")
+    parser.add_argument("--group-https-by-vhost",
+                        help="Group https frontends by vhost.",
                         action="store_true")
     parser.add_argument("--ssl-certs",
                         help="List of SSL certificates separated by comma"
@@ -1652,32 +2102,8 @@ def get_arg_parser():
     return parser
 
 
-def process_sse_events(marathon, processor):
-    try:
-        processor.start()
-        events = marathon.get_event_stream()
-        for event in events:
-            try:
-                # logger.info("received event: {0}".format(event))
-                # marathon might also send empty messages as keepalive...
-                if (event.data.strip() != ''):
-                    # marathon sometimes sends more than one json per event
-                    # e.g. {}\r\n{}\r\n\r\n
-                    for real_event_data in re.split(r'\r\n', event.data):
-                        data = json.loads(real_event_data)
-                        logger.info(
-                            "received event of type {0}"
-                            .format(data['eventType']))
-                        processor.handle_event(data)
-                else:
-                    logger.info("skipping empty message")
-            except:
-                print(event.data)
-                print("Unexpected error:", sys.exc_info()[0])
-                traceback.print_stack()
-                raise
-    finally:
-        processor.stop()
+def load_json(data_str):
+    return cleanup_json(json.loads(data_str))
 
 
 if __name__ == '__main__':
@@ -1744,30 +2170,77 @@ if __name__ == '__main__':
                                            args.group,
                                            not args.dont_bind_http_https,
                                            args.ssl_certs,
-                                           args.haproxy_map)
+                                           args.haproxy_map,
+                                           args.group_https_by_vhost)
         signal.signal(signal.SIGHUP, processor.handle_signal)
         signal.signal(signal.SIGUSR1, processor.handle_signal)
-        backoff = 3
+        backoffFactor = 1.5
+        waitSeconds = 3
+        waitResetSeconds = 600
         while True:
             stream_started = time.time()
+            currentWaitSeconds = random.random() * waitSeconds
+            stream = marathon.get_event_stream()
             try:
-                process_sse_events(marathon, processor)
-            except:
+                # processor start is now idempotent and will start at
+                # most one thread
+                processor.start()
+                events = marathon.iter_events(stream)
+                for event in events:
+                    if (event.data.strip() != ''):
+                        # marathon sometimes sends more than one json per event
+                        # e.g. {}\r\n{}\r\n\r\n
+                        for real_event_data in re.split(r'\r\n', event.data):
+                            data = load_json(real_event_data)
+                            logger.info(
+                                "received event of type {0}"
+                                .format(data['eventType']))
+                            processor.handle_event(data)
+                    else:
+                        logger.info("skipping empty message")
+            except pycurl.error as e:
+                errno, e_msg = e.args
+                # Error number 28:
+                # 'Operation too slow. Less than 1 bytes/sec transferred
+                #  the last 300 seconds'
+                # This happens when there is no activity on the marathon
+                # event stream for the last 5 minutes. In this case we
+                # should immediately reconnect in case the connection to
+                # marathon died silently so that we miss as few events as
+                # possible.
+                if errno == 28:
+                    m = 'Possible timeout detected: {}, reconnecting now...'
+                    logger.info(m.format(e_msg))
+                    currentWaitSeconds = 0
+                else:
+                    logger.exception("Caught exception")
+                    logger.error("Reconnecting in {}s...".format(
+                        currentWaitSeconds))
+            except Exception:
                 logger.exception("Caught exception")
-                backoff = backoff * 1.5
-                if backoff > args.max_backoff:
-                    backoff = args.max_backoff
-                logger.error("Reconnecting in {}s...".format(backoff))
-            # Reset the backoff if it's been more than 10 minutes
-            if time.time() - stream_started > 600:
-                backoff = 3
-            time.sleep(random.random() * backoff)
+                logger.error("Reconnecting in {}s...".format(
+                    currentWaitSeconds))
+            # We must close the connection because we are calling
+            # get_event_stream on the next loop
+            stream.curl.close()
+            if currentWaitSeconds > 0:
+                # Increase the next waitSeconds by the backoff factor
+                waitSeconds = backoffFactor * waitSeconds
+                # Don't sleep any more than 5 minutes
+                if waitSeconds > args.max_backoff:
+                    waitSeconds = args.max_backoff
+                # Reset the backoff if it's been more than 10 minutes
+                if (time.time() - stream_started) > waitResetSeconds:
+                    waitSeconds = 3
+                time.sleep(currentWaitSeconds)
+        processor.stop()
     else:
         # Generate base config
-        regenerate_config(get_apps(marathon),
+        regenerate_config(marathon,
                           args.haproxy_config,
                           args.group,
                           not args.dont_bind_http_https,
                           args.ssl_certs,
                           ConfigTemplater(),
-                          args.haproxy_map)
+                          args.haproxy_map,
+                          args.group_https_by_vhost)

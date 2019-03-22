@@ -1,4 +1,4 @@
-# marathon-lb [![Build Status](https://jenkins.mesosphere.com/service/jenkins/buildStatus/icon?job=public-marathon-lb-master)](https://jenkins.mesosphere.com/service/jenkins/job/public-marathon-lb-master/)
+# marathon-lb [![Build Status](https://jenkins.mesosphere.com/service/jenkins/buildStatus/icon?job=marathon-lb/public-marathon-lb-master)](https://jenkins.mesosphere.com/service/jenkins/job/marathon-lb/job/public-marathon-lb-master/)
 
 Marathon-lb is a tool for managing HAProxy, by consuming
 [Marathon's](https://github.com/mesosphere/marathon) app state. HAProxy is a
@@ -22,8 +22,7 @@ fast, efficient, battle-tested, highly available load balancer with many advance
 
 ### Getting Started
 
- * [Using marathon-lb](https://docs.mesosphere.com/latest/usage/service-discovery/marathon-lb/usage/)
- * [Advanced features of marathon-lb](https://docs.mesosphere.com/latest/usage/service-discovery/marathon-lb/advanced/)
+ * [Using marathon-lb](https://docs.mesosphere.com/services/marathon-lb/mlb-basic-tutorial/)
  * [Securing your service with TLS/SSL (blog post)](https://mesosphere.com/blog/2016/04/06/lets-encrypt-dcos/)
 
 Take a look at [the marathon-lb wiki](https://github.com/mesosphere/marathon-lb/wiki) for example usage, templates, and more.
@@ -197,14 +196,28 @@ of labels.
 
 ### Templates
 
-Marathon-lb searches for configuration files in the `templates/`
-directory. The `templates/` directory is located in a relative
-path from where the script is run. Some templates can also be
-[overridden _per app service port_](#overridable-templates). You may add your
-own templates to the Docker image, or provide them at startup.
+Marathon-lb global templates (as listed in the [Longhelp](Longhelp.md#templates)) can be overwritten in two ways:
+-By creating an environment variable in the marathon-lb container
+-By placing configuration files in the `templates/` directory (relative to where the script is run from)
 
-See [the configuration doc for the full list](Longhelp.md#templates)
-of templates.
+For example, to replace `HAPROXY_HTTPS_FRONTEND_HEAD` with this content:
+
+```
+frontend new_frontend_label
+  bind *:443 ssl crt /etc/ssl/cert.pem
+  mode http
+```
+
+Then this environment variable could be added to the Marathon-LB configuration:
+```
+"HAPROXY_HTTPS_FRONTEND_HEAD": "\\nfrontend new_frontend_label\\n  bind *:443 ssl {sslCerts}\\n  mode http"
+```
+
+Alternately, a file called`HAPROXY_HTTPS_FRONTEND_HEAD` could be placed in `templates/` directory through the use of an artifact URI.
+
+Additionally, some templates can also be [overridden _per app service port_](#overridable-templates). You may add your own templates to the Docker image, or provide them at startup.
+
+See [the configuration doc for the full list](Longhelp.md#templates) of templates.
 
 #### Overridable Templates
 
@@ -274,8 +287,20 @@ The default value when not specified is `redispatch,http-server-close,dontlognul
   < HTTP/1.1 200 OK
   ```
  * Some of the features of marathon-lb assume that it is the only instance of itself running in a PID namespace. i.e. marathon-lb assumes that it is running in a container. Certain features like the `/_mlb_signal` endpoints and the `/_haproxy_getpids` endpoint (and by extension, zero-downtime deployments) may behave unexpectedly if more than one instance of marathon-lb is running in the same PID namespace or if there are other HAProxy processes in the same PID namespace.
+ * Sometimes it is desirable to get detailed container and HAProxy logging for easier debugging as well as viewing connection logging to frontends and backends. This can be achieved by setting the `HAPROXY_SYSLOGD` environment variable or `container-syslogd` value in `options.json` like so:
+ 
+ ```json
+   {
+     "marathon-lb": {
+       "container-syslogd": true
+     }
+   }
+ ```
+
 
 ## Zero-downtime Deployments
+
+* Please note that `zdd.py` is not to be used in a production environment and is purely developed for demonstration purposes.
 
 Marathon-lb is able to perform canary style blue/green deployment with zero downtime. To execute such deployments, you must follow certain patterns when using Marathon.
 
@@ -346,12 +371,9 @@ assignment is not guaranteed if you change the current set of deployed apps. In
 other words, when you deploy a new app, the port assignments may change.
 
 
-## Zombies reaping
+## Zombie reaping
 
-When running within isolated containers, you may have to care about reaping orphan child processes.
-Haproxy typicaly produce orphan processes because of it's two steps reload machanism.
-Marathon-lb is using [tini](https://github.com/krallin/tini) for this purpose.
-When running in a container whitout pid namespace isolation, setting the `TINI_SUBREAPER` environnement variable is recommended.
+When running with isolated containers, you may need to take care of reaping orphaned child processes. HAProxy typically produces orphan processes because of its two-step reload mechanism. Marathon-LB uses [tini](https://github.com/krallin/tini) for this purpose. When running in a container without PID namespace isolation, setting the `TINI_SUBREAPER` environment variable is recommended.
 
 
 ## Contributing
@@ -371,6 +393,80 @@ PRs are welcome, but here are a few general guidelines:
    ```
    bash /path/to/marathon-lb/scripts/install-git-hooks.sh
    ```
+
+### Using the Makefile and docker for developement and testing
+
+Running unit and integration tests is automated as `make` targets. Docker
+is required to use the targets as it will run all tests in containers.
+
+Several environment variables can be set to control the image tags,
+DCOS version/variant, etc. Check the top of the `Makefile` for more info.
+
+To run the unit tests:
+
+```bash
+make test-unit
+```
+
+To run the integration tests a DCOS installation will be started via
+[dcos-e2e](https://github.com/dcos/dcos-e2e). The installation of
+`dcos-e2e` and management of the cluster will all be done in docker
+containers. Since the installers are rather large downloads, it is
+benificial to specify a value for `DCOS_E2E_INSTALLERS_DIR`. By default
+`DCOS_E2E_INSTALLERS_DIR` is inside the `.cache` directory that will be
+removed upon `make clean`. You must provide a repository for the
+resultant docker image to be pushed to via the `CONTAINTER_REPO`
+environemnt variable. It is assumed that the local docker is already
+logged in and the image will be pushed prior to launching the cluster.
+
+To run the integration tests on the OSS variant of DCOS:
+
+```bash
+DCOS_E2E_INSTALLERS_DIR="${HOME}/dcos/installers" \
+CONTAINTER_REPO="my_docker_user/my-marathon-lb-repo" make test-integration
+```
+
+To run the integration tests on the ENTERPRISE variant of DCOS:
+
+
+```bash
+DCOS_LICENSE_KEY_PATH=${HOME}/license.txt \
+DCOS_E2E_VARIANT=enterprise \
+DCOS_E2E_INSTALLERS_DIR="${HOME}/dcos/installers"\
+CONTAINTER_REPO="my_docker_user/my-marathon-lb-repo" make test-integration
+```
+
+To run both unit and integration tests (add appropriate variables):
+
+```bash
+CONTAINTER_REPO="my_docker_user/my-marathon-lb-repo" make test
+```
+
+### Troubleshooting your development environment setup
+
+#### FileNotFoundError: [Errno 2] No such file or directory: 'curl-config'
+
+You need to install the curl development package.
+
+```sh
+# Fedora
+dnf install libcurl-devel
+
+# Ubuntu
+apt-get install libcurl-dev
+```
+
+#### ImportError: pycurl: libcurl link-time ssl backend (nss) is different from compile-time ssl backend (openssl)
+
+The `pycurl` package linked against the wrong SSL backend when you installed it.
+
+```sh
+pip uninstall pycurl
+export PYCURL_SSL_LIBRARY=nss
+pip install -r requirements-dev.txt
+```
+
+Swap `nss` for whatever backend it mentions.
 
 ## Release Process
 

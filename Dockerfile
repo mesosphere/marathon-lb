@@ -1,21 +1,26 @@
-FROM debian:stretch
+FROM debian:buster
+
+LABEL LAST_MODIFIED=20180403
 
 # runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
-        iptables \
-        libcurl3 \
+        inetutils-syslogd \
+        libcurl4 \
         liblua5.3-0 \
-        libssl1.0.2 \
+        libssl1.1 \
         openssl \
         procps \
         python3 \
         runit \
+        gnupg-agent \
         socat \
+        make \
     && rm -rf /var/lib/apt/lists/*
 
-ENV TINI_VERSION=v0.13.2 \
+ENV TINI_VERSION=v0.18.0 \
     TINI_GPG_KEY=595E85A6B1B4779EA4DAAEC70B588DFF0527A9B7
+
 RUN set -x \
     && apt-get update && apt-get install -y --no-install-recommends dirmngr gpg wget \
         && rm -rf /var/lib/apt/lists/* \
@@ -23,6 +28,9 @@ RUN set -x \
     && wget -O tini.asc "https://github.com/krallin/tini/releases/download/$TINI_VERSION/tini-amd64.asc" \
     && export GNUPGHOME="$(mktemp -d)" \
     && gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$TINI_GPG_KEY" \
+    || gpg --keyserver pool.sks-keyservers.net --recv-keys "$TINI_GPG_KEY" \
+    || gpg --keyserver keyserver.pgp.com --recv-keys "$TINI_GPG_KEY" \
+    || gpg --keyserver pgp.mit.edu --recv-keys "$TINI_GPG_KEY" \
     && gpg --batch --verify tini.asc tini \
     && rm -rf "$GNUPGHOME" tini.asc \
     && mv tini /usr/bin/tini \
@@ -31,21 +39,21 @@ RUN set -x \
     && apt-get purge -y --auto-remove dirmngr gpg wget
 
 
-ENV HAPROXY_MAJOR=1.7 \
-    HAPROXY_VERSION=1.7.6 \
-    HAPROXY_MD5=8f4328cf66137f0dbf6901e065f603cc
+ENV HAPROXY_MAJOR=1.8 \
+    HAPROXY_VERSION=1.8.19 \
+    HAPROXY_MD5=713d995d8b072a4ca8561ab389b82b7a
 
 COPY requirements.txt /marathon-lb/
 
 RUN set -x \
     && buildDeps=' \
+        build-essential \
         gcc \
         libcurl4-openssl-dev \
         libffi-dev \
         liblua5.3-dev \
         libpcre3-dev \
         libssl-dev \
-        make \
         python3-dev \
         python3-pip \
         python3-setuptools \
@@ -84,7 +92,9 @@ RUN set -x \
 # will probably be uninstalled with the build dependencies.
     && pip3 install --no-cache --upgrade --force-reinstall -r /marathon-lb/requirements.txt \
     \
-    && apt-get purge -y --auto-remove $buildDeps
+    && apt-get purge -y --auto-remove $buildDeps \
+# Purge of python3-dev will delete python3 also
+    && apt-get update && apt-get install -y --no-install-recommends python3
 
 COPY  . /marathon-lb
 

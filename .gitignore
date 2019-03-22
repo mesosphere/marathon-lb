@@ -1,6 +1,7 @@
 .idea
 templates/
 __pycache__
+.pytest_cache
 *.pyc
 .env
 .cache
@@ -10,3 +11,4 @@ __pycache__
 *,cover
 coverage.xml
 htmlcov/
+*.iml
