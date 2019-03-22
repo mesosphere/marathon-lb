@@ -29,6 +29,7 @@ usage: marathon_lb.py [-h] [--longhelp] [--marathon MARATHON [MARATHON ...]]
                       [--skip-validation] [--dry]
                       [--min-serv-port-ip-per-task MIN_SERV_PORT_IP_PER_TASK]
                       [--max-serv-port-ip-per-task MAX_SERV_PORT_IP_PER_TASK]
+                      [--max-backoff MAX_BACKOFF]
                       [--syslog-socket SYSLOG_SOCKET]
                       [--log-format LOG_FORMAT] [--log-level LOG_LEVEL]
                       [--marathon-auth-credential-file MARATHON_AUTH_CREDENTIAL_FILE]
@@ -95,6 +96,8 @@ optional arguments:
   --max-serv-port-ip-per-task MAX_SERV_PORT_IP_PER_TASK
                         Maximum port number to use when auto-assigning service
                         ports for IP-per-task applications (default: 10100)
+  --max-backoff MAX_BACKOFF
+                        Maximum backoff to limit backoff size (default: 300)
   --syslog-socket SYSLOG_SOCKET
                         Socket to write syslog messages to. Use '/dev/null' to
                         disable logging to syslog (default: /dev/log)

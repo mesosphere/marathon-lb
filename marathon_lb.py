@@ -2094,6 +2094,9 @@ def get_arg_parser():
                         help="Maximum port number to use when auto-assigning "
                              "service ports for IP-per-task applications",
                         type=int, default=10100)
+    parser.add_argument("--max-backoff",
+                        help="Maximum backoff to limit backoff size ",
+                        type=int, default=300)
     parser = set_logging_args(parser)
     parser = set_marathon_auth_args(parser)
     return parser
@@ -2173,7 +2176,6 @@ if __name__ == '__main__':
         signal.signal(signal.SIGUSR1, processor.handle_signal)
         backoffFactor = 1.5
         waitSeconds = 3
-        maxWaitSeconds = 300
         waitResetSeconds = 600
         while True:
             stream_started = time.time()
@@ -2225,8 +2227,8 @@ if __name__ == '__main__':
                 # Increase the next waitSeconds by the backoff factor
                 waitSeconds = backoffFactor * waitSeconds
                 # Don't sleep any more than 5 minutes
-                if waitSeconds > maxWaitSeconds:
-                    waitSeconds = maxWaitSeconds
+                if waitSeconds > args.max_backoff:
+                    waitSeconds = args.max_backoff
                 # Reset the backoff if it's been more than 10 minutes
                 if (time.time() - stream_started) > waitResetSeconds:
                     waitSeconds = 3
