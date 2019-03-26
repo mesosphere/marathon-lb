@@ -42,6 +42,7 @@ from tempfile import mkstemp
 import dateutil.parser
 import requests
 import pycurl
+import urllib3.exceptions
 
 from common import (get_marathon_auth_params, set_logging_args,
                     set_marathon_auth_args, setup_logging, cleanup_json)
@@ -154,6 +155,9 @@ class MarathonApp(object):
 
 
 class Marathon(object):
+    class AllHostsTimeout(Exception):
+        pass
+
     def __init__(self, hosts, health_check, strict_mode, auth, ca_cert=None):
         # TODO(cmaloney): Support getting master list from zookeeper
         self.__hosts = hosts
@@ -164,14 +168,14 @@ class Marathon(object):
         self.__verify = False
         if ca_cert:
             self.__verify = ca_cert
+        logger.info('Initializing Marathon connection via hosts: %s',
+                    self.__hosts)
 
     def api_req_raw(self, method, path, auth, body=None, **kwargs):
-        response, exception = None, None
         for i, host in enumerate(self.__hosts):
-            path_str = os.path.join(host, 'v2')
+            path_str = os.path.join(host, 'v2', *path)
+            logger.info('Calling %s %s.', method, path_str)
 
-            for path_elem in path:
-                path_str = path_str + "/" + path_elem
             try:
                 response = requests.request(
                     method,
@@ -186,28 +190,27 @@ class Marathon(object):
                 )
 
                 logger.debug("%s %s", method, response.url)
-                if response.status_code == 200:
+                if response.ok and i != 0:
                     # stick to the host with the last successful requests
-                    if i != 0:
-                        self.__hosts = self.__hosts[i:] + self.__hosts[:i]
-                    break
-            except Exception as e:
+                    self.__hosts = self.__hosts[i:] + self.__hosts[:i]
+
+                resp_json = cleanup_json(response.json())
+                if 'message' in resp_json:
+                    response.reason = "%s (%s)" % (
+                        response.reason,
+                        resp_json['message'])
+
+                return response
+
+            except (requests.exceptions.Timeout,
+                    urllib3.exceptions.TimeoutError,
+                    urllib3.exceptions.MaxRetryError,
+                    IOError):
+                logger.info('Error calling %s %s, trying next host.',
+                            method, path_str)
                 logger.debug("%s %s", method, path_str, exc_info=True)
-                exception = e
 
-        if not response:
-            assert exception is not None
-            raise exception
-
-        response.raise_for_status()
-
-        resp_json = cleanup_json(response.json())
-        if 'message' in resp_json:
-            response.reason = "%s (%s)" % (
-                response.reason,
-                resp_json['message'])
-
-        return response
+        raise self.AllHostsTimeout()
 
     def api_req(self, method, path, **kwargs):
         data = self.api_req_raw(method, path, self.__auth,
