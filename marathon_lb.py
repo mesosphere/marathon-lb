@@ -163,6 +163,7 @@ class Marathon(object):
         self.__auth = auth
         self.__cycle_hosts = cycle(self.__hosts)
         self.__verify = False
+        self.current_host = None
         if ca_cert:
             self.__verify = ca_cert
 
@@ -228,6 +229,7 @@ class Marathon(object):
         return self.api_req('GET', ['tasks'])["tasks"]
 
     def get_event_stream(self, events):
+        self.current_host = self.host
         url = self.host + "/v2/events"
         if events:
             url += "?" + urllib.parse.urlencode({'event_type': events},
@@ -1968,10 +1970,13 @@ class MarathonEventProcessor(object):
                              threading.get_ident(),
                              time.time() - start_time))
         except requests.exceptions.ConnectionError as e:
-            logger.error("({0}): Connection error({1}): {2}".format(
-                threading.get_ident(), e.errno, e.strerror))
+            logger.error(
+                "({0}): Connection error({1}): {2}. Marathon is {3}".format(
+                    threading.get_ident(), e.errno, e.strerror,
+                    self.__marathon.current_host))
         except Exception:
-            logger.exception("Unexpected error!")
+            logger.exception("Unexpected error!. Marathon is {0}".format(
+                self.__marathon.current_host))
 
     def do_reload(self):
         try:
