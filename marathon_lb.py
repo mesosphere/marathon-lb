@@ -33,6 +33,7 @@ import sys
 import threading
 import time
 import datetime
+import urllib.parse
 from itertools import cycle
 from collections import defaultdict
 from operator import attrgetter
@@ -226,11 +227,11 @@ class Marathon(object):
         logger.info('fetching tasks')
         return self.api_req('GET', ['tasks'])["tasks"]
 
-    def get_event_stream(self):
-        url = self.host + "/v2/events?plan-format=light&" + \
-              "event_type=status_update_event&" + \
-              "event_type=health_status_changed_event&" + \
-              "event_type=api_post_event"
+    def get_event_stream(self, events):
+        url = self.host + "/v2/events"
+        if events:
+            url += "?" + urllib.parse.urlencode({'event_type': events},
+                                                doseq=True)
         return CurlHttpEventStream(url, self.__auth, self.__verify)
 
     def iter_events(self, stream):
@@ -1897,6 +1898,10 @@ class MarathonEventProcessor(object):
         self.__pending_reload = False
         self.__haproxy_map = haproxy_map
 
+        self.relevant_events = ('api_post_event',
+                                'health_status_changed_event',
+                                'status_update_event')
+
         self.__thread = None
 
         # Fetch the base data
@@ -1998,9 +2003,7 @@ class MarathonEventProcessor(object):
         self.__condition.release()
 
     def handle_event(self, event):
-        if event['eventType'] == 'status_update_event' or \
-           event['eventType'] == 'health_status_changed_event' or \
-           event['eventType'] == 'api_post_event':
+        if event['eventType'] in self.relevant_events:
             self.reset_from_tasks()
 
     def handle_signal(self, sig, stack):
@@ -2187,7 +2190,7 @@ if __name__ == '__main__':
         while True:
             stream_started = time.time()
             currentWaitSeconds = random.random() * waitSeconds
-            stream = marathon.get_event_stream()
+            stream = marathon.get_event_stream(processor.relevant_events)
             try:
                 # processor start is now idempotent and will start at
                 # most one thread
