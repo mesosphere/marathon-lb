@@ -162,6 +162,7 @@ class CurlHttpEventStream(object):
         # when they're coming from a non-leader. So we follow redirects.
         self.curl.setopt(pycurl.FOLLOWLOCATION, True)
         self.curl.setopt(pycurl.MAXREDIRS, 1)
+        self.curl.setopt(pycurl.UNRESTRICTED_AUTH, True)
 
         # The below settings are to prevent the connection from hanging if the
         # connection breaks silently. Since marathon-lb only listens, silent
