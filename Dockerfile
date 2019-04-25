@@ -39,9 +39,9 @@ RUN set -x \
     && apt-get purge -y --auto-remove dirmngr gpg wget
 
 
-ENV HAPROXY_MAJOR=1.8 \
-    HAPROXY_VERSION=1.8.19 \
-    HAPROXY_MD5=713d995d8b072a4ca8561ab389b82b7a
+ENV HAPROXY_MAJOR=1.9 \
+    HAPROXY_VERSION=1.9.6 \
+    HAPROXY_MD5=7ca1faa1e84d7d72ff9f3a5337dc8fda
 
 COPY requirements.txt /marathon-lb/
 
