@@ -1636,7 +1636,7 @@ def get_apps(marathon, apps=[]):
             old_tasks = sorted(old['tasks'], key=lambda task: task['id'])
 
             healthy_new_instances = 0
-            if len(app['healthChecks']) > 0:
+            if 'healthChecks' in app and len(app['healthChecks']) > 0:
                 for task in new['tasks']:
                     if 'healthCheckResults' not in task:
                         continue
