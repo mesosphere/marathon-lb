@@ -244,7 +244,7 @@ class Marathon(object):
 
     def get_event_stream(self, events):
         self.current_host = self.host
-        url = self.host + "/v2/events"
+        url = self.current_host + "/v2/events"
         if events:
             url += "?" + urllib.parse.urlencode({'event_type': events},
                                                 doseq=True)
