@@ -244,10 +244,15 @@ class Marathon(object):
 
     def get_event_stream(self, events):
         self.current_host = self.host
-        url = self.current_host + "/v2/events"
+        params = {
+            'plan-format': 'light'
+        }
         if events:
-            url += "?" + urllib.parse.urlencode({'event_type': events},
-                                                doseq=True)
+            params['event_type'] = events
+
+        url_params = urllib.parse.urlencode(params, doseq=True)
+        url = '{}/v2/events?{}'.format(self.current_host, url_params)
+
         return CurlHttpEventStream(url, self.__auth, self.__verify)
 
     def iter_events(self, stream):
