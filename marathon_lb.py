@@ -1565,14 +1565,60 @@ def get_health_check(app, portIndex):
 healthCheckResultCache = LRUCache()
 
 
+# Last time this variable was adjusted, the task states were extracted from
+# https://github.com/apache/mesos/blob/e58f4b97b5d13ccc18ad9b1632d7e6409bdd0c55/include/mesos/mesos.proto
+#
+# Essentially, only there states, namely, TASK_RUNNING, TASK_LOST, and
+# TASK_UNREACHABLE, are used in HAProxy config generation. And here is why:
+#
+#   - TASK_RUNNING - No comments.
+#   - TASK_LOST - A task is lost as seen by Mesos due to, for example,
+#     a network partition between a Mesos master and the Mesos agent that is
+#     on the same node the task is running on. But the task itself may or
+#     may not be running. In fact, it might transition to TASK_RUNNING state
+#     when the Mesos agent reregisters with the Mesos master. Hence let's
+#     be optimistic here and route trafic to tasks in this state.
+#   - TASK_UNREACHABLE - The same line of reasoning as the one used for
+#     TASK_LOST state, is valid here too.
+EXCLUDED_TASK_STATES = {
+    # A task in this state transitions into another state quickly,
+    # unless there is a bug in Mesos which causes it hang in this state
+    # for quite some time or even forever. If the latter is not the case,
+    # it moves either to a terminal state (for instance, TASK_ERROR),
+    # or TASK_STARTING. In any case, there is no need to pay attention
+    # to it yet.
+    'TASK_STAGING',
+    # A similar reasoning applies here too. A task state becomes either
+    # terminal or `TASK_RUNNING` quickly.
+    'TASK_STARTING',
+    # A task is being killed. No need to route traffic to it.
+    'TASK_KILLING',
+    # A terminal state.
+    'TASK_FINISHED',
+    # A terminal state.
+    'TASK_FAILED',
+    # A terminal state.
+    'TASK_KILLED',
+    # A terminal state.
+    'TASK_ERROR',
+    # A terminal state.
+    'TASK_DROPPED',
+    # A terminal state.
+    'TASK_GONE',
+    # Though it is not a terminal state, let's trust the operator, and
+    # assume that the task is truly gone while it is in this state.
+    'TASK_GONE_BY_OPERATOR',
+    # A task is in some funny state according to Mesos. Let's not route
+    # traffic to it.
+    'TASK_UNKNOWN',
+}
+
+
 def get_apps(marathon, apps=[]):
     if len(apps) == 0:
         apps = marathon.list()
 
     logger.debug("got apps %s", [app["id"] for app in apps])
-
-    excluded_states = {'TASK_KILLING', 'TASK_KILLED',
-                       'TASK_FINISHED', 'TASK_ERROR'}
 
     marathon_apps = []
     # This process requires 2 passes: the first is to gather apps belonging
@@ -1749,7 +1795,7 @@ def get_apps(marathon, apps=[]):
 
             # 'state' will not be present in test cases.
             # Should always be present in an actual cluster
-            if 'state' in task and task['state'] in excluded_states:
+            if 'state' in task and task['state'] in EXCLUDED_TASK_STATES:
                 logger.warning("Ignoring non-running task " + task['id'] +
                                " with state " + task['state'])
                 continue
