@@ -41,7 +41,7 @@ random_string() {
 
 cluster_ids() {
     # dcos cluster command was added into the CLI starting in DC/OS 1.10
-    if [ "${DCOS_VERSION}" != '1.9' ]; then 
+    if [ "${DCOS_VERSION}" != '1.9' ]; then
         if ! dcos cluster list >/dev/null 2>&1; then
             return
         fi
@@ -133,7 +133,7 @@ template_parameters:
     PublicSlaveInstanceCount: 1
     SlaveInstanceCount: 1
 EOF
-    
+
     # DefaultInstanceType parameter has not been backported into 1.9 CF templates.
     # The templates actually hardcode in this parameter instead.
     if [ "${DCOS_VERSION}" != '1.9' ]; then
@@ -149,7 +149,7 @@ EOF
     time wrapped_dcos_launch create
     time wrapped_dcos_launch wait
     wrapped_dcos_launch describe
-    
+
     if [ "${SECURITY_MODE}" == 'disabled' ] || [ "${VARIANT}" == 'open' ]; then
         CLUSTER_URL=http://$(wrapped_dcos_launch describe | jq -r .masters[0].public_ip)
     else
@@ -269,7 +269,7 @@ launch_marathonlb() {
 
     MLB_OPTIONS_JSON="mlb-options.json"
     RENDER_RESPONSE_JSON="response.json"
-    MLB_JSON="mlb.json"    
+    MLB_JSON="mlb.json"
 
     # Strict mode requires having a service account.
     if [ "${SECURITY_MODE}" == 'strict' ]; then
@@ -314,11 +314,11 @@ EOF
     else
         dcos package describe marathon-lb --app --render > $RENDER_RESPONSE_JSON
     fi
-    
+
     cat $RENDER_RESPONSE_JSON | jq --arg DOCKER_IMAGE "$DOCKER_IMAGE" '.container.docker.image=$DOCKER_IMAGE' | jq --arg MLB_VERSION "$MLB_VERSION" '.labels.DCOS_PACKAGE_VERSION=$MLB_VERSION' > $MLB_JSON
     cat $MLB_JSON
 
-    echo "Launching Marathon-lb." 
+    echo "Launching Marathon-lb."
     dcos marathon app add $MLB_JSON
 
     # Sleeping to wait for MLB to deploy.
@@ -348,7 +348,7 @@ check_marathonlb_health() {
         status_line "Marathon-lb stdout:"
         dcos task log marathon-lb stdout --lines=50
 
-        status_line "Marathon-lb stderr:"        
+        status_line "Marathon-lb stderr:"
         dcos task log marathon-lb stderr --lines=50
 
         delete_cluster
