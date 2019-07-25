@@ -1937,16 +1937,17 @@ class MarathonEventProcessor(object):
         self.__thread.start()
 
     def try_reset(self):
-        with self.__condition:
-            logger.info('({}): starting event processor thread'.format(
-                threading.get_ident()))
-            while True:
-                self.__condition.acquire()
+        logger.info('({}): starting event processor thread'.format(
+            threading.get_ident()))
 
+        while True:
+            pending_reset = False
+            pending_reload = False
+
+            with self.__condition:
                 if self.__stop:
                     logger.info('({}): stopping event processor thread'.format(
                         threading.get_ident()))
-                    self.__condition.release()
                     return
 
                 if not self.__pending_reset and not self.__pending_reload:
@@ -1959,17 +1960,15 @@ class MarathonEventProcessor(object):
                 self.__pending_reset = False
                 self.__pending_reload = False
 
-                self.__condition.release()
-
-                # Reset takes precedence over reload
-                if pending_reset:
-                    self.do_reset()
-                elif pending_reload:
-                    self.do_reload()
-                else:
-                    # Timed out waiting on the condition variable, just do a
-                    # full reset for good measure (as was done before).
-                    self.do_reset()
+            # Reset takes precedence over reload
+            if pending_reset:
+                self.do_reset()
+            elif pending_reload:
+                self.do_reload()
+            else:
+                # Timed out waiting on the condition variable, just do a
+                # full reset for good measure (as was done before).
+                self.do_reset()
 
     def do_reset(self):
         try:
@@ -2009,22 +2008,19 @@ class MarathonEventProcessor(object):
             logger.exception("Unexpected error!")
 
     def stop(self):
-        self.__condition.acquire()
-        self.__stop = True
-        self.__condition.notify()
-        self.__condition.release()
+        with self.__condition:
+            self.__stop = True
+            self.__condition.notify()
 
     def reset_from_tasks(self):
-        self.__condition.acquire()
-        self.__pending_reset = True
-        self.__condition.notify()
-        self.__condition.release()
+        with self.__condition:
+            self.__pending_reset = True
+            self.__condition.notify()
 
     def reload_existing_config(self):
-        self.__condition.acquire()
-        self.__pending_reload = True
-        self.__condition.notify()
-        self.__condition.release()
+        with self.__condition:
+            self.__pending_reload = True
+            self.__condition.notify()
 
     def handle_event(self, event):
         if event['eventType'] in self.relevant_events:
