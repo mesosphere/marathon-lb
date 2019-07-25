@@ -1,14 +1,14 @@
 #
 # To start a DCOS cluster with the defaults (OSS edition):
-# 	make dcos
+#	make dcos
 #
 # To start a DCOS cluster with EE:
-# 	DCOS_LICENSE_KEY_PATH=${HOME}/license.txt \
+#	DCOS_LICENSE_KEY_PATH=${HOME}/license.txt \
 #   DCOS_E2E_VARIANT=enterprise \
 #   make dcos
 #
 # By default the installers are kept in ./.cache which is removed
-# during `make clean`. Specifying a location outside this repo for 
+# during `make clean`. Specifying a location outside this repo for
 # `DCOS_E2E_INSTALLERS_DIR` prevents redownloading:
 #
 #  DCOS_E2E_INSTALLERS_DIR=${HOME}/dcos/installers make dcos
@@ -187,7 +187,7 @@ cluster-env: cluster-url cluster-public-ip
 
 
 .PHONY: cluster-public-ip
-cluster-public-ip: devkit $(CLUSTER_TARGET) 
+cluster-public-ip: devkit $(CLUSTER_TARGET)
 ifeq ($(strip $(PUBLIC_AGENT_IP)),)
 	@echo "+ Discovering Public Node IP"
 	$(eval PUBLIC_AGENT_IP := $(shell \

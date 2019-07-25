@@ -1,6 +1,6 @@
 FROM debian:buster
 
-LABEL LAST_MODIFIED=20180403
+LABEL LAST_MODIFIED=20190723
 
 # runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -39,9 +39,9 @@ RUN set -x \
     && apt-get purge -y --auto-remove dirmngr gpg wget
 
 
-ENV HAPROXY_MAJOR=1.9 \
-    HAPROXY_VERSION=1.9.8 \
-    HAPROXY_MD5=efd17947e2c6d1fb26a0987968b1bc6a
+ENV HAPROXY_MAJOR=2.0 \
+    HAPROXY_VERSION=2.0.3 \
+    HAPROXY_MD5=cbe13aad74e839a3a055908ab545279d
 
 COPY requirements.txt /marathon-lb/
 

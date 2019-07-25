@@ -107,8 +107,8 @@ It is possible to pass `--auth-credentials=` option if your Marathon requires au
 $ ./marathon_lb.py --marathon http://localhost:8080 --auth-credentials=admin:password
 ```
 
-It is possible to get the auth credentials (user & password) from VAULT if you define the following 
-environment variables before running marathon-lb: VAULT_TOKEN, VAULT_HOST, VAULT_PORT, VAULT_PATH 
+It is possible to get the auth credentials (user & password) from VAULT if you define the following
+environment variables before running marathon-lb: VAULT_TOKEN, VAULT_HOST, VAULT_PORT, VAULT_PATH
 where VAULT_PATH is the root path where your user and password are located.
 
 This will refresh `haproxy.cfg`, and if there were any changes, then it will
@@ -288,7 +288,7 @@ The default value when not specified is `redispatch,http-server-close,dontlognul
   ```
  * Some of the features of marathon-lb assume that it is the only instance of itself running in a PID namespace. i.e. marathon-lb assumes that it is running in a container. Certain features like the `/_mlb_signal` endpoints and the `/_haproxy_getpids` endpoint (and by extension, zero-downtime deployments) may behave unexpectedly if more than one instance of marathon-lb is running in the same PID namespace or if there are other HAProxy processes in the same PID namespace.
  * Sometimes it is desirable to get detailed container and HAProxy logging for easier debugging as well as viewing connection logging to frontends and backends. This can be achieved by setting the `HAPROXY_SYSLOGD` environment variable or `container-syslogd` value in `options.json` like so:
- 
+
  ```json
    {
      "marathon-lb": {
