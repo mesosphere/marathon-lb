@@ -4,4 +4,3 @@ pycurl
 python-dateutil
 requests
 six
-urllib3
