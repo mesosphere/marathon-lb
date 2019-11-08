@@ -1691,10 +1691,10 @@ def get_apps(marathon, apps=[]):
                 for task in new['tasks']:
                     if 'healthCheckResults' not in task:
                         continue
-                    alive = True
+                    alive = False
                     for result in task['healthCheckResults']:
-                        if not result['alive']:
-                            alive = False
+                        if result['alive']:
+                            alive = True
                     if alive:
                         healthy_new_instances += 1
             else:
@@ -1802,15 +1802,15 @@ def get_apps(marathon, apps=[]):
 
             if marathon.health_check() and 'healthChecks' in app and \
                len(app['healthChecks']) > 0:
-                alive = True
+                alive = False
                 if 'healthCheckResults' not in task:
                     # use previously cached result, if it exists
                     if not healthCheckResultCache.get(task['id'], False):
                         continue
                 else:
                     for result in task['healthCheckResults']:
-                        if not result['alive']:
-                            alive = False
+                        if result['alive']:
+                            alive = True
                     healthCheckResultCache.set(task['id'], alive)
                     if not alive:
                         continue
