@@ -82,6 +82,7 @@ listen stats
   balance
   mode http
   stats enable
+  http-request use-service prometheus-exporter if { path /metrics }
   monitor-uri /_haproxy_health_check
   acl getpid path /_haproxy_getpids
   http-request use-service lua.getpids if getpid

@@ -171,6 +171,7 @@ Marathon-lb exposes a few endpoints on port 9090 (by default). They are:
 | `:9090/_haproxy_getpids`      | Returns the PIDs for all HAProxy instances within the current process namespace. This literally returns `$(pidof haproxy)`. Implemented in [`getpids.lua`](getpids.lua). This is also used by the [`zdd.py`](zdd.py) script to determine if connections have finished draining during a deploy. |
 | `:9090/_mlb_signal/hup`*      | Sends a `SIGHUP` signal to the marathon-lb process, causing it to fetch the running apps from Marathon and reload the HAProxy config as though an event was received from Marathon.                                                                                                             |
 | `:9090/_mlb_signal/usr1`*     | Sends a `SIGUSR1` signal to the marathon-lb process, causing it to restart HAProxy with the existing config, without checking Marathon for changes.                                                                                                                                             |
+| `:9090/metrics`               | Exposes HAProxy metrics in prometheus format.                                                                                                                                                                                                                                                   |
 
 \* These endpoints won't function when marathon-lb is in `poll` mode as there is no marathon-lb process to be signaled in this mode (marathon-lb exits after each poll).
 
