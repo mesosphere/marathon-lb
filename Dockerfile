@@ -81,6 +81,7 @@ RUN set -x \
         USE_REGPARM=1 \
         USE_STATIC_PCRE=1 \
         USE_ZLIB=1 \
+	    EXTRA_OBJS="contrib/prometheus-exporter/service-prometheus.o" \
         all \
         install-bin \
     && rm -rf /usr/src/haproxy \
