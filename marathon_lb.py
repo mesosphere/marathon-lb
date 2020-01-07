@@ -185,7 +185,8 @@ class Marathon(object):
                     auth=auth,
                     headers={
                         'Accept': 'application/json',
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'marathon-lb'
                     },
                     timeout=(3.05, 46),
                     **kwargs
