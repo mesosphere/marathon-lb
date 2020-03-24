@@ -144,7 +144,7 @@ backend {backend}
   balance {balance}
   mode {mode}
 ```
-**Example Marathon label to override `HAPROXY_BACKEND_HEAD` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_BACKEND_HEAD` for port 0 of an app:**
 ```
 "HAPROXY_0_BACKEND_HEAD": "\nbackend {backend}\n  balance {balance}\n  mode {mode}\n"
 ```
@@ -162,7 +162,7 @@ This template is used for the backend where the
 ```
   rspadd  Strict-Transport-Security:\ max-age=15768000
 ```
-**Example Marathon label to override `HAPROXY_BACKEND_HSTS_OPTIONS` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_BACKEND_HSTS_OPTIONS` for port 0 of an app:**
 ```
 "HAPROXY_0_BACKEND_HSTS_OPTIONS": "  rspadd  Strict-Transport-Security:\\ max-age=15768000\n"
 ```
@@ -199,7 +199,7 @@ Example:
   option  httpchk GET {healthCheckPath}
   timeout check {healthCheckTimeoutSeconds}s
 ```
-**Example Marathon label to override `HAPROXY_BACKEND_HTTP_HEALTHCHECK_OPTIONS` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_BACKEND_HTTP_HEALTHCHECK_OPTIONS` for port 0 of an app:**
 ```
 "HAPROXY_0_BACKEND_HTTP_HEALTHCHECK_OPTIONS": "  option  httpchk GET {healthCheckPath}\n  timeout check {healthCheckTimeoutSeconds}s\n"
 ```
@@ -218,7 +218,7 @@ Sets HTTP headers, for example X-Forwarded-For and X-Forwarded-Proto.
   http-request set-header X-Forwarded-Port %[dst_port]
   http-request add-header X-Forwarded-Proto https if { ssl_fc }
 ```
-**Example Marathon label to override `HAPROXY_BACKEND_HTTP_OPTIONS` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_BACKEND_HTTP_OPTIONS` for port 0 of an app:**
 ```
 "HAPROXY_0_BACKEND_HTTP_OPTIONS": "  option forwardfor\n  http-request set-header X-Forwarded-Port %[dst_port]\n  http-request add-header X-Forwarded-Proto https if { ssl_fc }\n"
 ```
@@ -236,7 +236,7 @@ This template is used with backends where the
 ```
   redirect scheme https code 301 if !{{ ssl_fc }} host_{cleanedUpHostname}
 ```
-**Example Marathon label to override `HAPROXY_BACKEND_REDIRECT_HTTP_TO_HTTPS` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_BACKEND_REDIRECT_HTTP_TO_HTTPS` for port 0 of an app:**
 ```
 "HAPROXY_0_BACKEND_REDIRECT_HTTP_TO_HTTPS": "  redirect scheme https code 301 if !{{ ssl_fc }} host_{cleanedUpHostname}\n"
 ```
@@ -254,7 +254,7 @@ but includes a path.
 ```
   redirect scheme https code 301 if !{{ ssl_fc }} host_{cleanedUpHostname} path_{backend}
 ```
-**Example Marathon label to override `HAPROXY_BACKEND_REDIRECT_HTTP_TO_HTTPS_WITH_PATH` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_BACKEND_REDIRECT_HTTP_TO_HTTPS_WITH_PATH` for port 0 of an app:**
 ```
 "HAPROXY_0_BACKEND_REDIRECT_HTTP_TO_HTTPS_WITH_PATH": "  redirect scheme https code 301 if !{{ ssl_fc }} host_{cleanedUpHostname} path_{backend}\n"
 ```
@@ -289,7 +289,7 @@ Example:
 ```
   check inter {healthCheckIntervalSeconds}s fall {healthCheckFalls}{healthCheckPortOptions}
 ```
-**Example Marathon label to override `HAPROXY_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS` for port 0 of an app:**
 ```
 "HAPROXY_0_BACKEND_SERVER_HTTP_HEALTHCHECK_OPTIONS": "  check inter {healthCheckIntervalSeconds}s fall {healthCheckFalls}{healthCheckPortOptions}\n"
 ```
@@ -304,11 +304,11 @@ The options for each server added to a backend.
 
 **Default template for `HAPROXY_BACKEND_SERVER_OPTIONS`:**
 ```
-  server {serverName} {host_ipv4}:{port}{cookieOptions}{healthCheckOptions}{otherOptions}
+  server {serverName} {host_ipv4}:{port} id {serverId}{cookieOptions}{healthCheckOptions}{otherOptions}
 ```
-**Example Marathon label to override `HAPROXY_BACKEND_SERVER_OPTIONS` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_BACKEND_SERVER_OPTIONS` for port 0 of an app:**
 ```
-"HAPROXY_0_BACKEND_SERVER_OPTIONS": "  server {serverName} {host_ipv4}:{port}{cookieOptions}{healthCheckOptions}{otherOptions}\n"
+"HAPROXY_0_BACKEND_SERVER_OPTIONS": "  server {serverName} {host_ipv4}:{port} id {serverId}{cookieOptions}{healthCheckOptions}{otherOptions}\n"
 ```
 
 ## `HAPROXY_BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS`
@@ -340,7 +340,7 @@ Example:
 ```
   check inter {healthCheckIntervalSeconds}s fall {healthCheckFalls}{healthCheckPortOptions}
 ```
-**Example Marathon label to override `HAPROXY_BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS` for port 0 of an app:**
 ```
 "HAPROXY_0_BACKEND_SERVER_TCP_HEALTHCHECK_OPTIONS": "  check inter {healthCheckIntervalSeconds}s fall {healthCheckFalls}{healthCheckPortOptions}\n"
 ```
@@ -357,7 +357,7 @@ Sets a cookie for services where `HAPROXY_{n}_STICKY` is true.
 ```
   cookie mesosphere_server_id insert indirect nocache
 ```
-**Example Marathon label to override `HAPROXY_BACKEND_STICKY_OPTIONS` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_BACKEND_STICKY_OPTIONS` for port 0 of an app:**
 ```
 "HAPROXY_0_BACKEND_STICKY_OPTIONS": "  cookie mesosphere_server_id insert indirect nocache\n"
 ```
@@ -390,7 +390,7 @@ Example:
 **Default template for `HAPROXY_BACKEND_TCP_HEALTHCHECK_OPTIONS`:**
 ```
 ```
-**Example Marathon label to override `HAPROXY_BACKEND_TCP_HEALTHCHECK_OPTIONS` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_BACKEND_TCP_HEALTHCHECK_OPTIONS` for port 0 of an app:**
 ```
 "HAPROXY_0_BACKEND_TCP_HEALTHCHECK_OPTIONS": ""
 ```
@@ -407,7 +407,7 @@ This option glues the backend to the frontend.
 ```
   use_backend {backend}
 ```
-**Example Marathon label to override `HAPROXY_FRONTEND_BACKEND_GLUE` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_FRONTEND_BACKEND_GLUE` for port 0 of an app:**
 ```
 "HAPROXY_0_FRONTEND_BACKEND_GLUE": "  use_backend {backend}\n"
 ```
@@ -427,7 +427,7 @@ frontend {backend}
   bind {bindAddr}:{servicePort}{sslCert}{bindOptions}
   mode {mode}
 ```
-**Example Marathon label to override `HAPROXY_FRONTEND_HEAD` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_FRONTEND_HEAD` for port 0 of an app:**
 ```
 "HAPROXY_0_FRONTEND_HEAD": "\nfrontend {backend}\n  bind {bindAddr}:{servicePort}{sslCert}{bindOptions}\n  mode {mode}\n"
 ```
@@ -483,6 +483,7 @@ listen stats
   balance
   mode http
   stats enable
+  http-request use-service prometheus-exporter if { path /metrics }
   monitor-uri /_haproxy_health_check
   acl getpid path /_haproxy_getpids
   http-request use-service lua.getpids if getpid
@@ -511,7 +512,7 @@ for the `HAPROXY_HTTPS_FRONTEND_HEAD` template.
 ```
   use_backend {backend} if {{ ssl_fc_sni {hostname} }}
 ```
-**Example Marathon label to override `HAPROXY_HTTPS_FRONTEND_ACL` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_HTTPS_FRONTEND_ACL` for port 0 of an app:**
 ```
 "HAPROXY_0_HTTPS_FRONTEND_ACL": "  use_backend {backend} if {{ ssl_fc_sni {hostname} }}\n"
 ```
@@ -528,7 +529,7 @@ Same as HTTP_FRONTEND_ACL_ONLY_WITH_PATH, but for HTTPS.
 ```
   acl path_{backend} path_beg {path}
 ```
-**Example Marathon label to override `HAPROXY_HTTPS_FRONTEND_ACL_ONLY_WITH_PATH` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_HTTPS_FRONTEND_ACL_ONLY_WITH_PATH` for port 0 of an app:**
 ```
 "HAPROXY_0_HTTPS_FRONTEND_ACL_ONLY_WITH_PATH": "  acl path_{backend} path_beg {path}\n"
 ```
@@ -548,9 +549,9 @@ of the `HAPROXY_HTTPS_FRONTEND_HEAD` thru HTTP basic auth.
   http-request auth realm "{realm}" if {{ ssl_fc_sni {hostname} }} !auth_{cleanedUpHostname}
   use_backend {backend} if {{ ssl_fc_sni {hostname} }}
 ```
-**Example Marathon label to override `HAPROXY_HTTPS_FRONTEND_ACL_WITH_AUTH` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_HTTPS_FRONTEND_ACL_WITH_AUTH` for port 0 of an app:**
 ```
-"HAPROXY_0_HTTPS_FRONTEND_ACL_WITH_AUTH": "  acl auth_{cleanedUpHostname} http_auth(user_{backend})\n  http-request auth realm \"{realm}\" if {{ ssl_fc_sni {hostname} }} !auth_{cleanedUpHostname}\n  use_backend {backend} if {{ ssl_fc_sni {hostname} }}\n"
+"HAPROXY_0_HTTPS_FRONTEND_ACL_WITH_AUTH": "  acl auth_{cleanedUpHostname} http_auth(user_{backend})\n  http-request auth realm  \"{realm} \" if {{ ssl_fc_sni {hostname} }} !auth_{cleanedUpHostname}\n  use_backend {backend} if {{ ssl_fc_sni {hostname} }}\n"
 ```
 
 ## `HAPROXY_HTTPS_FRONTEND_ACL_WITH_AUTH_AND_PATH`
@@ -568,9 +569,9 @@ of the `HAPROXY_HTTPS_FRONTEND_HEAD` thru HTTP basic auth.
   http-request auth realm "{realm}" if {{ ssl_fc_sni {hostname} }} path_{backend} !auth_{cleanedUpHostname}
   use_backend {backend} if {{ ssl_fc_sni {hostname} }} path_{backend}
 ```
-**Example Marathon label to override `HAPROXY_HTTPS_FRONTEND_ACL_WITH_AUTH_AND_PATH` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_HTTPS_FRONTEND_ACL_WITH_AUTH_AND_PATH` for port 0 of an app:**
 ```
-"HAPROXY_0_HTTPS_FRONTEND_ACL_WITH_AUTH_AND_PATH": "  acl auth_{cleanedUpHostname} http_auth(user_{backend})\n  http-request auth realm \"{realm}\" if {{ ssl_fc_sni {hostname} }} path_{backend} !auth_{cleanedUpHostname}\n  use_backend {backend} if {{ ssl_fc_sni {hostname} }} path_{backend}\n"
+"HAPROXY_0_HTTPS_FRONTEND_ACL_WITH_AUTH_AND_PATH": "  acl auth_{cleanedUpHostname} http_auth(user_{backend})\n  http-request auth realm  \"{realm} \" if {{ ssl_fc_sni {hostname} }} path_{backend} !auth_{cleanedUpHostname}\n  use_backend {backend} if {{ ssl_fc_sni {hostname} }} path_{backend}\n"
 ```
 
 ## `HAPROXY_HTTPS_FRONTEND_ACL_WITH_PATH`
@@ -586,7 +587,7 @@ for the `HAPROXY_HTTPS_FRONTEND_HEAD` template.
 ```
   use_backend {backend} if {{ ssl_fc_sni {hostname} }} path_{backend}
 ```
-**Example Marathon label to override `HAPROXY_HTTPS_FRONTEND_ACL_WITH_PATH` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_HTTPS_FRONTEND_ACL_WITH_PATH` for port 0 of an app:**
 ```
 "HAPROXY_0_HTTPS_FRONTEND_ACL_WITH_PATH": "  use_backend {backend} if {{ ssl_fc_sni {hostname} }} path_{backend}\n"
 ```
@@ -603,7 +604,7 @@ The http auth ACL to the corresponding virtual host.
 ```
   acl auth_{cleanedUpHostname} http_auth(user_{backend})
 ```
-**Example Marathon label to override `HAPROXY_HTTPS_FRONTEND_AUTH_ACL_ONLY` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_HTTPS_FRONTEND_AUTH_ACL_ONLY` for port 0 of an app:**
 ```
 "HAPROXY_0_HTTPS_FRONTEND_AUTH_ACL_ONLY": "  acl auth_{cleanedUpHostname} http_auth(user_{backend})\n"
 ```
@@ -620,9 +621,9 @@ The http auth request to the corresponding virtual host.
 ```
   http-request auth realm "{realm}" if {{ ssl_fc_sni {hostname} }} !auth_{cleanedUpHostname}
 ```
-**Example Marathon label to override `HAPROXY_HTTPS_FRONTEND_AUTH_REQUEST_ONLY` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_HTTPS_FRONTEND_AUTH_REQUEST_ONLY` for port 0 of an app:**
 ```
-"HAPROXY_0_HTTPS_FRONTEND_AUTH_REQUEST_ONLY": "  http-request auth realm \"{realm}\" if {{ ssl_fc_sni {hostname} }} !auth_{cleanedUpHostname}\n"
+"HAPROXY_0_HTTPS_FRONTEND_AUTH_REQUEST_ONLY": "  http-request auth realm  \"{realm} \" if {{ ssl_fc_sni {hostname} }} !auth_{cleanedUpHostname}\n"
 ```
 
 ## `HAPROXY_HTTPS_FRONTEND_HEAD`
@@ -657,9 +658,9 @@ glues the acl names to the appropriate backend
   http-request auth realm "{realm}" if host_{cleanedUpHostname} path_{backend} !auth_{cleanedUpHostname}
   use_backend {backend} if host_{cleanedUpHostname} path_{backend}
 ```
-**Example Marathon label to override `HAPROXY_HTTPS_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_HTTPS_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH` for port 0 of an app:**
 ```
-"HAPROXY_0_HTTPS_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH": "  http-request auth realm \"{realm}\" if host_{cleanedUpHostname} path_{backend} !auth_{cleanedUpHostname}\n  use_backend {backend} if host_{cleanedUpHostname} path_{backend}\n"
+"HAPROXY_0_HTTPS_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH": "  http-request auth realm  \"{realm} \" if host_{cleanedUpHostname} path_{backend} !auth_{cleanedUpHostname}\n  use_backend {backend} if host_{cleanedUpHostname} path_{backend}\n"
 ```
 
 ## `HAPROXY_HTTPS_GROUPED_FRONTEND_HEAD`
@@ -752,7 +753,7 @@ This option set the IPs (or IP ranges) having access to the HTTP backend.
 ```
   acl network_allowed src {network_allowed}
 ```
-**Example Marathon label to override `HAPROXY_HTTP_BACKEND_NETWORK_ALLOWED_ACL` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_HTTP_BACKEND_NETWORK_ALLOWED_ACL` for port 0 of an app:**
 ```
 "HAPROXY_0_HTTP_BACKEND_NETWORK_ALLOWED_ACL": "  acl network_allowed src {network_allowed}\n"
 ```
@@ -770,9 +771,9 @@ Backend glue for `HAPROXY_{n}_HTTP_BACKEND_PROXYPASS_PATH`.
   http-request set-header Host {hostname}
   reqirep  "^([^ :]*)\ {proxypath}/?(.*)" "\1\ /\2"
 ```
-**Example Marathon label to override `HAPROXY_HTTP_BACKEND_PROXYPASS_GLUE` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_HTTP_BACKEND_PROXYPASS_GLUE` for port 0 of an app:**
 ```
-"HAPROXY_0_HTTP_BACKEND_PROXYPASS_GLUE": "  http-request set-header Host {hostname}\n  reqirep  \"^([^ :]*)\\ {proxypath}/?(.*)\" \"\\1\\ /\\2\"\n"
+"HAPROXY_0_HTTP_BACKEND_PROXYPASS_GLUE": "  http-request set-header Host {hostname}\n  reqirep   \"^([^ :]*)\\ {proxypath}/?(.*) \"  \"\\1\\ /\\2 \"\n"
 ```
 
 ## `HAPROXY_HTTP_BACKEND_REDIR`
@@ -790,7 +791,7 @@ Ex: HAPROXY_0_HTTP_BACKEND_REDIR = '/my/content'
   acl is_domain hdr(host) -i {hostname}
   redirect code 301 location {redirpath} if is_domain is_root
 ```
-**Example Marathon label to override `HAPROXY_HTTP_BACKEND_REDIR` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_HTTP_BACKEND_REDIR` for port 0 of an app:**
 ```
 "HAPROXY_0_HTTP_BACKEND_REDIR": "  acl is_root path -i /\n  acl is_domain hdr(host) -i {hostname}\n  redirect code 301 location {redirpath} if is_domain is_root\n"
 ```
@@ -808,9 +809,9 @@ Backend glue for `HAPROXY_{n}_HTTP_BACKEND_REVPROXY_PATH`.
   acl hdr_location res.hdr(Location) -m found
   rspirep "^Location: (https?://{hostname}(:[0-9]+)?)?(/.*)" "Location:   {rootpath}" if hdr_location
 ```
-**Example Marathon label to override `HAPROXY_HTTP_BACKEND_REVPROXY_GLUE` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_HTTP_BACKEND_REVPROXY_GLUE` for port 0 of an app:**
 ```
-"HAPROXY_0_HTTP_BACKEND_REVPROXY_GLUE": "  acl hdr_location res.hdr(Location) -m found\n  rspirep \"^Location: (https?://{hostname}(:[0-9]+)?)?(/.*)\" \"Location:   {rootpath} if hdr_location\"\n"
+"HAPROXY_0_HTTP_BACKEND_REVPROXY_GLUE": "  acl hdr_location res.hdr(Location) -m found\n  rspirep  \"^Location: (https?://{hostname}(:[0-9]+)?)?(/.*) \"  \"Location:   {rootpath} \" if hdr_location\n"
 ```
 
 ## `HAPROXY_HTTP_FRONTEND_ACL`
@@ -827,7 +828,7 @@ of the `HAPROXY_HTTP_FRONTEND_HEAD`
   acl host_{cleanedUpHostname} hdr(host) -i {hostname}
   use_backend {backend} if host_{cleanedUpHostname}
 ```
-**Example Marathon label to override `HAPROXY_HTTP_FRONTEND_ACL` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_HTTP_FRONTEND_ACL` for port 0 of an app:**
 ```
 "HAPROXY_0_HTTP_FRONTEND_ACL": "  acl host_{cleanedUpHostname} hdr(host) -i {hostname}\n  use_backend {backend} if host_{cleanedUpHostname}\n"
 ```
@@ -847,7 +848,7 @@ vhosts routing to the same backend.
 ```
   acl host_{cleanedUpHostname} hdr(host) -i {hostname}
 ```
-**Example Marathon label to override `HAPROXY_HTTP_FRONTEND_ACL_ONLY` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_HTTP_FRONTEND_ACL_ONLY` for port 0 of an app:**
 ```
 "HAPROXY_0_HTTP_FRONTEND_ACL_ONLY": "  acl host_{cleanedUpHostname} hdr(host) -i {hostname}\n"
 ```
@@ -867,7 +868,7 @@ vhosts routing to the same backend
 ```
   acl path_{backend} path_beg {path}
 ```
-**Example Marathon label to override `HAPROXY_HTTP_FRONTEND_ACL_ONLY_WITH_PATH` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_HTTP_FRONTEND_ACL_ONLY_WITH_PATH` for port 0 of an app:**
 ```
 "HAPROXY_0_HTTP_FRONTEND_ACL_ONLY_WITH_PATH": "  acl path_{backend} path_beg {path}\n"
 ```
@@ -888,7 +889,7 @@ vhosts routing to the same backend
   acl path_{backend} path_beg {path}
   acl auth_{cleanedUpHostname} http_auth(user_{backend})
 ```
-**Example Marathon label to override `HAPROXY_HTTP_FRONTEND_ACL_ONLY_WITH_PATH_AND_AUTH` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_HTTP_FRONTEND_ACL_ONLY_WITH_PATH_AND_AUTH` for port 0 of an app:**
 ```
 "HAPROXY_0_HTTP_FRONTEND_ACL_ONLY_WITH_PATH_AND_AUTH": "  acl path_{backend} path_beg {path}\n  acl auth_{cleanedUpHostname} http_auth(user_{backend})\n"
 ```
@@ -909,9 +910,9 @@ of the `HAPROXY_HTTP_FRONTEND_HEAD` thru HTTP basic auth.
   http-request auth realm "{realm}" if host_{cleanedUpHostname} !auth_{cleanedUpHostname}
   use_backend {backend} if host_{cleanedUpHostname}
 ```
-**Example Marathon label to override `HAPROXY_HTTP_FRONTEND_ACL_WITH_AUTH` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_HTTP_FRONTEND_ACL_WITH_AUTH` for port 0 of an app:**
 ```
-"HAPROXY_0_HTTP_FRONTEND_ACL_WITH_AUTH": "  acl host_{cleanedUpHostname} hdr(host) -i {hostname}\n  acl auth_{cleanedUpHostname} http_auth(user_{backend})\n  http-request auth realm \"{realm}\" if host_{cleanedUpHostname} !auth_{cleanedUpHostname}\n  use_backend {backend} if host_{cleanedUpHostname}\n"
+"HAPROXY_0_HTTP_FRONTEND_ACL_WITH_AUTH": "  acl host_{cleanedUpHostname} hdr(host) -i {hostname}\n  acl auth_{cleanedUpHostname} http_auth(user_{backend})\n  http-request auth realm  \"{realm} \" if host_{cleanedUpHostname} !auth_{cleanedUpHostname}\n  use_backend {backend} if host_{cleanedUpHostname}\n"
 ```
 
 ## `HAPROXY_HTTP_FRONTEND_ACL_WITH_AUTH_AND_PATH`
@@ -931,9 +932,9 @@ of the `HAPROXY_HTTP_FRONTEND_HEAD` thru HTTP basic auth.
   http-request auth realm "{realm}" if host_{cleanedUpHostname} path_{backend} !auth_{cleanedUpHostname}
   use_backend {backend} if host_{cleanedUpHostname} path_{backend}
 ```
-**Example Marathon label to override `HAPROXY_HTTP_FRONTEND_ACL_WITH_AUTH_AND_PATH` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_HTTP_FRONTEND_ACL_WITH_AUTH_AND_PATH` for port 0 of an app:**
 ```
-"HAPROXY_0_HTTP_FRONTEND_ACL_WITH_AUTH_AND_PATH": "  acl host_{cleanedUpHostname} hdr(host) -i {hostname}\n  acl auth_{cleanedUpHostname} http_auth(user_{backend})\n  acl path_{backend} path_beg {path}\n  http-request auth realm \"{realm}\" if host_{cleanedUpHostname} path_{backend} !auth_{cleanedUpHostname}\n  use_backend {backend} if host_{cleanedUpHostname} path_{backend}\n"
+"HAPROXY_0_HTTP_FRONTEND_ACL_WITH_AUTH_AND_PATH": "  acl host_{cleanedUpHostname} hdr(host) -i {hostname}\n  acl auth_{cleanedUpHostname} http_auth(user_{backend})\n  acl path_{backend} path_beg {path}\n  http-request auth realm  \"{realm} \" if host_{cleanedUpHostname} path_{backend} !auth_{cleanedUpHostname}\n  use_backend {backend} if host_{cleanedUpHostname} path_{backend}\n"
 ```
 
 ## `HAPROXY_HTTP_FRONTEND_ACL_WITH_PATH`
@@ -951,7 +952,7 @@ of the `HAPROXY_HTTP_FRONTEND_HEAD`.
   acl path_{backend} path_beg {path}
   use_backend {backend} if host_{cleanedUpHostname} path_{backend}
 ```
-**Example Marathon label to override `HAPROXY_HTTP_FRONTEND_ACL_WITH_PATH` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_HTTP_FRONTEND_ACL_WITH_PATH` for port 0 of an app:**
 ```
 "HAPROXY_0_HTTP_FRONTEND_ACL_WITH_PATH": "  acl host_{cleanedUpHostname} hdr(host) -i {hostname}\n  acl path_{backend} path_beg {path}\n  use_backend {backend} if host_{cleanedUpHostname} path_{backend}\n"
 ```
@@ -970,7 +971,7 @@ of the `HAPROXY_HTTP_FRONTEND_APPID_HEAD`.
   acl app_{cleanedUpAppId} hdr(x-marathon-app-id) -i {appId}
   use_backend {backend} if app_{cleanedUpAppId}
 ```
-**Example Marathon label to override `HAPROXY_HTTP_FRONTEND_APPID_ACL` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_HTTP_FRONTEND_APPID_ACL` for port 0 of an app:**
 ```
 "HAPROXY_0_HTTP_FRONTEND_APPID_ACL": "  acl app_{cleanedUpAppId} hdr(x-marathon-app-id) -i {appId}\n  use_backend {backend} if app_{cleanedUpAppId}\n"
 ```
@@ -1025,7 +1026,7 @@ glues the acl name to the appropriate backend.
 ```
   use_backend {backend} if host_{cleanedUpHostname}
 ```
-**Example Marathon label to override `HAPROXY_HTTP_FRONTEND_ROUTING_ONLY` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_HTTP_FRONTEND_ROUTING_ONLY` for port 0 of an app:**
 ```
 "HAPROXY_0_HTTP_FRONTEND_ROUTING_ONLY": "  use_backend {backend} if host_{cleanedUpHostname}\n"
 ```
@@ -1045,9 +1046,9 @@ glues the acl name to the appropriate backend, and add http basic auth.
   http-request auth realm "{realm}" if host_{cleanedUpHostname} !auth_{cleanedUpHostname}
   use_backend {backend} if host_{cleanedUpHostname}
 ```
-**Example Marathon label to override `HAPROXY_HTTP_FRONTEND_ROUTING_ONLY_WITH_AUTH` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_HTTP_FRONTEND_ROUTING_ONLY_WITH_AUTH` for port 0 of an app:**
 ```
-"HAPROXY_0_HTTP_FRONTEND_ROUTING_ONLY_WITH_AUTH": "  acl auth_{cleanedUpHostname} http_auth(user_{backend})\n  http-request auth realm \"{realm}\" if host_{cleanedUpHostname} !auth_{cleanedUpHostname}\n  use_backend {backend} if host_{cleanedUpHostname}\n"
+"HAPROXY_0_HTTP_FRONTEND_ROUTING_ONLY_WITH_AUTH": "  acl auth_{cleanedUpHostname} http_auth(user_{backend})\n  http-request auth realm  \"{realm} \" if host_{cleanedUpHostname} !auth_{cleanedUpHostname}\n  use_backend {backend} if host_{cleanedUpHostname}\n"
 ```
 
 ## `HAPROXY_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH`
@@ -1063,7 +1064,7 @@ glues the acl names to the appropriate backend
 ```
   use_backend {backend} if host_{cleanedUpHostname} path_{backend}
 ```
-**Example Marathon label to override `HAPROXY_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH` for port 0 of an app:**
 ```
 "HAPROXY_0_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH": "  use_backend {backend} if host_{cleanedUpHostname} path_{backend}\n"
 ```
@@ -1082,9 +1083,9 @@ glues the acl names to the appropriate backend
   http-request auth realm "{realm}" if host_{cleanedUpHostname} path_{backend} !auth_{cleanedUpHostname}
   use_backend {backend} if host_{cleanedUpHostname} path_{backend}
 ```
-**Example Marathon label to override `HAPROXY_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH` for port 0 of an app:**
 ```
-"HAPROXY_0_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH": "  http-request auth realm \"{realm}\" if host_{cleanedUpHostname} path_{backend} !auth_{cleanedUpHostname}\n  use_backend {backend} if host_{cleanedUpHostname} path_{backend}\n"
+"HAPROXY_0_HTTP_FRONTEND_ROUTING_ONLY_WITH_PATH_AND_AUTH": "  http-request auth realm  \"{realm} \" if host_{cleanedUpHostname} path_{backend} !auth_{cleanedUpHostname}\n  use_backend {backend} if host_{cleanedUpHostname} path_{backend}\n"
 ```
 
 ## `HAPROXY_MAP_HTTPS_FRONTEND_ACL`
@@ -1100,7 +1101,7 @@ for the `HAPROXY_HTTPS_FRONTEND_HEAD` template using haproxy maps
 ```
   use_backend %[ssl_fc_sni,lower,map({haproxy_dir}/domain2backend.map)]
 ```
-**Example Marathon label to override `HAPROXY_MAP_HTTPS_FRONTEND_ACL` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_MAP_HTTPS_FRONTEND_ACL` for port 0 of an app:**
 ```
 "HAPROXY_0_MAP_HTTPS_FRONTEND_ACL": "  use_backend %[ssl_fc_sni,lower,map({haproxy_dir}/domain2backend.map)]\n"
 ```
@@ -1118,7 +1119,7 @@ of the `HAPROXY_HTTP_FRONTEND_HEAD` using haproxy maps.
 ```
   use_backend %[req.hdr(host),lower,regsub(:.*$,,),map({haproxy_dir}/domain2backend.map)]
 ```
-**Example Marathon label to override `HAPROXY_MAP_HTTP_FRONTEND_ACL` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_MAP_HTTP_FRONTEND_ACL` for port 0 of an app:**
 ```
 "HAPROXY_0_MAP_HTTP_FRONTEND_ACL": "  use_backend %[req.hdr(host),lower,regsub(:.*$,,),map({haproxy_dir}/domain2backend.map)]\n"
 ```
@@ -1136,7 +1137,7 @@ Define the ACL matching a particular hostname, This is useful only in the case
 ```
   use_backend %[req.hdr(host),lower,regsub(:.*$,,),map({haproxy_dir}/domain2backend.map)]
 ```
-**Example Marathon label to override `HAPROXY_MAP_HTTP_FRONTEND_ACL_ONLY` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_MAP_HTTP_FRONTEND_ACL_ONLY` for port 0 of an app:**
 ```
 "HAPROXY_0_MAP_HTTP_FRONTEND_ACL_ONLY": "  use_backend %[req.hdr(host),lower,regsub(:.*$,,),map({haproxy_dir}/domain2backend.map)]\n"
 ```
@@ -1154,7 +1155,7 @@ of the `HAPROXY_HTTP_FRONTEND_APPID_HEAD` using haproxy maps.
 ```
   use_backend %[req.hdr(x-marathon-app-id),lower,map({haproxy_dir}/app2backend.map)]
 ```
-**Example Marathon label to override `HAPROXY_MAP_HTTP_FRONTEND_APPID_ACL` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_MAP_HTTP_FRONTEND_APPID_ACL` for port 0 of an app:**
 ```
 "HAPROXY_0_MAP_HTTP_FRONTEND_APPID_ACL": "  use_backend %[req.hdr(x-marathon-app-id),lower,map({haproxy_dir}/app2backend.map)]\n"
 ```
@@ -1185,7 +1186,7 @@ This option set the IPs (or IP ranges) having access to the TCP backend.
 ```
   acl network_allowed src {network_allowed}
 ```
-**Example Marathon label to override `HAPROXY_TCP_BACKEND_NETWORK_ALLOWED_ACL` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_TCP_BACKEND_NETWORK_ALLOWED_ACL` for port 0 of an app:**
 ```
 "HAPROXY_0_TCP_BACKEND_NETWORK_ALLOWED_ACL": "  acl network_allowed src {network_allowed}\n"
 ```
@@ -1204,7 +1205,7 @@ The userlist for basic HTTP auth.
 userlist user_{backend}
   user {user} password {passwd}
 ```
-**Example Marathon label to override `HAPROXY_USERLIST_HEAD` for the first port of a given app:**
+**Example Marathon label to override `HAPROXY_USERLIST_HEAD` for port 0 of an app:**
 ```
 "HAPROXY_0_USERLIST_HEAD": "\nuserlist user_{backend}\n  user {user} password {passwd}\n"
 ```
@@ -1426,7 +1427,8 @@ Ex: `HAPROXY_0_HTTP_BACKEND_REVPROXY_PATH = '/my/content'`
 
 Specified as `HAPROXY_{n}_MODE`.
 
-Set the connection mode to either TCP or HTTP. The default is TCP. Following exceptions apply:
+Set the connection mode to either TCP or HTTP. The default is TCP.
+Following exceptions apply:
  * if `HAPROXY_{n}_VHOST` label was specified and `HAPROXY_{n}_MODE` was not set, then the mode will be set to `http`
  * if there is a healtcheck configured for the given port, with protocol field set to one of 'HTTP', 'HTTPS', 'MESOS_HTTP',
 'MESOS_HTTPS', the mode will be *overriden* to 'http', irrespective of the value of `HAPROXY_{n}_MODE` label.
