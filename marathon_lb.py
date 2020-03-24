@@ -34,6 +34,7 @@ import threading
 import time
 import datetime
 import urllib.parse
+import difflib
 from itertools import cycle
 from collections import defaultdict
 from operator import attrgetter
@@ -1507,6 +1508,11 @@ def compareWriteAndReloadConfig(config, config_file, domain_map_array,
             logger.info(
                 "running config is different from generated config"
                 " - reloading")
+            for hunk in difflib.unified_diff(
+                runningConfig.splitlines(),
+                config.splitlines()
+            ):
+                logger.info(hunk)
             if writeConfigAndValidate(
                     config, config_file, domain_map_string, domain_map_file,
                     app_map_string, app_map_file, haproxy_map):
