@@ -182,7 +182,7 @@ def _if_app_listener(app, listener):
 
 def fetch_app_listeners(app, marathon_lb_urls):
     haproxy_stats = fetch_combined_haproxy_stats(marathon_lb_urls)
-    return [l for l in haproxy_stats if _if_app_listener(app, l)]
+    return [li for li in haproxy_stats if _if_app_listener(app, li)]
 
 
 def waiting_for_listeners(new_app, old_app, listeners, haproxy_count):
@@ -205,19 +205,19 @@ def get_new_instance_count(app):
 
 
 def waiting_for_up_listeners(app, listeners, haproxy_count):
-    up_listeners = [l for l in listeners if l.status == 'UP']
+    up_listeners = [li for li in listeners if li.status == 'UP']
     up_listener_count = (len(up_listeners) / haproxy_count)
 
     return up_listener_count < get_deployment_target(app)
 
 
 def select_draining_listeners(listeners):
-    return [l for l in listeners if l.status == 'MAINT']
+    return [li for li in listeners if li.status == 'MAINT']
 
 
 def select_drained_listeners(listeners):
     draining_listeners = select_draining_listeners(listeners)
-    return [l for l in draining_listeners if not _has_pending_requests(l)]
+    return [li for li in draining_listeners if not _has_pending_requests(li)]
 
 
 def get_svnames_from_task(app, task):
@@ -259,7 +259,8 @@ def find_drained_task_ids(app, listeners, haproxy_count):
 
     drained_task_ids = []
     for svname, task in tasks:
-        task_listeners = [l for l in drained_listeners if l.svname == svname]
+        task_listeners = [li for li in drained_listeners
+                          if li.svname == svname]
         if len(task_listeners) == haproxy_count:
             drained_task_ids.append(task['id'])
 
@@ -274,7 +275,8 @@ def find_draining_task_ids(app, listeners, haproxy_count):
 
     draining_task_ids = []
     for svname, task in tasks:
-        task_listeners = [l for l in draining_listeners if l.svname == svname]
+        task_listeners = [li for li in draining_listeners
+                          if li.svname == svname]
         if len(task_listeners) == haproxy_count:
             draining_task_ids.append(task['id'])
 
