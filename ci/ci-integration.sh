@@ -131,7 +131,7 @@ module "dcos" {
   num_private_agents             = 1
   num_public_agents              = 1
   dcos_instance_os               = "centos_7.6"
-  bootstrap_instance_type        = "t2.medium"
+  bootstrap_instance_type        = "t3.large"
   masters_instance_type          = "m5.xlarge"
   private_agents_instance_type   = "m5.xlarge"
   public_agents_instance_type    = "m5.xlarge"
