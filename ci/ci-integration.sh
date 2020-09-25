@@ -15,8 +15,6 @@ export PUBLIC_AGENT_IP=${PUBLIC_AGENT_IP:="uninitialized"}
 
 DCOS_USERNAME=${DCOS_USERNAME:="bootstrapuser"}
 DCOS_PASSWORD=${DCOS_PASSWORD:="deleteme"}
-# shellcheck disable=SC2016
-DCOS_PASSWORD_HASH=${DCOS_PASSWORD_HASH:='$6$rounds=656000$YSvuFmasQDXheddh$TpYlCxNHF6PbsGkjlK99Pwxg7D0mgWJ.y0hE2JKoa61wHx.1wtxTAHVRHfsJU9zzHWDoE08wpdtToHimNR9FJ/'}
 
 TERRAFORM_VERSION=${TERRAFORM_VERSION:="0.11.14"}
 TERRAFORM_ZIP="terraform_${TERRAFORM_VERSION}_${CLI_OS}_amd64.zip"
@@ -90,9 +88,7 @@ launch_cluster() {
         _variant="\
   dcos_variant                 = \"ee\"
   dcos_security                = \"permissive\"
-  dcos_license_key_contents    = \"${DCOS_LICENSE}\"
-  dcos_superuser_username        = \"${DCOS_USERNAME}\"
-  dcos_superuser_password_hash   = \"${DCOS_PASSWORD_HASH}\""
+  dcos_license_key_contents    = \"${DCOS_LICENSE}\""
     fi
 
     local _version
