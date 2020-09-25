@@ -214,7 +214,7 @@ enterprise_authentication() {
 # cd into MLB directory.
 change_into_mlb_dir() {
     status_line "Changing into cloned MLB directory."
-    cd dcos-marathon-lb/
+    cd dcos-marathon-lb
 }
 
 
