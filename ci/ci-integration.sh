@@ -339,7 +339,7 @@ EOF
     dcos marathon app add "${MLB_JSON}"
 
     # Sleeping to wait for MLB to deploy.
-    until ! dcos marathon deployment list > /dev/null 2>&1; do
+    until ! dcos marathon deployment list; do
         sleep 1
     done
 
