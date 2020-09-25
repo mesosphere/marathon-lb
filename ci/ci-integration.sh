@@ -22,8 +22,11 @@ TERRAFORM_PATH="${TERRAFORM_VERSION}/${TERRAFORM_ZIP}"
 TERRAFORM_URL="https://releases.hashicorp.com/terraform/${TERRAFORM_PATH}"
 
 DCOS_IO="https://downloads.dcos.io"
-MASTER_PATH="dcos/testing/master/dcos_generate_config.sh"
-MASTER_URL="${DCOS_IO}/${MASTER_PATH}"
+MESOSPHERE="https://downloads.mesosphere.com"
+OSS_MASTER_PATH="testing/master/dcos_generate_config.sh"
+EE_MASTER_PATH="testing/master/dcos_generate_config.ee.sh"
+OSS_MASTER_URL="${DCOS_IO}/dcos/${OSS_MASTER_PATH}"
+EE_MASTER_URL="${MESOSPHERE}/dcos-enterprise/${EE_MASTER_PATH}"
 
 GIT_SHA_10=$(echo "$GIT_COMMIT" | cut -c 1-10)
 
@@ -93,7 +96,11 @@ launch_cluster() {
 
     local _version
     if [ "${DCOS_VERSION}" == 'master' ]; then
-        _version="  custom_dcos_download_path = \"${MASTER_URL}\""
+        if [ "${VARIANT}" == 'open' ]; then
+            _version="  custom_dcos_download_path = \"${OSS_MASTER_URL}\""
+        elif [ "${VARIANT}" == 'ee' ]; then
+            _version="  custom_dcos_download_path = \"${EE_MASTER_URL}\""
+        fi
     else
         _version="  dcos_version              = \"${DCOS_VERSION}\""
     fi
