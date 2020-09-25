@@ -339,9 +339,7 @@ EOF
     dcos marathon app add "${MLB_JSON}"
 
     # Sleeping to wait for MLB to deploy.
-    until ! dcos marathon deployment list; do
-        sleep 1
-    done
+    timeout 600 bash -c 'while dcos marathon deployment list; do sleep 1; done'
 
     # Verify that MLB deployed healthy.
     check_marathonlb_health "${AUTH_TOKEN}"
