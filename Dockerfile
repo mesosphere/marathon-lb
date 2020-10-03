@@ -1,4 +1,4 @@
-FROM debian:buster
+FROM debian:stable-20200224-slim
 
 LABEL LAST_MODIFIED=20191004
 
