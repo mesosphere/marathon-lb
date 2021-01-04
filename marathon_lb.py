@@ -457,7 +457,7 @@ def calculate_server_id(server_name, taken_server_ids):
     return calculate_server_id(new_server_name, taken_server_ids)
 
 
-def config(apps, groups, bind_http_https, ssl_certs, templater,
+def config(apps, groups, bind_http_https, remove_nontcp_binding, ssl_certs, templater,
            haproxy_map=False, domain_map_array=[], app_map_array=[],
            config_file="/etc/haproxy/haproxy.cfg",
            group_https_by_vhosts=False):
@@ -545,14 +545,16 @@ https://docs.mesosphere.com/services/marathon-lb/advanced/#global-template.\
             )
 
         frontend_head = templater.haproxy_frontend_head(app)
-        frontends += frontend_head.format(
-            bindAddr=app.bindAddr,
-            backend=backend,
-            servicePort=app.servicePort,
-            mode=app.mode,
-            sslCert=' ssl crt ' + app.sslCert if app.sslCert else '',
-            bindOptions=' ' + app.bindOptions if app.bindOptions else ''
-        )
+
+        if app.mode == 'tcp' or not remove_nontcp_binding:
+            frontends += frontend_head.format(
+                bindAddr=app.bindAddr,
+                backend=backend,
+                servicePort=app.servicePort,
+                mode=app.mode,
+                sslCert=' ssl crt ' + app.sslCert if app.sslCert else '',
+                bindOptions=' ' + app.bindOptions if app.bindOptions else ''
+            )
 
         backend_head = templater.haproxy_backend_head(app)
         backends += backend_head.format(
@@ -657,7 +659,8 @@ https://docs.mesosphere.com/services/marathon-lb/advanced/#global-template.\
             backends += templater.haproxy_backend_sticky_options(app)
 
         frontend_backend_glue = templater.haproxy_frontend_backend_glue(app)
-        frontends += frontend_backend_glue.format(backend=backend)
+        if app.mode == 'tcp' or not remove_nontcp_binding:
+            frontends += frontend_backend_glue.format(backend=backend)
 
         do_backend_healthcheck_options_once = True
         key_func = attrgetter('host', 'port')
@@ -1851,13 +1854,14 @@ def get_apps(marathon, apps=[]):
 
 
 def regenerate_config(marathon, config_file, groups, bind_http_https,
-                      ssl_certs, templater, haproxy_map, group_https_by_vhost):
+                      remove_nontcp_binding, ssl_certs, templater,
+                      haproxy_map, group_https_by_vhost):
     domain_map_array = []
     app_map_array = []
     raw_apps = marathon.list()
     apps = get_apps(marathon, raw_apps)
-    generated_config = config(apps, groups, bind_http_https, ssl_certs,
-                              templater, haproxy_map, domain_map_array,
+    generated_config = config(apps, groups, bind_http_https, remove_nontcp_binding,
+                              ssl_certs, templater, haproxy_map, domain_map_array,
                               app_map_array, config_file, group_https_by_vhost)
     (changed, config_valid) = compareWriteAndReloadConfig(
         generated_config, config_file, domain_map_array, app_map_array,
@@ -1954,6 +1958,7 @@ class MarathonEventProcessor(object):
                  config_file,
                  groups,
                  bind_http_https,
+                 remove_nontcp_binding,
                  ssl_certs,
                  haproxy_map,
                  group_https_by_vhost):
@@ -1964,6 +1969,7 @@ class MarathonEventProcessor(object):
         self.__groups = groups
         self.__templater = ConfigTemplater()
         self.__bind_http_https = bind_http_https
+        self.__remove_nontcp_binding = remove_nontcp_binding
         self.__group_https_by_vhost = group_https_by_vhost
         self.__ssl_certs = ssl_certs
 
@@ -2031,6 +2037,7 @@ class MarathonEventProcessor(object):
                                             self.__config_file,
                                             self.__groups,
                                             self.__bind_http_https,
+                                            self.__remove_nontcp_binding,
                                             self.__ssl_certs,
                                             self.__templater,
                                             self.__haproxy_map,
@@ -2151,6 +2158,9 @@ def get_arg_parser():
     parser.add_argument("--dont-bind-http-https",
                         help="Don't bind to HTTP and HTTPS frontends.",
                         action="store_true")
+    parser.add_argument("--remove-nontcp-binding",
+                        help="Remove port binding for non-tcp",
+                        action="store_true")
     parser.add_argument("--group-https-by-vhost",
                         help="Group https frontends by vhost.",
                         action="store_true")
@@ -2252,6 +2262,7 @@ if __name__ == '__main__':
                                            args.haproxy_config,
                                            args.group,
                                            not args.dont_bind_http_https,
+                                           args.remove_nontcp_binding,
                                            args.ssl_certs,
                                            args.haproxy_map,
                                            args.group_https_by_vhost)
@@ -2323,6 +2334,7 @@ if __name__ == '__main__':
                           args.haproxy_config,
                           args.group,
                           not args.dont_bind_http_https,
+                          args.remove_nontcp_binding,
                           args.ssl_certs,
                           ConfigTemplater(),
                           args.haproxy_map,
