@@ -81,6 +81,8 @@ optional arguments:
   --dont-bind-http-https
                         Don't bind to HTTP and HTTPS frontends. (default:
                         False)
+  --remove-nontcp-binding
+                        Remove port binding for non-tcp. (default: False)
   --group-https-by-vhost
                         Group https frontends by vhost. (default: False)
   --ssl-certs SSL_CERTS
