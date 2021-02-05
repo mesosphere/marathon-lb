@@ -91,13 +91,42 @@ class MarathonBackend(object):
     def __repr__(self):
         return "MarathonBackend(%r, %r, %r)" % (self.host, self.ip, self.port)
 
+    def __hash__(self):
+        "Return the hash value of a friendly backend server name"
+        return hash(self.friendly_server_name())
+
+    def __eq__(self, oth):
+        """
+        Return true if both backend server name are same, else false.
+        The friendly server name uses to calculate haproxy server id.
+        """
+        return isinstance(oth, MarathonBackend) and \
+            self.friendly_server_name() == oth.friendly_server_name()
+
+    def friendly_server_name(self):
+        """
+        Return a unique, friendly name for the backend server.
+
+        Concat the host, task IP and task port together. If the host and task
+        IP are actually the same then omit one for clarity.
+        """
+
+        if self.host != self.ip:
+            serverHost = self.host + '_' + self.ip
+        else:
+            serverHost = self.ip
+
+        serverHostName = re.sub(r'[^a-zA-Z0-9\-]', '_', serverHost)
+
+        return serverHostName + '_' + str(self.port)
+
 
 class MarathonService(object):
 
     def __init__(self, appId, servicePort, healthCheck, strictMode):
         self.appId = appId
         self.servicePort = servicePort
-        self.backends = set()
+        self.backends = {}
         self.hostname = None
         self.proxypath = None
         self.revproxypath = None
@@ -127,7 +156,21 @@ class MarathonService(object):
                 self.mode = 'http'
 
     def add_backend(self, host, ip, port, draining):
-        self.backends.add(MarathonBackend(host, ip, port, draining))
+        """
+        A backend server is unique by host, ip and port, not include draining
+        property. When backend servers repeated, the draining property should
+        be true if any server is draining.
+        """
+        backend = MarathonBackend(host, ip, port, draining)
+        if backend in self.backends:
+            oldBackend = self.backends[backend]
+            msg_fmt = ("backend server(%s, %s, %d, %s) duplicated, exists"
+                       "draining status is: %s")
+            logger.warning(msg_fmt, host, ip, port, draining,
+                           oldBackend.draining)
+            oldBackend.draining = oldBackend.draining or draining
+        else:
+            self.backends[backend] = backend
 
     def __hash__(self):
         return hash(self.servicePort)
@@ -692,20 +735,7 @@ https://docs.mesosphere.com/services/marathon-lb/advanced/#global-template.\
                 backendServer.port,
                 backendServer.host)
 
-            # Create a unique, friendly name for the backend server.  We concat
-            # the host, task IP and task port together.  If the host and task
-            # IP are actually the same then omit one for clarity.
-            if backendServer.host != backendServer.ip:
-                serverName = re.sub(
-                    r'[^a-zA-Z0-9\-]', '_',
-                    (backendServer.host + '_' +
-                     backendServer.ip + '_' +
-                     str(backendServer.port)))
-            else:
-                serverName = re.sub(
-                    r'[^a-zA-Z0-9\-]', '_',
-                    (backendServer.ip + '_' +
-                     str(backendServer.port)))
+            serverName = backendServer.friendly_server_name()
             shortHashedServerName = hashlib.sha1(serverName.encode()) \
                 .hexdigest()[:10]
 
@@ -1451,8 +1481,8 @@ def generateAndValidateTempConfig(config, config_file, domain_map_array,
         app_map_string = generateMapString(app_map_array)
 
     return writeConfigAndValidate(
-                config, temp_config_file, domain_map_string, domain_map_file,
-                app_map_string, app_map_file, haproxy_map)
+        config, temp_config_file, domain_map_string, domain_map_file,
+        app_map_string, app_map_file, haproxy_map)
 
 
 def compareWriteAndReloadConfig(config, config_file, domain_map_array,
