@@ -479,3 +479,13 @@ something to copy/paste if you hit the "edit" button of a previous release.
 1. Make a PR to Universe. The suggested way is to create one commit that **only** copies
 the previous dir to a new one, and then a second commit that makes the actual changes.
 If unsure, check out the previous commits to the marathon-lb directory in Universe.
+
+## Building and deploying Marathon LB for your own organization
+
+Marathon-LB is built and deployed using Docker.
+
+To build and deploy it, use the Makefile:
+
+```
+make CONTAINTER_REPO={my-docker-repo} image image-push
+```
